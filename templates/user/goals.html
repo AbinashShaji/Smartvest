@@ -1,0 +1,125 @@
+{% extends "user/base_app.html" %}
+
+{% block title %}Goals - SmartVest{% endblock %}
+{% block page_title %}Financial Goals{% endblock %}
+
+{% block content %}
+<div class="goals-grid" style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 40px; align-items: start;">
+    <!-- Set Goal Form -->
+    <div class="glass-card" style="padding: 40px;">
+        <h3 style="margin-bottom: 24px;">Start New Goal</h3>
+        <p style="color: var(--fg-secondary); font-size: 0.9rem; margin-bottom: 32px;">Define your target and we'll help you visualize the milestones.</p>
+        
+        <form id="goalForm" style="display: flex; flex-direction: column; gap: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.95rem;">Goal Name</label>
+                <input type="text" name="name" required placeholder="e.g. New Car, Vacation" 
+                    style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px 16px; color: #fff; outline: none; transition: 0.3s;"
+                    onfocus="this.style.borderColor='#fff'" onblur="this.style.borderColor='var(--glass-border)'">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.95rem;">Target Amount ($)</label>
+                <input type="number" name="target" required placeholder="5000" 
+                    style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px 16px; color: #fff; outline: none; transition: 0.3s;"
+                    onfocus="this.style.borderColor='#fff'" onblur="this.style.borderColor='var(--glass-border)'">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.95rem;">Deadline (Optional)</label>
+                <input type="date" name="deadline" 
+                    style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 8px; padding: 12px 16px; color: #fff; outline: none; transition: 0.3s;"
+                    onfocus="this.style.borderColor='#fff'" onblur="this.style.borderColor='var(--glass-border)'">
+            </div>
+
+            <button type="submit" class="btn-premium" style="margin-top: 20px; height: 50px;">Initialize Goal</button>
+            <p id="goalStatusMsg" style="text-align: center; font-size: 0.85rem; height: 1.2rem;"></p>
+        </form>
+    </div>
+
+    <!-- Active Goals Grid -->
+    <div>
+        <h3 style="margin-bottom: 24px;">Active Challenges</h3>
+        <div id="goalsContainer" style="display: grid; grid-template-columns: 1fr; gap: 24px;">
+            <!-- Goal Item 1 (Mock) -->
+            <div class="glass-card" style="padding: 32px;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;">
+                    <div>
+                        <h4 style="font-size: 1.2rem; margin-bottom: 4px;">Modern Apartment</h4>
+                        <p style="color: var(--fg-secondary); font-size: 0.85rem;">Target: $50,000.00</p>
+                    </div>
+                    <span class="glass-card" style="padding: 4px 12px; font-size: 0.8rem; font-weight: 600;">32% Complete</span>
+                </div>
+                
+                <div style="height: 10px; width: 100%; background: rgba(255,255,255,0.05); border-radius: 5px; margin-bottom: 20px; overflow: hidden;">
+                    <div style="height: 100%; width: 32%; background: linear-gradient(to right, #333, #fff); transition: 1s;"></div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; color: var(--fg-secondary); font-size: 0.85rem;">
+                    <span>$16,000 saved</span>
+                    <span>$34,000 remaining</span>
+                </div>
+            </div>
+
+            <!-- Goal Item 2 (Mock) -->
+            <div class="glass-card" style="padding: 32px;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;">
+                    <div>
+                        <h4 style="font-size: 1.2rem; margin-bottom: 4px;">Tesla Model S</h4>
+                        <p style="color: var(--fg-secondary); font-size: 0.85rem;">Target: $90,000.00</p>
+                    </div>
+                    <span class="glass-card" style="padding: 4px 12px; font-size: 0.8rem; font-weight: 600;">10% Complete</span>
+                </div>
+                
+                <div style="height: 10px; width: 100%; background: rgba(255,255,255,0.05); border-radius: 5px; margin-bottom: 20px; overflow: hidden;">
+                    <div style="height: 100%; width: 10%; background: linear-gradient(to right, #333, #fff); transition: 1s;"></div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; color: var(--fg-secondary); font-size: 0.85rem;">
+                    <span>$9,000 saved</span>
+                    <span>$81,000 remaining</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+    @media (max-width: 1024px) {
+        .goals-grid {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('goalForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('goalStatusMsg');
+        const data = {
+            name: e.target.name.value,
+            target: parseFloat(e.target.target.value),
+            deadline: e.target.deadline.value
+        };
+
+        status.innerText = 'Creating goal...';
+        status.style.color = 'var(--fg-secondary)';
+
+        try {
+            await API.setGoal(data);
+            status.innerText = 'Goal created successfully!';
+            status.style.color = '#4ade80';
+            e.target.reset();
+            // In a real app, we would reload the goals list here
+        } catch (error) {
+            status.innerText = 'Error: ' + error.message;
+            status.style.color = '#f87171';
+        }
+    });
+</script>
+{% endblock %}

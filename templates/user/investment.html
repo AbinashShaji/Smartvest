@@ -1,0 +1,133 @@
+{% extends "user/base_app.html" %}
+
+{% block title %}Investments - SmartVest{% endblock %}
+{% block page_title %}Investment Opportunities{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="glass-card stat-card">
+        <p class="label">Disposable Income</p>
+        <p class="value">$3,200.00</p>
+        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">Ready to invest</p>
+    </div>
+    <div class="glass-card stat-card" style="border-color: #4ade80;">
+        <p class="label">Market Condition</p>
+        <p class="value" style="color: #4ade80;">Bullish</p>
+        <p style="font-size: 0.8rem; color: var(--fg-secondary); margin-top: 4px;">Stable growth detected</p>
+    </div>
+    <div class="glass-card stat-card">
+        <p class="label">Current Portfolio</p>
+        <p class="value">$14,500.00</p>
+        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">+8.2% annual ROI</p>
+    </div>
+</div>
+
+<h3 style="margin-bottom: 32px;">Personalized Strategies</h3>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 32px;">
+    
+    <!-- Strategy 1: Low Risk -->
+    <div class="glass-card" style="padding: 40px; border-top: 4px solid #a1a1aa;">
+        <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--fg-secondary);">Low Risk</span>
+        <h2 style="margin: 12px 0;">Fixed Deposit Plus</h2>
+        <p style="color: var(--fg-secondary); margin-bottom: 32px; font-size: 0.95rem;">
+            Ideal for emergency funds. Currently offering high liquidity with guaranteed returns.
+        </p>
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 24px;">
+            <div>
+                <p style="font-size: 0.75rem; color: var(--fg-secondary);">Return Rate</p>
+                <p style="font-size: 1.2rem; font-weight: 700;">7.5% p.a.</p>
+            </div>
+            <div>
+                <p style="font-size: 0.75rem; color: var(--fg-secondary);">Min. Term</p>
+                <p style="font-size: 1.2rem; font-weight: 700;">6 Months</p>
+            </div>
+        </div>
+        
+        <button class="btn-premium btn-secondary" style="width: 100%;">Explore Options</button>
+    </div>
+
+    <!-- Strategy 2: Moderate Risk -->
+    <div class="glass-card" style="padding: 40px; border-top: 4px solid #fff;">
+        <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--fg-secondary);">Moderate Risk</span>
+        <h2 style="margin: 12px 0;">Automated SIP</h2>
+        <p style="color: var(--fg-secondary); margin-bottom: 32px; font-size: 0.95rem;">
+            Diversified index fund approach. Optimized for long-term compounding and cost averaging.
+        </p>
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 24px;">
+            <div>
+                <p style="font-size: 0.75rem; color: var(--fg-secondary);">Est. Returns</p>
+                <p style="font-size: 1.2rem; font-weight: 700;">12-15%</p>
+            </div>
+            <div>
+                <p style="font-size: 0.75rem; color: var(--fg-secondary);">Min. Invest</p>
+                <p style="font-size: 1.2rem; font-weight: 700;">$100 / mo</p>
+            </div>
+        </div>
+        
+        <button class="btn-premium" style="width: 100%;">Set Up SIP</button>
+    </div>
+
+    <!-- Strategy 3: High Risk -->
+    <div class="glass-card" style="padding: 40px; position: relative; overflow: hidden; border-top: 4px solid #3f3f46;">
+        <div style="position: absolute; top: 10px; right: 10px; padding: 4px 8px; background: #fff; color: #000; font-size: 0.65rem; font-weight: 800; border-radius: 4px;">SYSTEM PICK</div>
+        <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--fg-secondary);">High Risk</span>
+        <h2 style="margin: 12px 0;">Dynamic Stock Pick</h2>
+        <p style="color: var(--fg-secondary); margin-bottom: 32px; font-size: 0.95rem;">
+            AI-suggested mid-cap stocks with high growth potential based on recent market trends.
+        </p>
+        
+        <div style="display: flex; justify-content: space-between; margin-bottom: 24px;">
+            <div>
+                <p style="font-size: 0.75rem; color: var(--fg-secondary);">Volatility</p>
+                <p style="font-size: 1.2rem; font-weight: 700;">High</p>
+            </div>
+            <div>
+                <p style="font-size: 0.75rem; color: var(--fg-secondary);">Success Prob.</p>
+                <p style="font-size: 1.2rem; font-weight: 700;">68%</p>
+            </div>
+        </div>
+        
+        <button class="btn-premium btn-secondary" style="width: 100%;">Analyze Tickers</button>
+    </div>
+</div>
+
+<div class="glass-card" style="margin-top: 40px; padding: 40px;">
+    <h3>Wealth Projection</h3>
+    <p style="color: var(--fg-secondary); margin-bottom: 32px;">Estimated value of your portfolio over the next 10 years based on selected strategies.</p>
+    <canvas id="projectionChart" style="max-height: 400px;"></canvas>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const ctx = document.getElementById('projectionChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Year 0', 'Year 2', 'Year 4', 'Year 6', 'Year 8', 'Year 10'],
+                datasets: [{
+                    label: 'Projected Value',
+                    data: [15000, 22000, 31000, 48000, 75000, 110000],
+                    borderColor: '#ffffff',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#fff',
+                    tension: 0.4,
+                    fill: true,
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#a1a1aa' } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, border: { dash: [5, 5] }, ticks: { color: '#a1a1aa', callback: (v) => '$' + v / 1000 + 'k' } }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

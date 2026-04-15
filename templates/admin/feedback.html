@@ -1,0 +1,71 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Feedback Log - SmartVest Admin{% endblock %}
+{% block page_title %}User Inquiries & Feedback{% endblock %}
+
+{% block content %}
+<div class="glass-card" style="padding: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+        <h3>Incoming Messages</h3>
+        <span class="glass-card" style="padding: 4px 12px; font-size: 0.8rem; background: rgba(248, 113, 113, 0.1); color: #f87171;">18 Action Required</span>
+    </div>
+
+    <div id="feedbackContainer" style="display: flex; flex-direction: column; gap: 16px;">
+        <!-- Mock Feedback 1 -->
+        <div class="glass-card" style="padding: 24px; border-left: 4px solid #fff;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                <h4 style="font-size: 1.1rem;">Bug in Investment Chart</h4>
+                <span style="font-size: 0.8rem; color: var(--fg-secondary);">Today, 10:45 AM</span>
+            </div>
+            <p style="color: var(--fg-secondary); font-size: 0.95rem; margin-bottom: 20px;">
+                "The 10-year projection doesn't seem to update when I change my SIP amount. Please check the calculation engine."
+            </p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background: #333;"></div>
+                    <span style="font-size: 0.85rem; font-weight: 500;">john.doe@test.com</span>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-premium btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">Mark Resolved</button>
+                    <button class="btn-premium" style="padding: 6px 12px; font-size: 0.8rem;">Reply</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mock Feedback 2 -->
+        <div class="glass-card" style="padding: 24px; border-left: 4px solid #a1a1aa;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                <h4 style="font-size: 1.1rem;">Feature Request: Crypto Support</h4>
+                <span style="font-size: 0.8rem; color: var(--fg-secondary);">Yesterday, 4:20 PM</span>
+            </div>
+            <p style="color: var(--fg-secondary); font-size: 0.95rem; margin-bottom: 20px;">
+                "Would love to see Bitcoin and Ethereum tracking in the portfolio section. Is this on the roadmap?"
+            </p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="width: 24px; height: 24px; border-radius: 50%; background: #444;"></div>
+                    <span style="font-size: 0.85rem; font-weight: 500;">crypto_fan@web3.io</span>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button class="btn-premium btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">Archive</button>
+                    <button class="btn-premium" style="padding: 6px 12px; font-size: 0.8rem;">Reply</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadFeedback() {
+        try {
+            const feedback = await API.request('/api/admin/feedback');
+            // Logic to render if API exists
+        } catch (error) {
+            console.log("Mock feedback display active.");
+        }
+    }
+    document.addEventListener('DOMContentLoaded', loadFeedback);
+</script>
+{% endblock %}

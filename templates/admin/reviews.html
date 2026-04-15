@@ -1,0 +1,59 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Review Control - SmartVest Admin{% endblock %}
+{% block page_title %}Public Review Management{% endblock %}
+
+{% block content %}
+<div class="glass-card" style="padding: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+        <h3>Moderate Testimonials</h3>
+        <p style="color: var(--fg-secondary); font-size: 0.85rem;">Approved reviews appear on the Home and Reviews pages.</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr; gap: 20px;" id="adminReviewsContainer">
+        <!-- Review Card 1 -->
+        <div class="glass-card" style="padding: 24px; display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                    <span style="color: #fff;">★★★★★</span>
+                    <span style="font-size: 0.8rem; font-weight: 700;">Sarah Chen</span>
+                </div>
+                <p style="color: var(--fg-secondary); font-size: 0.9rem;">"The stability indicator is a lifesaver. I finally feel in control of my financial future."</p>
+            </div>
+            <div style="display: flex; gap: 12px; margin-left: 20px;">
+                <span class="glass-card" style="padding: 6px 12px; font-size: 0.75rem; background: rgba(74, 222, 128, 0.1); color: #4ade80; border: none;">APPROVED</span>
+                <button class="btn-premium btn-secondary" style="padding: 6px 12px; font-size: 0.75rem; color: #f87171;">Delete</button>
+            </div>
+        </div>
+
+        <!-- Review Card 2 -->
+        <div class="glass-card" style="padding: 24px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.01);">
+            <div style="flex: 1;">
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                    <span style="color: #fff;">★★★★☆</span>
+                    <span style="font-size: 0.8rem; font-weight: 700;">Mike Ross</span>
+                </div>
+                <p style="color: var(--fg-secondary); font-size: 0.9rem;">"Clean layout, but would love a dark mode toggle for the dash."</p>
+            </div>
+            <div style="display: flex; gap: 12px; margin-left: 20px;">
+                <button class="btn-premium" style="padding: 6px 16px; font-size: 0.75rem;">Approve</button>
+                <button class="btn-premium btn-secondary" style="padding: 6px 12px; font-size: 0.75rem; color: #f87171;">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadReviews() {
+        try {
+            const reviews = await API.request('/api/admin/reviews');
+            // Logic to render if API exists
+        } catch (error) {
+            console.log("Mock reviews moderator active.");
+        }
+    }
+    document.addEventListener('DOMContentLoaded', loadReviews);
+</script>
+{% endblock %}

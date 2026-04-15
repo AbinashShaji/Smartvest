@@ -1,0 +1,168 @@
+{% extends "user/base_app.html" %}
+
+{% block title %}Feedback - SmartVest{% endblock %}
+{% block page_title %}Share Your Thoughts{% endblock %}
+
+{% block content %}
+<div class="feedback-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
+    <!-- System Feedback -->
+    <div class="glass-card" style="padding: 40px;">
+        <h3 style="margin-bottom: 24px;">System Feedback</h3>
+        <p style="color: var(--fg-secondary); font-size: 0.9rem; margin-bottom: 32px;">Found a bug or have a feature request? Let our engineering team know.</p>
+        
+        <form id="systemFeedbackForm" style="display: flex; flex-direction: column; gap: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.95rem;">Subject</label>
+                <select name="subject" class="glass-input-field">
+                    <option>Bug Report</option>
+                    <option>Feature Request</option>
+                    <option>UI/UX Suggestion</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.95rem;">Message</label>
+                <textarea name="message" required rows="5" placeholder="Describe your feedback in detail..." class="glass-input-field" style="resize: none;"></textarea>
+            </div>
+            <button type="submit" class="btn-premium btn-secondary" style="height: 50px;">Submit Feedback</button>
+            <p id="feedbackStatus" style="text-align: center; font-size: 0.85rem; height: 1.2rem;"></p>
+        </form>
+    </div>
+
+    <!-- Public Review -->
+    <div class="glass-card" style="padding: 40px; background: radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent);">
+        <h3 style="margin-bottom: 24px;">Public Review</h3>
+        <p style="color: var(--fg-secondary); font-size: 0.9rem; margin-bottom: 32px;">Share your experience with the community. Your review will appear on our homepage.</p>
+        
+        <form id="publicReviewForm" style="display: flex; flex-direction: column; gap: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.95rem;">Rating</label>
+                <div style="display: flex; gap: 12px; font-size: 1.5rem; cursor: pointer;">
+                    <span class="star" data-value="1">☆</span>
+                    <span class="star" data-value="2">☆</span>
+                    <span class="star" data-value="3">☆</span>
+                    <span class="star" data-value="4">☆</span>
+                    <span class="star" data-value="5">☆</span>
+                </div>
+                <input type="hidden" name="rating" id="reviewRating" value="5">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.95rem;">Your Review</label>
+                <textarea name="review" required rows="5" placeholder="What do you love about SmartVest?" class="glass-input-field" style="resize: none;"></textarea>
+            </div>
+            <button type="submit" class="btn-premium" style="height: 50px;">Post Review</button>
+            <p id="reviewStatus" style="text-align: center; font-size: 0.85rem; height: 1.2rem;"></p>
+        </form>
+    </div>
+</div>
+
+<div class="glass-card" style="margin-top: 40px; padding: 40px;">
+    <h3 style="margin-bottom: 24px;">Recent Reviews from Users</h3>
+    <div id="userReviewsList" style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- Mock reviews -->
+        <div style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                <h4 style="font-size: 1rem;">David Miller</h4>
+                <div style="color: #fff;">★★★★★</div>
+            </div>
+            <p style="color: var(--fg-secondary); font-size: 0.9rem;">The best decision support system for my personal finance. Highly recommended!</p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .star.active { color: #fff; content: "★"; }
+    .glass-input-field {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: #fff;
+        outline: none;
+        transition: 0.3s;
+    }
+    @media (max-width: 768px) {
+        .feedback-grid {
+            grid-template-columns: 1fr !important;
+            gap: 24px !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Star rating logic
+    const stars = document.querySelectorAll('.star');
+    const ratingInput = document.getElementById('reviewRating');
+    
+    stars.forEach(star => {
+        star.addEventListener('click', () => {
+            const val = star.getAttribute('data-value');
+            ratingInput.value = val;
+            stars.forEach(s => {
+                s.innerText = s.getAttribute('data-value') <= val ? '★' : '☆';
+            });
+        });
+    });
+
+    function renderReviews(reviews) {
+        const container = document.getElementById('userReviewsList');
+        if (!container || !reviews || !Array.isArray(reviews)) return;
+
+        container.innerHTML = reviews.slice(0, 4).map((entry) => `
+            <div style="padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px; gap: 16px;">
+                    <h4 style="font-size: 1rem;">${entry.name || 'SmartVest User'}</h4>
+                    <div style="color: #fff;">${'★'.repeat(entry.rating || 5)}${'☆'.repeat(Math.max(0, 5 - (entry.rating || 5)))}</div>
+                </div>
+                <p style="color: var(--fg-secondary); font-size: 0.9rem;">${entry.review || 'No review text available.'}</p>
+            </div>
+        `).join('');
+    }
+
+    async function loadReviews() {
+        try {
+            const reviews = await API.getReviews();
+            renderReviews(reviews);
+        } catch (error) {
+            console.log('Using fallback reviews.');
+        }
+    }
+
+    document.getElementById('systemFeedbackForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('feedbackStatus');
+        try {
+            const data = await API.submitFeedback({ subject: e.target.subject.value, message: e.target.message.value });
+            if (!data) return;
+            status.innerText = 'Feedback received! Thank you.';
+            status.style.color = '#4ade80';
+            e.target.reset();
+        } catch (error) {
+            status.innerText = 'Error submitting feedback'; status.style.color = '#f87171';
+        }
+    });
+
+    document.getElementById('publicReviewForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('reviewStatus');
+        try {
+            const data = await API.submitReview({ rating: ratingInput.value, review: e.target.review.value });
+            if (!data) return;
+            status.innerText = 'Review posted successfully!';
+            status.style.color = '#4ade80';
+            e.target.reset();
+            ratingInput.value = '5';
+            stars.forEach((s) => {
+                s.innerText = s.getAttribute('data-value') <= 5 ? '★' : '☆';
+            });
+            loadReviews();
+        } catch (error) {
+            status.innerText = 'Error posting review'; status.style.color = '#f87171';
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', loadReviews);
+</script>
+{% endblock %}

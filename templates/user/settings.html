@@ -1,0 +1,172 @@
+{% extends "user/base_app.html" %}
+
+{% block title %}Settings - SmartVest{% endblock %}
+{% block page_title %}Account Settings{% endblock %}
+
+{% block content %}
+<div class="glass-card settings-shell" style="max-width: 800px; padding: 48px;">
+    <div class="settings-header" style="display: flex; align-items: center; gap: 32px; margin-bottom: 48px; padding-bottom: 32px; border-bottom: 1px solid var(--glass-border);">
+        <div style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(45deg, #333, #666); border: 1px solid var(--glass-border); position: relative; overflow: hidden;">
+            <div style="position: absolute; bottom: 0; width: 100%; height: 30px; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #fff; cursor: pointer;">Edit</div>
+        </div>
+        <div>
+            <h2 style="font-size: 1.8rem; margin-bottom: 4px;">{% if user %}{{ user.username }}{% else %}Financial Explorer{% endif %}</h2>
+            <p style="color: var(--fg-secondary); font-size: 0.95rem;">{% if user %}{{ user.email }}{% else %}user@smartvest.ai{% endif %}</p>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr; gap: 40px;">
+        <!-- Profile Update -->
+        <section>
+            <h3 style="margin-bottom: 24px;">Personal Information</h3>
+            <form id="profileForm" class="settings-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="font-size: 0.9rem; color: var(--fg-secondary);">Full Name</label>
+                    <input type="text" name="username" value="{% if user %}{{ user.username }}{% endif %}" class="glass-input-field">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="font-size: 0.9rem; color: var(--fg-secondary);">Email Address</label>
+                    <input type="email" name="email" value="{% if user %}{{ user.email }}{% endif %}" class="glass-input-field">
+                </div>
+                <div style="grid-column: span 2;">
+                    <button type="submit" class="btn-premium" style="height: 44px; padding: 0 24px;">Update Profile</button>
+                    <span id="profileStatus" style="margin-left: 16px; font-size: 0.85rem;"></span>
+                </div>
+            </form>
+        </section>
+
+        <!-- Password Change -->
+        <section style="margin-top: 20px;">
+            <h3 style="margin-bottom: 24px;">Security</h3>
+            <form id="passwordForm" style="display: flex; flex-direction: column; gap: 24px; max-width: 400px;">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="font-size: 0.9rem; color: var(--fg-secondary);">Current Password</label>
+                    <input type="password" name="current_password" required class="glass-input-field">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="font-size: 0.9rem; color: var(--fg-secondary);">New Password</label>
+                    <input type="password" name="new_password" required class="glass-input-field">
+                </div>
+                <div>
+                    <button type="submit" class="btn-premium btn-secondary" style="height: 44px; padding: 0 24px;">Change Password</button>
+                    <span id="passStatus" style="margin-left: 16px; font-size: 0.85rem;"></span>
+                </div>
+            </form>
+        </section>
+
+        <!-- Preference Section -->
+        <section style="margin-top: 20px; border-top: 1px solid var(--glass-border); padding-top: 40px;">
+            <h3 style="margin-bottom: 24px;">System Preferences</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <div>
+                    <h4 style="margin-bottom: 4px;">AI Investment Suggestions</h4>
+                    <p style="font-size: 0.85rem; color: var(--fg-secondary);">Receive real-time market notifications.</p>
+                </div>
+                <div class="toggle-switch"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h4 style="margin-bottom: 4px;">Weekly Stability Report</h4>
+                    <p style="font-size: 0.85rem; color: var(--fg-secondary);">Get a recursive analysis of your trends every Monday.</p>
+                </div>
+                <div class="toggle-switch active"></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<style>
+    .glass-input-field {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: #fff;
+        outline: none;
+        transition: 0.3s;
+        width: 100%;
+    }
+    .toggle-switch {
+        width: 48px;
+        height: 24px;
+        background: var(--glass-border);
+        border-radius: 12px;
+        position: relative;
+        cursor: pointer;
+    }
+    .toggle-switch::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        background: #fff;
+        border-radius: 50%;
+        transition: 0.3s;
+    }
+    .toggle-switch.active { background: #fff; }
+    .toggle-switch.active::after { left: 26px; background: #000; }
+    @media (max-width: 768px) {
+        .settings-shell {
+            padding: 28px !important;
+        }
+        .settings-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 20px !important;
+        }
+        .settings-form-grid {
+            grid-template-columns: 1fr !important;
+        }
+        .settings-form-grid > div[style*="grid-column: span 2"] {
+            grid-column: auto !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('profileStatus');
+        try {
+            const data = await API.request('/api/update-profile', { method: 'POST', body: JSON.stringify({
+                username: e.target.username.value,
+                email: e.target.email.value
+            })});
+            if (!data) return;
+            status.innerText = 'Profile updated!'; status.style.color = '#4ade80';
+        } catch (error) {
+            status.innerText = 'Error updating profile'; status.style.color = '#f87171';
+        }
+    });
+
+    document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('passStatus');
+
+        try {
+            const data = await API.request('/api/change-password', {
+                method: 'POST',
+                body: JSON.stringify({
+                    current_password: e.target.current_password.value,
+                    new_password: e.target.new_password.value
+                })
+            });
+            if (!data) return;
+            status.innerText = 'Password updated!';
+            status.style.color = '#4ade80';
+            e.target.reset();
+        } catch (error) {
+            status.innerText = 'Error changing password';
+            status.style.color = '#f87171';
+        }
+    });
+
+    document.querySelectorAll('.toggle-switch').forEach(toggle => {
+        toggle.addEventListener('click', () => toggle.classList.toggle('active'));
+    });
+</script>
+{% endblock %}

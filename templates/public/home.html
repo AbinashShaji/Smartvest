@@ -1,0 +1,148 @@
+{% extends "public/base_public.html" %}
+
+{% block title %}SmartVest - Precision Financial Intelligence{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section style="padding: 160px 0 100px; position: relative; overflow: hidden;">
+    <div class="container" style="display: flex; align-items: center; gap: 80px; position: relative; z-index: 1;">
+        <!-- Left: Content -->
+        <div style="flex: 1; min-width: 320px;">
+            <span class="glass-card" style="padding: 8px 20px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; border-radius: 100px; margin-bottom: 32px; display: inline-block; color: #fff; border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.05);">
+                INTELLIGENT WEALTH LAYER
+            </span>
+            <h1 class="text-gradient" style="font-size: clamp(3rem, 6vw, 4.5rem); line-height: 1.1; margin-bottom: 32px; font-weight: 800; letter-spacing: -2px;">
+                Control Your Money.<br>Build Smarter Decisions.
+            </h1>
+            <p style="color: var(--fg-secondary); font-size: 1.15rem; max-width: 550px; margin-bottom: 48px; line-height: 1.6;">
+                SmartVest is the choice for individuals who demand precision and aesthetics. Transform raw data into structured financial impact.
+            </p>
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <a href="/signup" class="btn-premium btn-glow" style="padding: 16px 36px; font-size: 1rem; border-radius: 100px; min-width: 180px;">Get Started</a>
+                <a href="/login" class="btn-premium btn-secondary" style="padding: 16px 36px; font-size: 1rem; border-radius: 100px; min-width: 180px;">Login</a>
+            </div>
+        </div>
+
+        <!-- Right: Premium Visual -->
+        <div style="flex: 1.2; position: relative; perspective: 1000px; display: flex; justify-content: center;" class="hero-visual-container">
+            <div class="glass-card" style="width: 100%; max-width: 600px; padding: 10px; border-width: 1px; border-color: rgba(255,255,255,0.1); transform: rotateY(-10deg) rotateX(5deg); transition: 0.5s;" onmouseover="this.style.transform='rotateY(0deg) rotateX(0deg) scale(1.02)'" onmouseout="this.style.transform='rotateY(-10deg) rotateX(5deg)'">
+                <img src="{{ url_for('static', filename='images/premium_hero.png') }}" alt="SmartVest Premium Intelligence" style="width: 100%; border-radius: 12px; display: block; filter: brightness(1.1);">
+                <!-- Floating Decorative Elements -->
+                <div style="position: absolute; top: -30px; right: -30px; width: 100px; height: 100px; background: rgba(255,255,255,0.05); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; animation: float 6s infinite ease-in-out;"></div>
+                <div style="position: absolute; bottom: -20px; left: -20px; width: 80px; height: 80px; background: rgba(255,255,255,0.03); backdrop-filter: blur(5px); border: 1px solid rgba(255,255,255,0.1); border-radius: 50%; animation: float 8s infinite ease-in-out reverse;"></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-20px); }
+    }
+    @media (max-width: 1024px) {
+        .hero-visual-container { display: none !important; }
+        section { text-align: center; }
+        .container { flex-direction: column; justify-content: center; }
+        p { margin-left: auto; margin-right: auto; }
+        div[style*="display: flex; gap: 20px"] { justify-content: center; }
+    }
+</style>
+
+<!-- Features Grid -->
+<section style="padding: 120px 0; background: radial-gradient(circle at center, rgba(255,255,255,0.02), transparent);">
+    <div class="container">
+        <div style="text-align: center; margin-bottom: 80px;">
+            <h2 style="font-size: 3rem; margin-bottom: 20px; letter-spacing: -1px;">Built for Performance</h2>
+            <p style="color: var(--fg-secondary); max-width: 600px; margin: 0 auto;">Our system leverages advanced analytics to keep you ahead of the curve.</p>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 32px;">
+            <div class="glass-card" style="padding: 48px; border-color: rgba(255,255,255,0.05);">
+                <div style="font-size: 2.5rem; margin-bottom: 24px;">💸</div>
+                <h3 style="margin-bottom: 16px; font-size: 1.4rem;">Expense Tracking</h3>
+                <p style="color: var(--fg-secondary); line-height: 1.7;">Monitor every cent with automated categorization and anomaly detection in real-time.</p>
+            </div>
+
+            <div class="glass-card" style="padding: 48px; border-color: rgba(255,255,255,0.05);">
+                <div style="font-size: 2.5rem; margin-bottom: 24px;">📊</div>
+                <h3 style="margin-bottom: 16px; font-size: 1.4rem;">Smart Analysis</h3>
+                <p style="color: var(--fg-secondary); line-height: 1.7;">Visual stability indicators help you understand your financial health at a glance.</p>
+            </div>
+
+            <div class="glass-card" style="padding: 48px; border-color: rgba(255,255,255,0.05);">
+                <div style="font-size: 2.5rem; margin-bottom: 24px;">📈</div>
+                <h3 style="margin-bottom: 16px; font-size: 1.4rem;">Invest Suggestions</h3>
+                <p style="color: var(--fg-secondary); line-height: 1.7;">Get tailored FD, SIP, and Stock suggestions based on your unique profile and goals.</p>
+            </div>
+
+            <div class="glass-card" style="padding: 48px; border-color: rgba(255,255,255,0.05);">
+                <div style="font-size: 2.5rem; margin-bottom: 24px;">🎯</div>
+                <h3 style="margin-bottom: 16px; font-size: 1.4rem;">Goal Tracking</h3>
+                <p style="color: var(--fg-secondary); line-height: 1.7;">Set ambitious targets and watch your progress with beautiful, motivational visualizations.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- How It Works -->
+<section style="padding: 120px 0; border-top: 1px solid var(--glass-border); background: #000;">
+    <div class="container">
+        <div style="display: flex; gap: 80px; align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 300px;">
+                <h2 style="font-size: 3.5rem; margin-bottom: 32px; letter-spacing: -2px;">The SmartVest<br>Algorithm</h2>
+                <div style="display: flex; flex-direction: column; gap: 40px;">
+                    <div style="display: flex; gap: 24px;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0;">1</div>
+                        <div>
+                            <h4 style="font-size: 1.25rem; margin-bottom: 8px;">Add Data</h4>
+                            <p style="color: var(--fg-secondary);">Securely import your income and expenses manually or via CSV.</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 24px;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: #333; color: #fff; border: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0;">2</div>
+                        <div>
+                            <h4 style="font-size: 1.25rem; margin-bottom: 8px;">Analyze</h4>
+                            <p style="color: var(--fg-secondary);">Our system parses trends and calculates your stability index automatically.</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 24px;">
+                        <div style="width: 40px; height: 40px; border-radius: 50%; background: #333; color: #fff; border: 1px solid var(--glass-border); display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0;">3</div>
+                        <div>
+                            <h4 style="font-size: 1.25rem; margin-bottom: 8px;">Save & Invest</h4>
+                            <p style="color: var(--fg-secondary);">Follow optimized strategies to maximize your wealth growth month-over-month.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div style="flex: 1; min-width: 300px;" class="glass-card">
+                <div style="padding: 60px; text-align: center;">
+                    <div style="font-size: 5rem; font-weight: 800; margin-bottom: 20px;">82%</div>
+                    <p style="text-transform: uppercase; letter-spacing: 4px; font-weight: 700; color: #4ade80;">Average Savings Increase</p>
+                    <p style="color: var(--fg-secondary); margin-top: 24px; font-size: 0.9rem;">Reported by users after 3 months of consistent system usage.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Final CTA -->
+<section style="padding: 120px 0;">
+    <div class="container">
+        <div class="glass-card" style="padding: 100px 40px; text-align: center; background: radial-gradient(circle at top right, rgba(255,255,255,0.05), transparent); border-width: 2px;">
+            <h2 style="font-size: 4rem; margin-bottom: 24px; letter-spacing: -2.5px;">Start your wealth era today.</h2>
+            <p style="color: var(--fg-secondary); font-size: 1.25rem; margin-bottom: 48px; max-width: 600px; margin-left: auto; margin-right: auto;">
+                Don't leave your financial future to chance. Use the support system designed for high-performers.
+            </p>
+            <a href="/signup" class="btn-premium btn-glow" style="padding: 20px 60px; font-size: 1.25rem; border-radius: 100px;">Create Free Account</a>
+        </div>
+    </div>
+</section>
+
+<style>
+    @keyframes pulse {
+        0% { transform: scale(1) translate(0, 0); opacity: 0.5; }
+        100% { transform: scale(1.1) translate(20px, 20px); opacity: 0.8; }
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,117 @@
+{% extends "public/base_public.html" %}
+
+{% block title %}User Reviews - SmartVest Community Impact{% endblock %}
+
+{% block content %}
+<section style="padding: 160px 0 100px; position: relative;">
+    <div class="container">
+        <div style="text-align: center; margin-bottom: 80px;">
+            <span class="glass-card" style="padding: 6px 16px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; border-radius: 100px; margin-bottom: 24px; display: inline-block; color: #fff; background: rgba(255,255,255,0.05);">USER PERSPECTIVES</span>
+            <h1 class="text-gradient" style="font-size: clamp(2.5rem, 5vw, 3.5rem); margin-bottom: 24px; font-weight: 800; letter-spacing: -2px;">Trusted by Thousands.</h1>
+            <p style="color: var(--fg-secondary); font-size: 1.15rem; max-width: 600px; margin: 0 auto; line-height: 1.6;">
+                SmartVest is the choice for individuals who prioritize intellectual clarity and strategic growth in their personal finances.
+            </p>
+        </div>
+
+        <!-- Reviews Grid -->
+        <div class="reviews-grid">
+            <!-- Review 1 -->
+            <div class="glass-card review-card">
+                <div class="stars">★★★★★</div>
+                <p class="review-text">
+                    "SmartVest has completely changed how I look at my monthly expenses. The investment suggestions are surprisingly accurate and easy to follow."
+                </p>
+                <div class="reviewer">
+                    <div class="avatar"></div>
+                    <div>
+                        <h4>Alex Rivera</h4>
+                        <p>Tech Lead @ Vantix</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review 2 -->
+            <div class="glass-card review-card highlighted-card">
+                <div class="stars">★★★★★</div>
+                <p class="review-text">
+                    "The stability indicator is a lifesaver. I finally feel in control of my financial future without the overwhelming spreadsheets."
+                </p>
+                <div class="reviewer">
+                    <div class="avatar" style="background: linear-gradient(45deg, #111, #444);"></div>
+                    <div>
+                        <h4>Sarah Chen</h4>
+                        <p>Product Designer</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review 3 -->
+            <div class="glass-card review-card">
+                <div class="stars">★★★★☆</div>
+                <p class="review-text">
+                    "Clean, fast, and does exactly what it says. I've recommended it to my whole team. Best fintech UI I've seen in years."
+                </p>
+                <div class="reviewer">
+                    <div class="avatar" style="background: linear-gradient(45deg, #444, #999);"></div>
+                    <div>
+                        <h4>Michael Ross</h4>
+                        <p>Growth Consultant</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Review 4 -->
+            <div class="glass-card review-card">
+                <div class="stars">★★★★★</div>
+                <p class="review-text">
+                    "The CSV export/import feature is exactly what I needed to port my old Excel data. The migration was seamless and the analysis was instant."
+                </p>
+                <div class="reviewer">
+                    <div class="avatar" style="background: linear-gradient(45deg, #000, #333);"></div>
+                    <div>
+                        <h4>James Wilson</h4>
+                        <p>Full-Stack Engineer</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="margin-top: 120px; text-align: center;">
+            <div class="glass-card" style="display: inline-block; padding: 48px 80px; border-radius: 40px;">
+                <h3 style="margin-bottom: 24px; font-size: 1.8rem;">Ready to be our next success story?</h3>
+                <div style="display: flex; gap: 20px; justify-content: center;">
+                    <a href="/signup" class="btn-premium btn-glow" style="padding: 16px 40px; border-radius: 100px;">Start Saving Now</a>
+                    <a href="/contact" class="btn-premium btn-secondary" style="padding: 16px 40px; border-radius: 100px;">Contact Support</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<style>
+    .reviews-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 32px;
+    }
+    .review-card {
+        padding: 48px;
+        transition: 0.4s;
+        display: flex;
+        flex-direction: column;
+    }
+    .review-card:hover { transform: translateY(-10px); }
+    .stars { color: #fff; font-size: 0.85rem; margin-bottom: 24px; letter-spacing: 2px; }
+    .review-text { font-size: 1.1rem; line-height: 1.8; color: #eee; margin-bottom: 40px; flex-grow: 1; }
+    .reviewer { display: flex; align-items: center; gap: 16px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 32px; }
+    .avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(45deg, #333, #666); border: 1px solid var(--glass-border); }
+    .reviewer h4 { font-size: 0.95rem; margin-bottom: 2px; }
+    .reviewer p { font-size: 0.8rem; color: var(--fg-secondary); }
+    .highlighted-card { background: rgba(255,255,255,0.05) !important; border-color: rgba(255,255,255,0.2); }
+    
+    @media (max-width: 768px) {
+        .reviews-grid { grid-template-columns: 1fr; }
+        .review-card { padding: 32px; }
+    }
+</style>
+{% endblock %}

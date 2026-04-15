@@ -1,0 +1,523 @@
+{% extends "user/base_app.html" %}
+
+{% block title %}Expenses - SmartVest{% endblock %}
+{% block page_title %}Manage Expenses{% endblock %}
+
+{% block content %}
+<div class="expense-tabs" style="display: flex; gap: 24px; margin-bottom: 32px; border-bottom: 1px solid var(--glass-border); overflow-x: auto; white-space: nowrap; -ms-overflow-style: none; scrollbar-width: none;">
+    <button onclick="showTab('overview')" class="tab-btn active" id="tab-overview">Overview</button>
+    <button onclick="showTab('add')" class="tab-btn" id="tab-add">Add Expense</button>
+    <button onclick="showTab('income')" class="tab-btn" id="tab-income">Income Input</button>
+    <button onclick="showTab('analysis')" class="tab-btn" id="tab-analysis">Analysis</button>
+    <button onclick="showTab('export')" class="tab-btn" id="tab-export">Export</button>
+</div>
+
+<!-- Overview Tab -->
+<div id="section-overview" class="tab-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h3>Expense History</h3>
+    </div>
+    
+    <div class="glass-card" style="padding: 0;">
+        <div class="table-responsive">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align: left; color: var(--fg-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--glass-border);">
+                        <th style="padding: 16px;">DESCRIPTION</th>
+                        <th style="padding: 16px;">CATEGORY</th>
+                        <th style="padding: 16px;">DATE</th>
+                        <th style="padding: 16px; text-align: right;">AMOUNT</th>
+                    </tr>
+                </thead>
+                <tbody id="expenseList">
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                        <td colspan="4" style="padding: 40px; text-align: center; color: var(--fg-secondary);">Loading your expenses...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Expense Tab -->
+<div id="section-add" class="tab-content" style="display: none;">
+    <div class="expense-flex-layout">
+        <div class="glass-card add-expense-card" style="flex: 1.4; padding: 40px;">
+            <h3 style="margin-bottom: 24px;">Add New Expense</h3>
+            <form id="addExpenseForm" style="display: flex; flex-direction: column; gap: 20px;">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <label style="font-size: 0.9rem;">Description</label>
+                    <input type="text" name="description" required placeholder="e.g. Grocery Store" class="glass-input-field">
+                </div>
+                <div class="expense-form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="font-size: 0.9rem;">Amount ($)</label>
+                        <input type="number" step="0.01" name="amount" required placeholder="0.00" class="glass-input-field">
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="font-size: 0.9rem;">Category</label>
+                        <select name="category" class="glass-input-field">
+                            <option>Food</option>
+                            <option>Transport</option>
+                            <option>Rent</option>
+                            <option>Shopping</option>
+                            <option>Entertainment</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-premium" style="margin-top: 20px; height: 50px;">Save Expense</button>
+                <p id="saveStatus" style="text-align: center; font-size: 0.85rem; height: 1.2rem;"></p>
+            </form>
+        </div>
+        <div class="glass-card import-expense-card" style="flex: 1; padding: 40px; border-width: 1px; border-style: dashed;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                <div style="width: 40px; height: 40px; background: rgba(255,255,255,0.05); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;">📂</div>
+                <h3 style="margin: 0;">Import Expenses</h3>
+            </div>
+            <p style="font-size: 0.85rem; color: var(--fg-secondary); margin-bottom: 24px;">
+                Synchronize your offline records via CSV.
+            </p>
+            
+            <div class="csv-import-box" onclick="document.getElementById('csvFile').click()" style="padding: 30px;">
+                <span id="fileNameDisplay" style="font-weight: 700; font-size: 0.75rem; letter-spacing: 1px; opacity: 0.6;">UPLOAD CSV FILE</span>
+                <input type="file" id="csvFile" class="file-input-hidden" accept=".csv" onchange="updateFileName()">
+            </div>
+            
+            <button id="uploadBtn" onclick="uploadCSV()" class="btn-premium btn-glow" style="width: 100%; height: 50px; margin-top: 24px;" disabled>
+                INITIALIZE SYNC
+            </button>
+            <p id="uploadStatus" style="text-align: center; font-size: 0.85rem; height: 1.2rem; margin-top: 12px;"></p>
+        </div>
+    </div>
+</div>
+
+<!-- Export Tab -->
+<div id="section-export" class="tab-content" style="display: none;">
+    <div class="glass-card export-shell" style="padding: 48px;">
+        <div class="export-shell-header">
+            <h3 style="margin-bottom: 8px;">Export Insights</h3>
+            <p style="font-size: 0.85rem; color: var(--fg-secondary); margin-bottom: 32px;">
+                Securely download your financial data for external analysis or auditing.
+            </p>
+        </div>
+        
+        <div class="export-grid">
+            <div class="export-card">
+                <h4>MONTHLY SNAPSHOT</h4>
+                <p>Comprehensive report for the selected month.</p>
+                <input type="month" id="monthInputTab" class="glass-input-field" style="width: 100%; margin-bottom: 16px;">
+                <button onclick="downloadMonthly('monthInputTab')" class="btn-premium btn-secondary" style="width: 100%;">DOWNLOAD CSV</button>
+            </div>
+            
+            <div class="export-card">
+                <h4>DAILY LEDGER</h4>
+                <p>Detailed breakdown of a specific calendar day.</p>
+                <input type="date" id="dateInputTab" class="glass-input-field" style="width: 100%; margin-bottom: 16px;">
+                <button onclick="downloadDaily('dateInputTab')" class="btn-premium btn-secondary" style="width: 100%;">DOWNLOAD CSV</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Income Setting Tab -->
+<div id="section-income" class="tab-content" style="display: none;">
+    <div class="glass-card" style="max-width: 600px; padding: 40px;">
+        <h3 style="margin-bottom: 24px;">Monthly Income</h3>
+        <p style="color: var(--fg-secondary); margin-bottom: 24px;">Set your total expected monthly income to help us analyze your savings rate.</p>
+        <form id="setIncomeForm" style="display: flex; flex-direction: column; gap: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="font-size: 0.9rem;">Monthly Amount ($)</label>
+                <input type="number" step="0.01" name="income" required placeholder="5000.00" class="glass-input-field">
+            </div>
+            <button type="submit" class="btn-premium" style="margin-top: 20px; height: 50px;">Update Income</button>
+            <p id="incomeStatus" style="text-align: center; font-size: 0.85rem; height: 1.2rem;"></p>
+        </form>
+    </div>
+</div>
+
+<!-- Analysis Tab -->
+<div id="section-analysis" class="tab-content" style="display: none;">
+    <div class="analysis-grid">
+        <div class="glass-card analysis-card" style="padding: 32px;">
+            <h3 style="margin-bottom: 24px;">Category Distribution</h3>
+            <div class="chart-shell">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+        <div class="glass-card analysis-card" style="padding: 32px;">
+            <h3 style="margin-bottom: 24px;">Savings vs Spending</h3>
+            <div class="chart-shell">
+                <canvas id="savingsChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div id="analysisSummary" class="glass-card" style="padding: 32px; margin-top: 24px;">
+        <h3>Efficiency Report</h3>
+        <p style="color: var(--fg-secondary); margin-top: 12px;">Loading analysis...</p>
+    </div>
+</div>
+
+<style>
+    .tab-btn {
+        background: transparent;
+        border: none;
+        color: var(--fg-secondary);
+        padding: 16px 24px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: 0.3s;
+        border-bottom: 2px solid transparent;
+    }
+    .tab-btn.active {
+        color: #fff;
+        border-bottom-color: #fff;
+    }
+    .glass-input-field {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        padding: 12px 16px;
+        color: #fff;
+        outline: none;
+        transition: 0.3s;
+    }
+    .glass-input-field:focus {
+        border-color: #fff;
+        box-shadow: 0 0 15px rgba(255,255,255,0.05);
+    }
+    .expense-flex-layout {
+        display: flex;
+        gap: 24px;
+        align-items: stretch;
+        margin-top: 8px;
+    }
+    .expense-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+    }
+    .analysis-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        align-items: stretch;
+    }
+    .analysis-card,
+    .export-shell,
+    .export-card,
+    .add-expense-card,
+    .import-expense-card {
+        min-width: 0;
+    }
+    .analysis-card {
+        display: flex;
+        flex-direction: column;
+        min-height: 420px;
+    }
+    .chart-shell {
+        position: relative;
+        flex: 1;
+        min-height: 300px;
+    }
+    .chart-shell canvas {
+        width: 100% !important;
+        height: 100% !important;
+    }
+    .export-shell {
+        max-width: 980px;
+        margin: 0 auto;
+    }
+    .export-shell-header {
+        max-width: 560px;
+        margin: 0 auto 8px;
+        text-align: center;
+    }
+    .export-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: stretch;
+        gap: 16px;
+        min-height: 100%;
+    }
+    .export-card h4,
+    .export-card p {
+        margin: 0;
+    }
+    .export-card .btn-premium {
+        margin-top: auto;
+    }
+    @media (max-width: 1024px) {
+        .analysis-grid {
+            grid-template-columns: 1fr;
+        }
+        .expense-flex-layout {
+            flex-direction: column;
+        }
+        .export-shell {
+            padding: 40px 32px !important;
+        }
+    }
+    @media (max-width: 768px) {
+        .expense-tabs {
+            gap: 8px !important;
+            margin-bottom: 24px !important;
+        }
+        .expense-form-grid {
+            grid-template-columns: 1fr;
+        }
+        .tab-btn {
+            padding: 14px 16px;
+        }
+        .add-expense-card,
+        .import-expense-card,
+        .analysis-card,
+        .export-shell,
+        #section-income .glass-card {
+            padding: 24px !important;
+        }
+        .chart-shell {
+            min-height: 240px;
+        }
+    }
+    @media (max-width: 480px) {
+        .export-shell {
+            padding: 24px 20px !important;
+        }
+        .export-grid {
+            gap: 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let categoryChartInstance;
+    let savingsChartInstance;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadExpenses();
+    });
+
+    function showTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        
+        document.getElementById('section-' + tabId).style.display = 'block';
+        document.getElementById('tab-' + tabId).classList.add('active');
+
+        if (tabId === 'analysis') initAnalysisCharts();
+    }
+
+    async function loadExpenses() {
+        try {
+            const expenses = await API.getExpenses();
+            const list = document.getElementById('expenseList');
+            if (!list || !expenses || !Array.isArray(expenses)) return;
+            list.innerHTML = expenses.map(exp => `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                    <td style="padding: 16px;">${exp.description}</td>
+                    <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${exp.category}</span></td>
+                    <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">${exp.date}</td>
+                    <td style="padding: 16px; text-align: right; font-weight: 600;">-$${exp.amount.toFixed(2)}</td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            document.getElementById('expenseList').innerHTML = `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                    <td colspan="4" style="padding: 40px; text-align: center; color: var(--fg-secondary);">No expenses found. Add your first one!</td>
+                </tr>
+            `;
+        }
+    }
+
+    // Forms handling
+    document.getElementById('addExpenseForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('saveStatus');
+        const data = {
+            description: e.target.description.value,
+            amount: parseFloat(e.target.amount.value),
+            category: e.target.category.value
+        };
+        try {
+            await API.addExpense(data);
+            status.innerText = 'Expense saved!'; status.style.color = '#4ade80';
+            e.target.reset();
+            loadExpenses();
+        } catch (error) {
+            status.innerText = 'Error saving expense'; status.style.color = '#f87171';
+        }
+    });
+
+    document.getElementById('setIncomeForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('incomeStatus');
+        const amount = parseFloat(e.target.income.value);
+
+        if (Number.isNaN(amount)) {
+            status.innerText = 'Enter a valid amount.';
+            status.style.color = '#f87171';
+            return;
+        }
+
+        status.innerText = 'Updating income...';
+        status.style.color = 'var(--fg-secondary)';
+
+        try {
+            const data = await API.setIncome({ income: amount });
+            if (!data) return;
+            status.innerText = 'Income updated successfully!';
+            status.style.color = '#4ade80';
+        } catch (error) {
+            status.innerText = 'Error updating income';
+            status.style.color = '#f87171';
+        }
+    });
+
+    // Charts
+    async function initAnalysisCharts() {
+        if (categoryChartInstance) categoryChartInstance.destroy();
+        if (savingsChartInstance) savingsChartInstance.destroy();
+
+        const catCtx = document.getElementById('categoryChart').getContext('2d');
+        categoryChartInstance = new Chart(catCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Food', 'Rent', 'Transport', 'Entertainment', 'Shopping'],
+                datasets: [{
+                    data: [300, 1200, 200, 150, 400],
+                    backgroundColor: ['#fff', '#a1a1aa', '#71717a', '#3f3f46', '#18181b'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#a1a1aa', boxWidth: 12, padding: 18 }
+                    }
+                }
+            }
+        });
+
+        const savingsCtx = document.getElementById('savingsChart').getContext('2d');
+        savingsChartInstance = new Chart(savingsCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Needs', 'Wants', 'Savings'],
+                datasets: [{
+                    data: [1800, 650, 1200],
+                    backgroundColor: ['#ffffff', '#71717a', '#27272a'],
+                    borderRadius: 10,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#a1a1aa' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.05)' },
+                        ticks: { color: '#a1a1aa' }
+                    }
+                }
+            }
+        });
+
+        try {
+            const analysis = await API.getExpenseAnalysis();
+            if (!analysis) return;
+
+            const summary = document.getElementById('analysisSummary');
+            if (!summary) return;
+
+            summary.innerHTML = `
+                <h3>Efficiency Report</h3>
+                <p style="color: var(--fg-secondary); margin-top: 12px;">${analysis.summary || 'Analysis is currently unavailable.'}</p>
+            `;
+        } catch (error) {
+            const summary = document.getElementById('analysisSummary');
+            if (!summary) return;
+            summary.innerHTML = `
+                <h3>Efficiency Report</h3>
+                <p style="color: var(--fg-secondary); margin-top: 12px;">Analysis is currently unavailable. Please try again later.</p>
+            `;
+        }
+    }
+
+    // CSV Functions
+    function updateFileName() {
+        const fileInput = document.getElementById("csvFile");
+        const fileNameDisplay = document.getElementById("fileNameDisplay");
+        const uploadBtn = document.getElementById("uploadBtn");
+        
+        if (fileInput.files.length > 0) {
+            fileNameDisplay.innerText = fileInput.files[0].name;
+            uploadBtn.disabled = false;
+        } else {
+            fileNameDisplay.innerText = "UPLOAD CSV FILE";
+            uploadBtn.disabled = true;
+        }
+    }
+
+    async function uploadCSV() {
+        const fileInput = document.getElementById("csvFile");
+        const file = fileInput.files[0];
+        const status = document.getElementById("uploadStatus");
+        const uploadBtn = document.getElementById("uploadBtn");
+
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        status.innerText = "Uploading...";
+        status.style.color = "var(--fg-secondary)";
+        uploadBtn.disabled = true;
+
+        try {
+            const response = await fetch("/api/upload-csv", {
+                method: "POST",
+                body: formData
+            });
+            const data = await response.json();
+            status.innerText = data.message;
+            status.style.color = response.ok ? "#4ade80" : "#f87171";
+            
+            if (response.ok) {
+                fileInput.value = "";
+                updateFileName();
+                loadExpenses();
+            }
+        } catch (error) {
+            status.innerText = "Upload failed: " + error.message;
+            status.style.color = "#f87171";
+            uploadBtn.disabled = false;
+        }
+    }
+
+    function downloadMonthly(inputId) {
+        const month = document.getElementById(inputId).value;
+        if (!month) return alert("Please select a month");
+        window.location.href = `/api/export-data?type=month&value=${month}`;
+    }
+
+    function downloadDaily(inputId) {
+        const date = document.getElementById(inputId).value;
+        if (!date) return alert("Please select a date");
+        window.location.href = `/api/export-data?type=date&value=${date}`;
+    }
+</script>
+{% endblock %}

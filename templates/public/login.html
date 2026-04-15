@@ -1,0 +1,89 @@
+{% extends "public/base_public.html" %}
+
+{% block title %}Login - SmartVest Intelligence{% endblock %}
+
+{% block content %}
+<section class="auth-centered" style="padding: 120px 20px;">
+    <div class="glass-card" style="width: 100%; max-width: 450px; padding: 60px; text-align: center;">
+        <h2 style="font-size: 2.5rem; margin-bottom: 12px; font-weight: 800; letter-spacing: -1.5px;">Welcome Back</h2>
+        <p style="color: var(--fg-secondary); font-size: 0.95rem; margin-bottom: 48px;">Continue your journey with the intelligence layer.</p>
+
+        <form id="loginForm" style="text-align: left; display: flex; flex-direction: column; gap: 24px;">
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <label style="font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--fg-secondary);">EMAIL</label>
+                <input type="email" name="email" required placeholder="name@company.com" class="premium-input-field">
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label style="font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--fg-secondary);">PASSWORD</label>
+                    <a href="#" style="font-size: 0.75rem; color: #fff; text-decoration: none; opacity: 0.6;">Forgot?</a>
+                </div>
+                <input type="password" name="password" required placeholder="••••••••" class="premium-input-field">
+            </div>
+
+            <button type="submit" class="btn-premium btn-glow" style="width: 100%; height: 55px; margin-top: 20px; font-size: 0.9rem; letter-spacing: 1px;">
+                ACCESS SYSTEM
+            </button>
+            <p id="loginStatus" style="text-align: center; font-size: 0.85rem; height: 1.2rem; margin-top: 10px;"></p>
+        </form>
+
+        <p style="margin-top: 40px; color: var(--fg-secondary); font-size: 0.9rem;">
+            No account? <a href="/signup" style="color: #fff; text-decoration: none; font-weight: 700;">Request Access</a>
+        </p>
+    </div>
+</section>
+
+<style>
+    .premium-input-field {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 12px;
+        padding: 14px 18px;
+        color: #fff;
+        outline: none;
+        transition: 0.3s;
+        width: 100%;
+        font-family: inherit;
+    }
+    .premium-input-field:focus {
+        border-color: #fff;
+        background: rgba(255,255,255,0.05);
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const status = document.getElementById('loginStatus');
+        const data = {
+            email: form.email.value,
+            password: form.password.value
+        };
+
+        status.innerText = 'Authenticating...';
+        status.style.color = 'rgba(255,255,255,0.5)';
+
+        try {
+            const resp = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            if (resp.ok) {
+                status.innerText = 'Access Granted.';
+                status.style.color = '#4ade80';
+                setTimeout(() => window.location.href = '/dashboard', 800);
+            } else {
+                throw new Error('Invalid credentials');
+            }
+        } catch (error) {
+            status.innerText = 'Error: ' + error.message;
+            status.style.color = '#f87171';
+        }
+    });
+</script>
+{% endblock %}

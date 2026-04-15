@@ -1,0 +1,107 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Admin Dashboard - SmartVest{% endblock %}
+{% block page_title %}Systems Intelligence Dashboard{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="glass-card stat-card">
+        <p class="label">Total Registered Users</p>
+        <p class="value">12,840</p>
+        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">+140 this week</p>
+    </div>
+    <div class="glass-card stat-card">
+        <p class="label">System Traffic</p>
+        <p class="value">42.5k</p>
+        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">Peak load handled</p>
+    </div>
+    <div class="glass-card stat-card">
+        <p class="label">Pending Feedbacks</p>
+        <p class="value">18</p>
+        <p style="font-size: 0.8rem; color: #f87171; margin-top: 4px;">Action required</p>
+    </div>
+    <div class="glass-card stat-card">
+        <p class="label">API Success Rate</p>
+        <p class="value">99.9%</p>
+        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">Stable</p>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+    <!-- System Activity Chart -->
+    <div class="glass-card" style="padding: 32px;">
+        <h3 style="margin-bottom: 24px;">Platform Growth (User Registrations)</h3>
+        <canvas id="growthChart" style="max-height: 350px;"></canvas>
+    </div>
+
+    <!-- Market Control -->
+    <div class="glass-card" style="padding: 32px; background: rgba(255,255,255,0.02);">
+        <h3 style="margin-bottom: 24px;">Global Market Control</h3>
+        <p style="color: var(--fg-secondary); font-size: 0.9rem; margin-bottom: 32px;">Adjust the global market condition to update all user suggestions.</p>
+        
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            <button onclick="updateMarket('bullish')" class="btn-premium btn-secondary" style="height: 50px; justify-content: flex-start;">
+                <span style="color: #4ade80; margin-right: 12px;">●</span> Bullish (High Growth)
+            </button>
+            <button onclick="updateMarket('stable')" class="btn-premium btn-secondary" style="height: 50px; justify-content: flex-start; border-color: #fff;">
+                <span style="color: #fff; margin-right: 12px;">●</span> Stable (Moderate)
+            </button>
+            <button onclick="updateMarket('bearish')" class="btn-premium btn-secondary" style="height: 50px; justify-content: flex-start;">
+                <span style="color: #f87171; margin-right: 12px;">●</span> Bearish (Recession Mode)
+            </button>
+        </div>
+        
+        <p id="marketStatus" style="text-align: center; margin-top: 24px; font-size: 0.85rem; font-weight: 600; color: #4ade80;">CURRENTLY: STABLE</p>
+    </div>
+</div>
+
+<div class="glass-card" style="margin-top: 40px; padding: 32px;">
+    <h3 style="margin-bottom: 24px;">System Health Logs</h3>
+    <div style="font-family: monospace; font-size: 0.85rem; color: var(--fg-secondary); display: flex; flex-direction: column; gap: 8px;">
+        <p><span style="color: #fff;">[2024-04-14 15:22:01]</span> INFO: Backup synchronized with main DB cluster.</p>
+        <p><span style="color: #fff;">[2024-04-14 15:18:45]</span> WARN: Latency spike detected in /api/investment module.</p>
+        <p><span style="color: #fff;">[2024-04-14 15:10:12]</span> SUCCESS: Market matrix updated to 'Bullish' by Admin_01.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const ctx = document.getElementById('growthChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                datasets: [{
+                    label: 'New Users',
+                    data: [400, 600, 850, 1100, 1400, 1800],
+                    borderColor: '#ffffff',
+                    fill: false,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#a1a1aa' } },
+                    y: { ticks: { color: '#a1a1aa' } }
+                }
+            }
+        });
+    });
+
+    async function updateMarket(state) {
+        const status = document.getElementById('marketStatus');
+        status.innerText = 'UPDATING...';
+        try {
+            await API.updateMarket(state);
+            status.innerText = 'CURRENTLY: ' + state.toUpperCase();
+            status.style.color = state === 'bullish' ? '#4ade80' : (state === 'bearish' ? '#f87171' : '#fff');
+        } catch (error) {
+            status.innerText = 'UPDATE FAILED';
+            status.style.color = '#f87171';
+        }
+    }
+</script>
+{% endblock %}

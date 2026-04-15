@@ -1,0 +1,102 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}User Management - SmartVest Admin{% endblock %}
+{% block page_title %}Platform User Registry{% endblock %}
+
+{% block content %}
+<div class="glass-card" style="padding: 32px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+        <h3>Registered Members</h3>
+        <div style="display: flex; gap: 12px;">
+            <input type="text" placeholder="Search by email..." class="glass-input-field" style="width: 250px; padding: 8px 16px;">
+            <button class="btn-premium" style="padding: 8px 16px; font-size: 0.85rem;">Search</button>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align: left; color: var(--fg-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--glass-border);">
+                    <th style="padding: 16px;">USERNAME</th>
+                    <th style="padding: 16px;">EMAIL</th>
+                    <th style="padding: 16px;">PLAN</th>
+                    <th style="padding: 16px;">JOINED DATE</th>
+                    <th style="padding: 16px; text-align: right;">ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody id="adminUserList">
+                <!-- Mock data for demo -->
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                    <td style="padding: 16px;">alex_coder</td>
+                    <td style="padding: 16px; color: var(--fg-secondary);">alex@example.com</td>
+                    <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem; border-color: #fff;">PRO</span></td>
+                    <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">2024-03-10</td>
+                    <td style="padding: 16px; text-align: right;">
+                        <button onclick="deleteUser('1')" style="background: transparent; border: none; color: #f87171; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Delete</button>
+                    </td>
+                </tr>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                    <td style="padding: 16px;">sarah_mkt</td>
+                    <td style="padding: 16px; color: var(--fg-secondary);">sarah@company.net</td>
+                    <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">FREE</span></td>
+                    <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">2024-04-01</td>
+                    <td style="padding: 16px; text-align: right;">
+                        <button onclick="deleteUser('2')" style="background: transparent; border: none; color: #f87171; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Delete</button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .glass-input-field {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--glass-border);
+        border-radius: 8px;
+        color: #fff;
+        outline: none;
+        transition: 0.3s;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    async function loadUsers() {
+        try {
+            const users = await API.getAdminUsers();
+            const list = document.getElementById('adminUserList');
+            if (users && users.length > 0) {
+                list.innerHTML = users.map(user => `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                        <td style="padding: 16px;">${user.username}</td>
+                        <td style="padding: 16px; color: var(--fg-secondary);">${user.email}</td>
+                        <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${user.plan || 'FREE'}</span></td>
+                        <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">${user.joined_date}</td>
+                        <td style="padding: 16px; text-align: right;">
+                            <button onclick="deleteUser('${user.id}')" style="background: transparent; border: none; color: #f87171; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        } catch (error) {
+            console.log("Using mock user data for admin preview.");
+        }
+    }
+
+    async function deleteUser(userId) {
+        if (confirm('Are you sure you want to delete this user? This action is irreversible.')) {
+            try {
+                await API.deleteUser(userId);
+                alert('User deleted.');
+                loadUsers();
+            } catch (error) {
+                alert('Error deleting user: ' + error.message);
+            }
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadUsers);
+</script>
+{% endblock %}
