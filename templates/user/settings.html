@@ -132,7 +132,7 @@
         e.preventDefault();
         const status = document.getElementById('profileStatus');
         try {
-            const data = await API.request('/api/update-profile', { method: 'POST', body: JSON.stringify({
+            const data = await API.request('/api/auth/profile/update', { method: 'POST', body: JSON.stringify({
                 username: e.target.username.value,
                 email: e.target.email.value
             })});
@@ -148,7 +148,7 @@
         const status = document.getElementById('passStatus');
 
         try {
-            const data = await API.request('/api/change-password', {
+            const data = await API.request('/api/auth/password/change', {
                 method: 'POST',
                 body: JSON.stringify({
                     current_password: e.target.current_password.value,

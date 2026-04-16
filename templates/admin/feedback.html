@@ -60,7 +60,7 @@
 <script>
     async function loadFeedback() {
         try {
-            const feedback = await API.request('/api/admin/feedback');
+            const feedback = await API.request('/api/admin/feedback-list');
             // Logic to render if API exists
         } catch (error) {
             console.log("Mock feedback display active.");

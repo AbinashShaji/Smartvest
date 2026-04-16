@@ -71,7 +71,7 @@
         status.style.color = 'rgba(255,255,255,0.5)';
 
         try {
-            const resp = await fetch('/api/signup', {
+            const resp = await fetch('/api/auth/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)

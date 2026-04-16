@@ -48,7 +48,7 @@
 <script>
     async function loadReviews() {
         try {
-            const reviews = await API.request('/api/admin/reviews');
+            const reviews = await API.request('/api/admin/reviews-list');
             // Logic to render if API exists
         } catch (error) {
             console.log("Mock reviews moderator active.");

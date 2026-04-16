@@ -488,7 +488,7 @@
         uploadBtn.disabled = true;
 
         try {
-            const response = await fetch("/api/upload-csv", {
+            const response = await fetch("/api/expense/upload-csv", {
                 method: "POST",
                 body: formData
             });
@@ -511,13 +511,13 @@
     function downloadMonthly(inputId) {
         const month = document.getElementById(inputId).value;
         if (!month) return alert("Please select a month");
-        window.location.href = `/api/export-data?type=month&value=${month}`;
+        window.location.href = `/api/expense/export?type=month&value=${month}`;
     }
 
     function downloadDaily(inputId) {
         const date = document.getElementById(inputId).value;
         if (!date) return alert("Please select a date");
-        window.location.href = `/api/export-data?type=date&value=${date}`;
+        window.location.href = `/api/expense/export?type=date&value=${date}`;
     }
 </script>
 {% endblock %}

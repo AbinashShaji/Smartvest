@@ -1,6 +1,7 @@
 /**
  * SmartVest API Helper
- * Standardized fetch calls for the intelligent financial system.
+ * Standardized fetch calls for the final modular backend.
+ * All endpoints follow the /api/<module>/<object>/<action> format.
  */
 
 const API = {
@@ -14,53 +15,61 @@ const API = {
 
         try {
             const response = await fetch(endpoint, { ...defaultOptions, ...options });
+            const result = await response.json().catch(() => ({}));
+
+            if (result.status === 'error') {
+                throw new Error(result.message || 'API Error');
+            }
+
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                throw new Error(errorData.message || `API Error: ${response.status}`);
+                throw new Error(result.message || `API Error: ${response.status}`);
             }
 
-            const contentType = response.headers.get('content-type') || '';
-            if (contentType.includes('application/json')) {
-                return await response.json().catch(() => ({}));
-            }
-
-            return {};
+            return result.data || result;
         } catch (error) {
             console.error(`Fetch error for ${endpoint}:`, error);
             throw error;
         }
     },
 
-    // Auth
-    login: (data) => API.request('/api/login', { method: 'POST', body: JSON.stringify(data) }),
-    signup: (data) => API.request('/api/signup', { method: 'POST', body: JSON.stringify(data) }),
-    logout: () => API.request('/api/logout', { method: 'POST' }),
+    // Auth Modules (/api/auth/)
+    login: (data) => API.request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+    signup: (data) => API.request('/api/auth/signup', { method: 'POST', body: JSON.stringify(data) }),
+    logout: () => API.request('/api/auth/logout', { method: 'POST' }),
+    checkSession: () => API.request('/api/auth/check-session'),
+    updateProfile: (data) => API.request('/api/auth/profile/update', { method: 'POST', body: JSON.stringify(data) }),
+    changePassword: (data) => API.request('/api/auth/password/change', { method: 'POST', body: JSON.stringify(data) }),
 
-    // Dashboard & Modules
-    getDashboard: () => API.request('/api/dashboard'),
-    getExpenses: () => API.request('/api/expenses'),
-    addExpense: (data) => API.request('/api/add-expense', { method: 'POST', body: JSON.stringify(data) }),
-    setIncome: (data) => API.request('/api/set-income', { method: 'POST', body: JSON.stringify(data) }),
-    getExpenseAnalysis: () => API.request('/api/expense-analysis'),
-    getGoals: () => API.request('/api/goal-status'),
-    setGoal: (data) => API.request('/api/set-goal', { method: 'POST', body: JSON.stringify(data) }),
-    getInvestmentSuggestions: () => API.request('/api/investment'),
+    // Analysis Modules (/api/analysis/)
+    getDashboard: () => API.request('/api/analysis/data'),
+    getExpenseAnalysis: () => API.request('/api/analysis/report'),
 
-    // Feedback & Reviews
-    submitFeedback: (data) => API.request('/api/feedback', { method: 'POST', body: JSON.stringify(data) }),
-    submitReview: (data) => API.request('/api/review', { method: 'POST', body: JSON.stringify(data) }),
-    getReviews: () => API.request('/api/reviews'),
+    // Expense Modules (/api/expense/)
+    getExpenses: () => API.request('/api/expense/all'),
+    addExpense: (data) => API.request('/api/expense/add', { method: 'POST', body: JSON.stringify(data) }),
+    updateIncome: (data) => API.request('/api/expense/income/update', { method: 'POST', body: JSON.stringify(data) }),
+    uploadCSV: (formData) => API.request('/api/expense/upload', { method: 'POST', body: formData }),
+    exportCSV: () => API.request('/api/expense/export'),
+    getGoals: () => API.request('/api/expense/goal/all'),
+    addGoal: (data) => API.request('/api/expense/goal/add', { method: 'POST', body: JSON.stringify(data) }),
 
-    // Admin
-    getAdminStats: () => API.request('/api/admin/dashboard'),
-    getAdminUsers: () => API.request('/api/admin/users'),
-    deleteUser: (userId) => API.request(`/api/admin/delete-user`, { method: 'DELETE', body: JSON.stringify({ userId }) }),
-    updateMarket: (state) => API.request('/api/admin/market', { method: 'POST', body: JSON.stringify({ state }) }),
+    // Investment Modules (/api/investment/)
+    getOverview: () => API.request('/api/investment/data'),
+    getStrategies: () => API.request('/api/investment/strategy/all'),
+    getMarketStatus: () => API.request('/api/investment/market/status'),
+
+    // Admin & Community Modules (/api/admin/)
+    submitFeedback: (data) => API.request('/api/admin/feedback/add', { method: 'POST', body: JSON.stringify(data) }),
+    submitReview: (data) => API.request('/api/admin/review/add', { method: 'POST', body: JSON.stringify(data) }),
+    getReviews: () => API.request('/api/admin/review/all'),
+    getFeedback: () => API.request('/api/admin/feedback/all'),
+    getAdminStats: () => API.request('/api/admin/stats'),
+    getAdminUsers: () => API.request('/api/admin/user/all'),
+    deleteUser: (userId) => API.request(`/api/admin/user/delete`, { method: 'DELETE', body: JSON.stringify({ userId }) }),
+    updateMarket: (state) => API.request('/api/admin/market/update', { method: 'POST', body: JSON.stringify({ state }) }),
 };
 
-// Export for use in other scripts
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = API;
-} else {
+// Export for window access
+if (typeof window !== 'undefined') {
     window.API = API;
 }
