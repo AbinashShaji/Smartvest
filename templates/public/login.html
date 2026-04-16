@@ -76,13 +76,8 @@
         status.style.color = 'rgba(255,255,255,0.5)';
 
         try {
-            const resp = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            if (resp.ok) {
-                const result = await resp.json();
+            const result = await API.login(data);
+            if (result) {
                 status.innerText = 'Access Granted.';
                 status.style.color = '#4ade80';
 
@@ -90,15 +85,12 @@
                 // Admin -> /admin/dashboard
                 // User -> /dashboard
                 setTimeout(() => {
-                    if (result.data && result.data.role === 'admin') {
+                    if (result.role === 'admin') {
                         window.location.href = '/admin/dashboard';
                     } else {
                         window.location.href = '/dashboard';
                     }
                 }, 800);
-            } else {
-                const result = await resp.json().catch(() => ({}));
-                throw new Error(result.message || 'Invalid credentials');
             }
         } catch (error) {
             status.innerText = 'Error: ' + error.message;

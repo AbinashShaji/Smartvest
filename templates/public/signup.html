@@ -71,17 +71,11 @@
         status.style.color = 'rgba(255,255,255,0.5)';
 
         try {
-            const resp = await fetch('/api/auth/signup', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            if (resp.ok) {
+            const result = await API.signup(data);
+            if (result) {
                 status.innerText = 'Profile Created.';
                 status.style.color = '#4ade80';
                 setTimeout(() => window.location.href = '/dashboard', 800);
-            } else {
-                throw new Error('Could not create profile');
             }
         } catch (error) {
             status.innerText = 'Error: ' + error.message;

@@ -7,6 +7,11 @@
 <!-- Stats Cards -->
 <div class="stats-grid">
     <div class="glass-card stat-card">
+        <p class="label">Current Income</p>
+        <p class="value" id="currentIncome">₹0.00</p>
+        <p style="font-size: 0.8rem; color: var(--fg-secondary); margin-top: 4px;">Latest stored monthly income</p>
+    </div>
+    <div class="glass-card stat-card">
         <p class="label">Total Expenses</p>
         <p class="value" id="totalExpenses">$0.00</p>
         <p style="font-size: 0.8rem; color: #f87171; margin-top: 4px;">+12% from last month</p>
@@ -35,7 +40,7 @@
     <div class="glass-card" style="padding: 32px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h3>Expense Trends</h3>
-            <select style="background: transparent; color: #fff; border: 1px solid var(--glass-border); padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
+            <select class="smartvest-select" style="min-width: 120px;">
                 <option>Monthly</option>
                 <option>Weekly</option>
             </select>
@@ -83,16 +88,7 @@
         </thead>
         <tbody id="recentActivity">
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                <td style="padding: 16px;">Starbucks Coffee</td>
-                <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">Food</span></td>
-                <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">Today, 10:45 AM</td>
-                <td style="padding: 16px; text-align: right; font-weight: 600;">-$4.50</td>
-            </tr>
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                <td style="padding: 16px;">Monthly Salary</td>
-                <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">Income</span></td>
-                <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">April 1, 2024</td>
-                <td style="padding: 16px; text-align: right; font-weight: 600; color: #4ade80;">+$5,200.00</td>
+                <td colspan="4" style="padding: 40px; text-align: center; color: var(--fg-secondary);">Loading recent activity...</td>
             </tr>
         </tbody>
     </table>
@@ -105,6 +101,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
         initCharts();
         loadDashboardData();
+        loadRecentActivity();
     });
 
     function initCharts() {
@@ -137,20 +134,55 @@
     async function loadDashboardData() {
         try {
             const data = await API.getDashboard();
-            // Update UI with real data
+            document.getElementById('currentIncome').innerText = formatCurrency(data.monthly_income || 0).replace('$', '₹');
             document.getElementById('totalExpenses').innerText = formatCurrency(data.total_expenses || 0);
             document.getElementById('totalSavings').innerText = formatCurrency(data.total_savings || 0);
-            const progress = data.goal_progress || 65; // Mock fallback
+            const progress = data.goal_progress || 0;
             document.getElementById('goalProgress').innerText = progress + '%';
             document.getElementById('goalProgressSubBar').style.width = progress + '%';
+            document.getElementById('alertCount').innerText = data.alert_count ?? 0;
         } catch (error) {
-            console.log("Using mock dashboard data for preview.");
-            // Set some nice mock values for the "WOW" effect
-            document.getElementById('totalExpenses').innerText = "$2,450.00";
-            document.getElementById('totalSavings').innerText = "$12,840.00";
-            document.getElementById('goalProgress').innerText = "65%";
-            document.getElementById('goalProgressSubBar').style.width = "65%";
-            document.getElementById('alertCount').innerText = "2";
+            document.getElementById('totalExpenses').innerText = "$0.00";
+            document.getElementById('totalSavings').innerText = "$0.00";
+            document.getElementById('goalProgress').innerText = "0%";
+            document.getElementById('goalProgressSubBar').style.width = "0%";
+            document.getElementById('alertCount').innerText = "0";
+        }
+    }
+
+    async function loadRecentActivity() {
+        try {
+            const expenses = await API.getExpenses();
+            const list = document.getElementById('recentActivity');
+            if (!list) return;
+
+            if (!expenses || !Array.isArray(expenses) || expenses.length === 0) {
+                list.innerHTML = `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                        <td colspan="4" style="padding: 40px; text-align: center; color: var(--fg-secondary);">No expenses yet. Add your first entry in the Expenses page.</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const recent = expenses.slice(0, 5);
+            list.innerHTML = recent.map(exp => `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                    <td style="padding: 16px;">${exp.description}</td>
+                    <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${exp.category}</span></td>
+                    <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">${exp.date}</td>
+                    <td style="padding: 16px; text-align: right; font-weight: 600;">-$${Number(exp.amount || 0).toFixed(2)}</td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            const list = document.getElementById('recentActivity');
+            if (list) {
+                list.innerHTML = `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                        <td colspan="4" style="padding: 40px; text-align: center; color: #f87171;">Unable to load recent activity.</td>
+                    </tr>
+                `;
+            }
         }
     }
 </script>

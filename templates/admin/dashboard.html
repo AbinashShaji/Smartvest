@@ -7,23 +7,23 @@
 <div class="stats-grid">
     <div class="glass-card stat-card">
         <p class="label">Total Registered Users</p>
-        <p class="value">12,840</p>
-        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">+140 this week</p>
+        <p class="value" id="adminUserCount">0</p>
+        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">Live database count</p>
     </div>
     <div class="glass-card stat-card">
-        <p class="label">System Traffic</p>
-        <p class="value">42.5k</p>
-        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">Peak load handled</p>
+        <p class="label">Live Database Users</p>
+        <p class="value" id="adminTrafficCount">0</p>
+        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">From live admin stats</p>
     </div>
     <div class="glass-card stat-card">
         <p class="label">Pending Feedbacks</p>
-        <p class="value">18</p>
-        <p style="font-size: 0.8rem; color: #f87171; margin-top: 4px;">Action required</p>
+        <p class="value" id="adminFeedbackCount">0</p>
+        <p style="font-size: 0.8rem; color: #f87171; margin-top: 4px;">Real feedback records</p>
     </div>
     <div class="glass-card stat-card">
-        <p class="label">API Success Rate</p>
-        <p class="value">99.9%</p>
-        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">Stable</p>
+        <p class="label">Public Reviews</p>
+        <p class="value" id="adminReviewCount">0</p>
+        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">Real review records</p>
     </div>
 </div>
 
@@ -89,7 +89,24 @@
                 }
             }
         });
+
+        loadAdminStats();
     });
+
+    async function loadAdminStats() {
+        try {
+            const stats = await API.getAdminStats();
+            if (!stats) return;
+
+            document.getElementById('adminUserCount').innerText = stats.users ?? 0;
+            document.getElementById('adminTrafficCount').innerText = stats.users ?? 0;
+            document.getElementById('adminFeedbackCount').innerText = stats.feedback_count ?? 0;
+            document.getElementById('adminReviewCount').innerText = stats.reviews_count ?? 0;
+            document.getElementById('marketStatus').innerText = 'CURRENTLY: ' + String(stats.market_state || 'stable').toUpperCase();
+        } catch (error) {
+            document.getElementById('marketStatus').innerText = 'CURRENTLY: STABLE';
+        }
+    }
 
     async function updateMarket(state) {
         const status = document.getElementById('marketStatus');

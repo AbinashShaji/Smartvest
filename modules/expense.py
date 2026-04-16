@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
+from datetime import datetime   # Used to get today's date automatically
 import config
 import csv
 import io
+from utils.db import get_db_connection
 
 # Create the Expense Blueprint
 expense_bp = Blueprint('expense', __name__)
@@ -47,8 +49,13 @@ def api_expenses():
 
     try:
         user_id = config.get_current_user()["user_id"]
-        # Only pull data belonging to the session user
-        user_data = [exp for exp in config.EXPENSES if exp.get("user_id") == user_id]
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM expenses WHERE user_id = ?", (user_id,))
+        user_data = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+        
         return jsonify({"status": "success", "data": user_data})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
@@ -72,15 +79,29 @@ def api_add_expense():
         if not description or amount in (None, ""):
             return jsonify({"status": "error", "message": "Description and amount are required."}), 400
 
-        new_entry = {
-            "user_id": config.get_current_user()["user_id"],
-            "description": description,
-            "amount": float(amount),
-            "category": category,
-            "date": "2026-04-15",
-        }
+        try:
+            amount_value = float(amount)
+        except (TypeError, ValueError):
+            return jsonify({"status": "error", "message": "Amount must be a valid number."}), 400
+
+        user_id = config.get_current_user()["user_id"]
+        # Get today's date automatically — never hardcoded
+        date = datetime.now().strftime("%Y-%m-%d")
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO expenses (user_id, amount, category, date, description)
+            VALUES (?, ?, ?, ?, ?)
+        """, (user_id, amount_value, category, date, description))
+        conn.commit()
         
-        config.EXPENSES.insert(0, new_entry)
+        # Retrieve the newly added record to return
+        expense_id = cursor.lastrowid
+        cursor.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,))
+        new_entry = dict(cursor.fetchone())
+        conn.close()
+
         return jsonify({"status": "success", "data": new_entry})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
@@ -102,9 +123,29 @@ def api_set_income():
         if amount in (None, ""):
             return jsonify({"status": "error", "message": "Income amount is required."}), 400
 
-        config.INCOME["monthly"] = float(amount)
-        config.INCOME["user_id"] = config.get_current_user()["user_id"]
-        return jsonify({"status": "success", "data": {"income": config.INCOME["monthly"]}})
+        try:
+            amount_value = float(amount)
+        except (TypeError, ValueError):
+            return jsonify({"status": "error", "message": "Income must be a valid number."}), 400
+
+        user_id = config.get_current_user()["user_id"]
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT id FROM income WHERE user_id = ?", (user_id,))
+        existing = cursor.fetchone()
+        
+        if existing:
+            cursor.execute("UPDATE income SET amount = ? WHERE user_id = ?", (amount_value, user_id))
+        else:
+            cursor.execute("INSERT INTO income (user_id, amount, source, date) VALUES (?, ?, ?, ?)",
+                         (user_id, amount_value, "Monthly", datetime.now().strftime("%Y-%m-%d")))
+        
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"status": "success", "data": {"income": amount_value}})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
@@ -122,7 +163,12 @@ def api_goal_status():
         return jsonify({"status": "error", "message": "Login required"}), 401
 
     user_id = config.get_current_user()["user_id"]
-    user_goals = [g for g in config.GOALS if g.get("user_id") == user_id]
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM goals WHERE user_id = ?", (user_id,))
+    user_goals = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
     return jsonify({"status": "success", "data": user_goals})
 
 @expense_bp.route("/api/expense/goal/add", methods=["POST"])
@@ -143,14 +189,28 @@ def api_set_goal():
         if not name or target in (None, ""):
             return jsonify({"status": "error", "message": "Goal name and target are required."}), 400
 
-        new_goal = {
-            "user_id": config.get_current_user()["user_id"],
-            "name": name,
-            "target": float(target),
-            "deadline": data.get("deadline") or "",
-            "saved": 0,
-        }
-        config.GOALS.insert(0, new_goal)
+        try:
+            target_value = float(target)
+        except (TypeError, ValueError):
+            return jsonify({"status": "error", "message": "Goal target must be a valid number."}), 400
+
+        user_id = config.get_current_user()["user_id"]
+        deadline = data.get("deadline") or ""
+        saved = 0
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO goals (user_id, goal_name, target_amount, saved_amount, deadline)
+            VALUES (?, ?, ?, ?, ?)
+        """, (user_id, name, target_value, saved, deadline))
+        conn.commit()
+        
+        goal_id = cursor.lastrowid
+        cursor.execute("SELECT * FROM goals WHERE id = ?", (goal_id,))
+        new_goal = dict(cursor.fetchone())
+        conn.close()
+
         return jsonify({"status": "success", "data": new_goal})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
@@ -161,7 +221,7 @@ def api_set_goal():
 @expense_bp.route("/api/expense/upload", methods=["POST"])
 def api_upload_csv():
     """
-    Purpose: Handles CSV file processing.
+    Purpose: Handles CSV file processing and saves data to database.
     Input: multipart/form-data (file)
     Output: Success message.
     """
@@ -172,7 +232,51 @@ def api_upload_csv():
     if uploaded is None or not uploaded.filename:
         return jsonify({"status": "error", "message": "Please choose a CSV file."}), 400
     
-    return jsonify({"status": "success", "data": {"message": f"{uploaded.filename} uploaded successfully."}})
+    try:
+        user_id = config.get_current_user()["user_id"]
+        
+        # Read the uploaded file as text
+        stream = io.StringIO(uploaded.stream.read().decode("utf-8"), newline=None)
+        
+        # Parse CSV assuming headers: amount, category, date
+        csv_reader = csv.DictReader(stream)
+        
+        # Connect to the database
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Simple loop to read and insert each row
+        for row in csv_reader:
+            amount = row.get("amount")
+            category = row.get("category")
+            date = row.get("date")
+            description = "CSV Import"  # Default generic description
+
+            if amount in (None, ""):
+                continue
+
+            try:
+                amount_value = float(amount)
+            except (TypeError, ValueError):
+                continue
+            
+            # Insert the row into the expenses table
+            cursor.execute("""
+                INSERT INTO expenses (user_id, amount, category, date, description)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, amount_value, category, date, description))
+            
+        # Save all the new expenses
+        conn.commit()
+        conn.close()
+        
+        return jsonify({
+            "status": "success", 
+            "data": {"message": f"{uploaded.filename} uploaded and data saved successfully."}
+        })
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Error saving data: {str(e)}"}), 400
 
 @expense_bp.route("/api/expense/export")
 def api_export_data():
@@ -186,13 +290,18 @@ def api_export_data():
 
     try:
         user_id = config.get_current_user()["user_id"]
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT description, category, amount, date FROM expenses WHERE user_id = ?", (user_id,))
+        expenses = cursor.fetchall()
+        conn.close()
+        
         csv_buffer = io.StringIO()
         writer = csv.writer(csv_buffer)
         writer.writerow(["description", "category", "amount", "date"])
         
-        for expense in config.EXPENSES:
-            if expense.get("user_id") == user_id:
-                writer.writerow([expense["description"], expense["category"], expense["amount"], expense["date"]])
+        for expense in expenses:
+            writer.writerow([expense["description"], expense["category"], expense["amount"], expense["date"]])
 
         return csv_buffer.getvalue(), 200, {
             "Content-Type": "text/csv",

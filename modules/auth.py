@@ -1,5 +1,7 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
 import config
+from utils.db import get_db_connection
 
 # Create the Auth Blueprint
 auth_bp = Blueprint('auth', __name__)
@@ -34,6 +36,8 @@ def login():
     Output: HTML or Dashboard redirect.
     """
     if config.is_logged_in():
+        if config.is_admin():
+            return redirect(url_for('admin.admin_dashboard'))
         return redirect(url_for('analysis.dashboard'))
     return render_template("public/login.html")
 
@@ -41,26 +45,112 @@ def login():
 def signup():
     """Purpose: Renders registration gate."""
     if config.is_logged_in():
+        if config.is_admin():
+            return redirect(url_for('admin.admin_dashboard'))
         return redirect(url_for('analysis.dashboard'))
     return render_template("public/signup.html")
 
 
-# --- USER UI (PROTECTED) ---
-
-@auth_bp.route("/settings")
-def settings():
-    """
-    Purpose: Renders user profile control.
-    Input: None
-    Output: HTML or Login redirect.
-    """
-    if not config.is_logged_in():
-        return redirect(url_for('auth.login'))
-    
-    return render_template("user/settings.html", active_page="settings", user=config.get_current_user())
-
-
 # --- AUTHENTICATION API (SECURE) ---
+
+def _is_hashed_password(password):
+    """
+    Purpose: Checks whether a password value already looks hashed.
+    Input: Plain string password from the database.
+    Output: True if the password appears to be a Werkzeug hash.
+    """
+    return isinstance(password, str) and password.startswith(("pbkdf2:", "scrypt:", "argon2:"))
+
+def _password_matches(stored_password, candidate_password):
+    """
+    Purpose: Compares a stored password against a login attempt.
+    Input: Stored password and candidate password strings.
+    Output: True when the password is valid.
+    """
+    if stored_password is None:
+        return False
+
+    if _is_hashed_password(stored_password):
+        return check_password_hash(stored_password, candidate_password)
+
+    return stored_password == candidate_password
+
+def _build_session_user(user_row):
+    """
+    Purpose: Creates the standard session user payload.
+    Input: SQLite row containing user data.
+    Output: Dictionary with user_id, username, email, and role.
+    """
+    return {
+        "user_id": user_row["id"],
+        "username": user_row["username"],
+        "email": user_row["email"],
+        "role": user_row["role"],
+    }
+
+@auth_bp.route("/api/auth/signup", methods=["POST"])
+def api_signup():
+    """
+    Purpose: Creates a new user account and starts a logged-in session.
+    Input: JSON body with username, email, and password.
+    Output: Created user object or error message.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        username = (data.get("username") or "").strip()
+        email = (data.get("email") or "").strip().lower()
+        password = data.get("password") or ""
+
+        if not username or not email or not password:
+            return jsonify({
+                "status": "error",
+                "message": "Username, email, and password are required."
+            }), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT id FROM users WHERE username = ? OR email = ?",
+            (username, email)
+        )
+        existing_user = cursor.fetchone()
+        if existing_user is not None:
+            conn.close()
+            return jsonify({
+                "status": "error",
+                "message": "A user with that username or email already exists."
+            }), 409
+
+        hashed_password = generate_password_hash(password)
+        cursor.execute(
+            """
+            INSERT INTO users (username, email, password, role)
+            VALUES (?, ?, ?, ?)
+            """,
+            (username, email, hashed_password, "user")
+        )
+        conn.commit()
+
+        user_id = cursor.lastrowid
+        cursor.execute("SELECT id, username, email, role FROM users WHERE id = ?", (user_id,))
+        new_user = cursor.fetchone()
+        conn.close()
+
+        session.clear()
+        session["user"] = _build_session_user(new_user)
+        session.permanent = True
+        session.modified = True
+
+        return jsonify({
+            "status": "success",
+            "data": session["user"]
+        }), 201
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
 def api_login():
@@ -72,7 +162,7 @@ def api_login():
     try:
         # 1. Validation: Ensure JSON data exists
         data = request.get_json(silent=True) or {}
-        username_input = data.get("email") # The field name is still 'email' from the frontend
+        username_input = (data.get("email") or "").strip()
         password = data.get("password")
 
         if not username_input or not password:
@@ -81,38 +171,44 @@ def api_login():
                 "message": "Username/Email and password are required."
             }), 400
 
-        # 2. Basic Format Validation
-        # Admin is allowed as a plain string, others must be emails (contain @)
-        if username_input != "admin" and "@" not in username_input:
+        # 2. Database logic: Verify credentials
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT * FROM users WHERE username = ? OR email = ?",
+            (username_input, username_input.lower())
+        )
+        user = cursor.fetchone()
+
+        if user is None:
+            conn.close()
             return jsonify({
                 "status": "error", 
-                "message": "Invalid format. Use 'admin' or a valid email (e.g., user@mail.com)."
-            }), 400
+                "message": "Invalid credentials."
+            }), 401
 
-        # 3. Security: Clear any existing session data before logging in new user
+        if not _password_matches(user["password"], password):
+            conn.close()
+            return jsonify({
+                "status": "error", 
+                "message": "Invalid credentials."
+            }), 401
+
+        # If the database still has an old plaintext password, upgrade it now.
+        if not _is_hashed_password(user["password"]):
+            cursor.execute(
+                "UPDATE users SET password = ? WHERE id = ?",
+                (generate_password_hash(user["password"]), user["id"])
+            )
+            conn.commit()
+
+        conn.close()
+
         session.clear()
-
-        # 4. Logic: Admin check (Fixed Credentials)
-        # We now check for the simple 'admin' username
-        if username_input == "admin" and password == "admin@7790":
-            session["user"] = {
-                "user_id": 0,
-                "username": "System Admin",
-                "email": "admin@smartvest.ai",
-                "role": "admin"
-            }
-        else:
-            # 5. Logic: Mock user login (Role is always 'user')
-            # For this phase, we accept the password as valid if format is correct
-            session["user"] = {
-                "user_id": 1,
-                "username": username_input.split('@')[0].capitalize(),
-                "email": username_input,
-                "role": "user"
-            }
-        
-        # Ensure session is saved correctly
+        session["user"] = _build_session_user(user)
         session.permanent = True 
+        session.modified = True
         
         return jsonify({
             "status": "success", 
@@ -167,8 +263,9 @@ def api_check_session():
 @auth_bp.route("/api/auth/profile/update", methods=["POST"])
 def api_update_profile():
     """
-    Purpose: Modifies session user attributes.
-    Input: JSON (username)
+    Purpose: Modifies user attributes in session and database.
+    Input: JSON with 'username' and optionally 'email'
+    Output: JSON success message with updated user data
     """
     if not config.is_logged_in():
         return jsonify({"status": "error", "message": "Login required"}), 401
@@ -176,12 +273,30 @@ def api_update_profile():
     try:
         data = request.get_json(silent=True) or {}
         username = (data.get("username") or "").strip()
+        email = (data.get("email") or "").strip()
         
         if not username:
             return jsonify({"status": "error", "message": "Username is required."}), 400
 
+        # Get the ID of the logged-in user
+        user_id = session["user"]["user_id"]
+
+        # Update the database
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        if email:
+            cursor.execute("UPDATE users SET username = ?, email = ? WHERE id = ?", (username, email.lower(), user_id))
+        else:
+            cursor.execute("UPDATE users SET username = ? WHERE id = ?", (username, user_id))
+        
+        cursor.execute("SELECT id, username, email, role FROM users WHERE id = ?", (user_id,))
+        updated_user = cursor.fetchone()
+        conn.commit()
+        conn.close()
+
         # Update persistent session
-        session["user"]["username"] = username
+        session["user"] = _build_session_user(updated_user)
         session.modified = True
         
         return jsonify({
@@ -193,11 +308,52 @@ def api_update_profile():
 
 @auth_bp.route("/api/auth/password/change", methods=["POST"])
 def api_change_password():
-    """Purpose: Placeholder for security actions."""
+    """
+    Purpose: Update the logged-in user's password in the database.
+    Input: JSON with 'new_password'
+    Output: JSON success or error message
+    """
     if not config.is_logged_in():
         return jsonify({"status": "error", "message": "Login required"}), 401
 
-    return jsonify({
-        "status": "success", 
-        "data": {"message": "Password updated successfully."}
-    })
+    try:
+        # Get JSON data from the request
+        data = request.get_json(silent=True) or {}
+        current_password = data.get("current_password") or ""
+        new_password = data.get("new_password")
+        
+        # Check if new password is provided
+        if not new_password:
+            return jsonify({"status": "error", "message": "New password is required."}), 400
+
+        # Get the current user's ID
+        user_id = session["user"]["user_id"]
+
+        # Connect to the database
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT password FROM users WHERE id = ?", (user_id,))
+        user_row = cursor.fetchone()
+        if user_row is None:
+            conn.close()
+            return jsonify({"status": "error", "message": "User not found."}), 404
+
+        stored_password = user_row["password"]
+        if not current_password or not _password_matches(stored_password, current_password):
+            conn.close()
+            return jsonify({"status": "error", "message": "Current password is incorrect."}), 400
+
+        # Execute simple SQL update query with a hashed password
+        cursor.execute("UPDATE users SET password = ? WHERE id = ?", (generate_password_hash(new_password), user_id))
+        
+        # Save changes and close database connection
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            "status": "success", 
+            "data": {"message": "Password updated successfully."}
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
