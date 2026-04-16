@@ -1,10 +1,9 @@
 """
 CONFIG.PY
 ----------
-This file acts as our simple 'Database'. 
-It stores all our data in lists so that different modules can access 
-and update the same information.
+Shared configuration and session helpers for SmartVest.
 """
+import os
 from flask import session
 
 # --- SECURITY CONFIGURATION ---
@@ -12,68 +11,11 @@ from flask import session
 # What is SECRET_KEY?
 # This is a random string used by Flask to encrypt our session cookies.
 # It is needed so that users cannot tamper with their session data (like changing their user_id).
-SECRET_KEY = "smartvest-super-secure-key-2026-cinematic"
+SECRET_KEY = os.getenv("SECRET_KEY", "smartvest-dev-key")
 
-
-# --- IN-MEMORY MOCK DATA (Our Temporary Database) ---
-
-# List of all registered users
-USERS = [
-    {
-        "id": "1",
-        "username": "alex_coder",
-        "email": "alex@example.com",
-        "plan": "PRO",
-        "joined_date": "2024-03-10",
-    },
-    {
-        "id": "2",
-        "username": "sarah_mkt",
-        "email": "sarah@company.net",
-        "plan": "FREE",
-        "joined_date": "2024-04-01",
-    },
-]
-
-# List of all user expenses
-EXPENSES = [
-    {"user_id": 1, "description": "Starbucks", "amount": 4.5, "category": "Food", "date": "2024-04-14"},
-    {"user_id": 1, "description": "AWS Bill", "amount": 120.0, "category": "Other", "date": "2024-04-12"},
-]
-
-# List of financial goals
-GOALS = [
-    {"user_id": 1, "name": "Modern Apartment", "target": 50000, "deadline": "", "saved": 16000},
-    {"user_id": 1, "name": "Tesla Model S", "target": 90000, "deadline": "", "saved": 9000},
-]
-
-# Log of user feedback
-FEEDBACK_LOG = [
-    {
-        "user_id": 1,
-        "subject": "Bug in Investment Chart",
-        "message": "The 10-year projection doesn't seem to update when I change my SIP amount.",
-        "email": "john.doe@test.com",
-        "created_at": "Today, 10:45 AM",
-    },
-]
-
-# User reviews for the public page
-REVIEWS = [
-    {
-        "id": "1",
-        "name": "Sarah Chen",
-        "rating": 5,
-        "review": "The stability indicator is a lifesaver. I finally feel in control of my financial future.",
-        "status": "APPROVED",
-    },
-]
 
 # Current global market condition
 MARKET_STATE = {"state": "stable"}
-
-# User income data
-INCOME = {"user_id": 1, "monthly": 5200.0}
 
 
 # --- AUTH HELPER FUNCTIONS ---
@@ -82,7 +24,7 @@ def get_current_user():
     """
     Purpose: Retrieve the currently logged-in user from the session.
     Input: None
-    Output: Dictionary containing user_id, username, and role OR None.
+    Output: Dictionary containing user_id, username, email, and role OR None.
     """
     return session.get("user")
 

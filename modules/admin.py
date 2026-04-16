@@ -1,127 +1,219 @@
+"""
+admin.py
+--------
+Purpose : Handles all admin-only pages and their data APIs.
+          ALL data now comes directly from the SQLite database —
+          no more config.USERS, config.FEEDBACK_LOG, or config.REVIEWS.
+"""
+
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 import config
+from utils.db import get_db_connection   # ← real database helper
 
 # Create the Admin Blueprint
 admin_bp = Blueprint('admin', __name__)
 
-# --- ADMIN UI PAGE ROUTES (STRICT PROTECTED) ---
+
+# =============================================================================
+# ADMIN UI PAGE ROUTES  (return HTML pages — admin-only)
+# =============================================================================
 
 @admin_bp.route("/admin/dashboard")
 def admin_dashboard():
     """
-    Purpose: Renders the central Admin Systems Console.
-    Input: None
-    Output: HTML template or Dashboard/Login redirect.
+    Purpose : Renders the central Admin Systems Console page.
+    Input   : None
+    Output  : HTML page, or redirect if not admin.
     """
+    # If not even logged in, send to login page
     if not config.is_logged_in():
         return redirect(url_for('auth.login'))
+
+    # If logged in but not admin, send to user dashboard
     if not config.is_admin():
-        # Redirect standard users back to their dashboard
         return redirect(url_for('analysis.dashboard'))
-        
+
     return render_template("admin/dashboard.html")
+
 
 @admin_bp.route("/admin/users")
 def admin_users():
     """
-    Purpose: Renders user management table.
-    Input: None
-    Output: Admin protected HTML.
+    Purpose : Renders the User Management table page.
+    Input   : None
+    Output  : Admin-protected HTML page.
     """
     if not config.is_admin():
         return redirect(url_for('analysis.dashboard'))
+
     return render_template("admin/users.html")
+
 
 @admin_bp.route("/admin/feedback")
 def admin_feedback_page():
-    """Purpose: Admin-only feedback log viewer."""
+    """
+    Purpose : Renders the Feedback Log viewer page (admin only).
+    Input   : None
+    Output  : Admin-protected HTML page.
+    """
     if not config.is_admin():
         return redirect(url_for('analysis.dashboard'))
+
     return render_template("admin/feedback.html")
+
 
 @admin_bp.route("/admin/reviews")
 def admin_reviews_page():
-    """Purpose: Admin-only review moderation viewer."""
+    """
+    Purpose : Renders the Review Moderation viewer page (admin only).
+    Input   : None
+    Output  : Admin-protected HTML page.
+    """
     if not config.is_admin():
         return redirect(url_for('analysis.dashboard'))
+
     return render_template("admin/reviews.html")
 
 
-# --- PUBLIC FEEDBACK UI (SESSION REQUIRED) ---
-
-@admin_bp.route("/feedback")
-def user_feedback_page():
-    """
-    Purpose: Allows standard users to access feedback form.
-    Input: None
-    Output: HTML or Login redirect.
-    """
-    if not config.is_logged_in():
-        return redirect(url_for('auth.login'))
-    return render_template("user/feedback.html", active_page="feedback", user=config.get_current_user())
-
-
-# --- ADMIN API ROUTES (STRICT PROTECTED) ---
+# =============================================================================
+# ADMIN API ROUTES  (return JSON data — admin-only)
+# =============================================================================
 
 @admin_bp.route("/api/admin/stats")
 def api_admin_stats():
     """
-    Purpose: Aggregates system metrics for admins.
-    Input: None (Admin check required)
-    Output: JSON stats data.
+    Purpose : Aggregates system-wide metrics for the admin dashboard cards.
+              Counts users, feedback entries, and reviews from the database.
+    Input   : None  (admin session required)
+    Output  : JSON with user count, feedback count, review count, market state.
     """
+    # Only admins are allowed here
     if not config.is_admin():
         return jsonify({"status": "error", "message": "Unauthorized access."}), 403
 
-    return jsonify({
-        "status": "success",
-        "data": {
-            "users": len(config.USERS),
-            "feedback_count": len(config.FEEDBACK_LOG),
-            "reviews_count": len(config.REVIEWS),
-            "market_state": config.MARKET_STATE["state"],
-        }
-    })
+    try:
+        # Open database connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Count total registered users (excluding the admin account itself)
+        cursor.execute("SELECT COUNT(*) as total FROM users WHERE role != 'admin'")
+        user_count = cursor.fetchone()["total"]
+
+        # Count total feedback messages submitted
+        cursor.execute("SELECT COUNT(*) as total FROM feedback")
+        feedback_count = cursor.fetchone()["total"]
+
+        # Count total reviews submitted
+        cursor.execute("SELECT COUNT(*) as total FROM reviews")
+        review_count = cursor.fetchone()["total"]
+
+        # Close the connection after reading all counts
+        conn.close()
+
+        # Return the stats as JSON for the admin dashboard
+        return jsonify({
+            "status": "success",
+            "data": {
+                "users":           user_count,
+                "feedback_count":  feedback_count,
+                "reviews_count":   review_count,
+                "market_state":    config.MARKET_STATE["state"],
+            }
+        })
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
 
 @admin_bp.route("/api/admin/user/all")
 def api_admin_users():
     """
-    Purpose: Returns exhaustive list of system users.
-    Output: JSON array of user objects.
-    """
-    if not config.is_admin():
-        return jsonify({"status": "error", "message": "Forbidden."}), 403
-
-    return jsonify({"status": "success", "data": config.USERS})
-
-@admin_bp.route("/api/admin/user/delete", methods=["DELETE"])
-def api_admin_delete_user():
-    """
-    Purpose: Terminates a user identity.
-    Input: JSON (userId)
+    Purpose : Returns a list of all registered (non-admin) users from the database.
+    Input   : None  (admin session required)
+    Output  : JSON array of user objects.
     """
     if not config.is_admin():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        data = request.get_json(silent=True) or {}
-        user_id = str(data.get("userId") or "")
-        
-        remaining = [u for u in config.USERS if u["id"] != user_id]
-        if len(remaining) == len(config.USERS):
-            return jsonify({"status": "error", "message": "User not found."}), 404
+        # Open database and fetch all non-admin users
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-        config.USERS.clear()
-        config.USERS.extend(remaining)
-        return jsonify({"status": "success", "data": {"message": "User deleted."}})
+        cursor.execute(
+            "SELECT id, username, email, role FROM users WHERE role != 'admin'"
+        )
+        # Convert each row into a plain dictionary so it can be turned into JSON
+        all_users = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        return jsonify({"status": "success", "data": all_users})
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@admin_bp.route("/api/admin/user/delete", methods=["DELETE"])
+def api_admin_delete_user():
+    """
+    Purpose : Permanently removes a user from the database by their integer ID.
+              Also removes all their expenses, goals, income, feedback, and reviews.
+    Input   : JSON body with key "userId" (integer)
+    Output  : Success message or error.
+    """
+    if not config.is_admin():
+        return jsonify({"status": "error", "message": "Forbidden."}), 403
+
+    try:
+        # Read the JSON body sent by the frontend
+        data = request.get_json(silent=True) or {}
+
+        # Get the user ID as an integer — important for correct DB comparison
+        user_id = data.get("userId")
+        if user_id is None:
+            return jsonify({"status": "error", "message": "userId is required."}), 400
+
+        user_id = int(user_id)   # Make sure it is an integer, not a string
+
+        # Open database
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # First check if the user actually exists
+        cursor.execute("SELECT id FROM users WHERE id = ?", (user_id,))
+        found = cursor.fetchone()
+
+        if found is None:
+            conn.close()
+            return jsonify({"status": "error", "message": "User not found."}), 404
+
+        # Delete all related data first (foreign key cleanup)
+        cursor.execute("DELETE FROM expenses WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM goals    WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM income   WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM feedback WHERE user_id = ?", (user_id,))
+        cursor.execute("DELETE FROM reviews  WHERE user_id = ?", (user_id,))
+
+        # Now delete the user record itself
+        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+
+        # Save changes to the database
+        conn.commit()
+        conn.close()
+
+        return jsonify({"status": "success", "data": {"message": "User deleted successfully."}})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
 
 @admin_bp.route("/api/admin/market/update", methods=["POST"])
 def api_admin_market():
     """
-    Purpose: Manipulates the global market environment.
-    Input: JSON (state).
+    Purpose : Updates the global market state variable (bullish / stable / bearish).
+    Input   : JSON body with key "state" (string)
+    Output  : Updated state value.
     """
     if not config.is_admin():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
@@ -129,80 +221,129 @@ def api_admin_market():
     try:
         data = request.get_json(silent=True) or {}
         state = (data.get("state") or "").strip().lower()
-        if state not in {"bullish", "stable", "bearish"}:
-            return jsonify({"status": "error", "message": "Invalid state."}), 400
 
+        # Only these three values are valid
+        if state not in {"bullish", "stable", "bearish"}:
+            return jsonify({"status": "error", "message": "Invalid state. Use: bullish, stable, or bearish."}), 400
+
+        # Update the in-memory market state (this is kept in config as it is not user-specific)
         config.MARKET_STATE["state"] = state
+
         return jsonify({"status": "success", "data": {"state": state}})
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+
 
 @admin_bp.route("/api/admin/feedback/all")
 def api_admin_feedback():
-    """Purpose: Admin-only retrieval of all user feedback."""
+    """
+    Purpose : Retrieves all feedback messages from the database for admin review.
+    Input   : None  (admin session required)
+    Output  : JSON array of feedback objects.
+    """
     if not config.is_admin():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
-    return jsonify({"status": "success", "data": config.FEEDBACK_LOG})
-
-@admin_bp.route("/api/admin/review/all")
-def api_admin_reviews():
-    """Purpose: Admin-only retrieval of all user reviews."""
-    if not config.is_admin():
-        return jsonify({"status": "error", "message": "Forbidden."}), 403
-    return jsonify({"status": "success", "data": config.REVIEWS})
-
-
-# --- USER INTERACTION API (SESSION REQUIRED) ---
-
-@admin_bp.route("/api/admin/feedback/add", methods=["POST"])
-def api_user_submit_feedback():
-    """
-    Purpose: Records user feedback in the persistent log.
-    Input: JSON (message, subject)
-    """
-    if not config.is_logged_in():
-        return jsonify({"status": "error", "message": "Login required"}), 401
 
     try:
-        data = request.get_json(silent=True) or {}
-        message = (data.get("message") or "").strip()
-        if not message:
-            return jsonify({"status": "error", "message": "Message required."}), 400
+        # Open database and join feedback with users table to get the username
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-        config.FEEDBACK_LOG.insert(0, {
-            "user_id": config.get_current_user()["user_id"],
-            "subject": (data.get("subject") or "General Inquiry").strip(),
-            "message": message,
-            "email": config.get_current_user()["email"],
-            "created_at": "Just now",
-        })
-        return jsonify({"status": "success", "data": {"message": "received"}})
+        cursor.execute("""
+            SELECT
+                feedback.id,
+                feedback.user_id,
+                users.username,
+                feedback.message,
+                feedback.subject,
+                feedback.date
+            FROM feedback
+            LEFT JOIN users ON feedback.user_id = users.id
+            ORDER BY feedback.id DESC
+        """)
+
+        # Convert rows to plain dictionaries for JSON serialisation
+        all_feedback = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        return jsonify({"status": "success", "data": all_feedback})
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
-@admin_bp.route("/api/admin/review/add", methods=["POST"])
-def api_user_submit_review():
+
+@admin_bp.route("/api/admin/review/all")
+def api_admin_reviews():
     """
-    Purpose: Submits a review for moderation.
-    Input: JSON (review, rating).
+    Purpose : Retrieves all user reviews from the database for admin moderation.
+    Input   : None  (admin session required)
+    Output  : JSON array of review objects.
     """
-    if not config.is_logged_in():
-        return jsonify({"status": "error", "message": "Login required"}), 401
+    if not config.is_admin():
+        return jsonify({"status": "error", "message": "Forbidden."}), 403
+
+    try:
+        # Open database and join reviews with users table to get the username
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT
+                reviews.id,
+                reviews.user_id,
+                users.username,
+                reviews.rating,
+                reviews.comment,
+                reviews.status,
+                reviews.date
+            FROM reviews
+            LEFT JOIN users ON reviews.user_id = users.id
+            ORDER BY reviews.id DESC
+        """)
+
+        all_reviews = [dict(row) for row in cursor.fetchall()]
+        conn.close()
+
+        return jsonify({"status": "success", "data": all_reviews})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@admin_bp.route("/api/admin/review/delete", methods=["DELETE"])
+def api_admin_delete_review():
+    """
+    Purpose : Deletes a user review from the database by review ID.
+    Input   : JSON body with key "reviewId" (integer)
+    Output  : Success message or error.
+    """
+    if not config.is_admin():
+        return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
         data = request.get_json(silent=True) or {}
-        review_text = (data.get("review") or "").strip()
-        if not review_text:
-            return jsonify({"status": "error", "message": "Review text required."}), 400
+        review_id = data.get("reviewId")
 
-        new_review = {
-            "id": str(len(config.REVIEWS) + 1),
-            "name": config.get_current_user()["username"],
-            "rating": int(data.get("rating") or 5),
-            "review": review_text,
-            "status": "PENDING",
-        }
-        config.REVIEWS.insert(0, new_review)
-        return jsonify({"status": "success", "data": new_review})
+        if review_id is None:
+            return jsonify({"status": "error", "message": "reviewId is required."}), 400
+
+        review_id = int(review_id)
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM reviews WHERE id = ?", (review_id,))
+        found = cursor.fetchone()
+
+        if found is None:
+            conn.close()
+            return jsonify({"status": "error", "message": "Review not found."}), 404
+
+        cursor.execute("DELETE FROM reviews WHERE id = ?", (review_id,))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"status": "success", "data": {"message": "Review deleted successfully."}})
+
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400

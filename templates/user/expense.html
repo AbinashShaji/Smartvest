@@ -368,7 +368,7 @@
         status.style.color = 'var(--fg-secondary)';
 
         try {
-            const data = await API.setIncome({ income: amount });
+            const data = await API.updateIncome({ income: amount });
             if (!data) return;
             status.innerText = 'Income updated successfully!';
             status.style.color = '#4ade80';
@@ -488,19 +488,12 @@
         uploadBtn.disabled = true;
 
         try {
-            const response = await fetch("/api/expense/upload-csv", {
-                method: "POST",
-                body: formData
-            });
-            const data = await response.json();
-            status.innerText = data.message;
-            status.style.color = response.ok ? "#4ade80" : "#f87171";
-            
-            if (response.ok) {
-                fileInput.value = "";
-                updateFileName();
-                loadExpenses();
-            }
+            const data = await API.uploadCSV(formData);
+            status.innerText = data.message || "CSV uploaded successfully.";
+            status.style.color = "#4ade80";
+            fileInput.value = "";
+            updateFileName();
+            loadExpenses();
         } catch (error) {
             status.innerText = "Upload failed: " + error.message;
             status.style.color = "#f87171";

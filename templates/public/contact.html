@@ -90,7 +90,7 @@
         status.style.color = 'rgba(255,255,255,0.5)';
 
         try {
-            const resp = await fetch('/api/admin/feedback/add', {
+            const resp = await fetch('/api/feedback/add', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(formData)

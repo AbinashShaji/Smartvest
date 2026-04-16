@@ -19,30 +19,13 @@
                 <tr style="text-align: left; color: var(--fg-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--glass-border);">
                     <th style="padding: 16px;">USERNAME</th>
                     <th style="padding: 16px;">EMAIL</th>
-                    <th style="padding: 16px;">PLAN</th>
-                    <th style="padding: 16px;">JOINED DATE</th>
+                    <th style="padding: 16px;">ROLE</th>
                     <th style="padding: 16px; text-align: right;">ACTIONS</th>
                 </tr>
             </thead>
             <tbody id="adminUserList">
-                <!-- Mock data for demo -->
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                    <td style="padding: 16px;">alex_coder</td>
-                    <td style="padding: 16px; color: var(--fg-secondary);">alex@example.com</td>
-                    <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem; border-color: #fff;">PRO</span></td>
-                    <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">2024-03-10</td>
-                    <td style="padding: 16px; text-align: right;">
-                        <button onclick="deleteUser('1')" style="background: transparent; border: none; color: #f87171; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Delete</button>
-                    </td>
-                </tr>
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                    <td style="padding: 16px;">sarah_mkt</td>
-                    <td style="padding: 16px; color: var(--fg-secondary);">sarah@company.net</td>
-                    <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">FREE</span></td>
-                    <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">2024-04-01</td>
-                    <td style="padding: 16px; text-align: right;">
-                        <button onclick="deleteUser('2')" style="background: transparent; border: none; color: #f87171; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Delete</button>
-                    </td>
+                    <td colspan="4" style="padding: 40px; text-align: center; color: var(--fg-secondary);">Loading users from the database...</td>
                 </tr>
             </tbody>
         </table>
@@ -67,21 +50,35 @@
         try {
             const users = await API.getAdminUsers();
             const list = document.getElementById('adminUserList');
+            if (!list) return;
+
             if (users && users.length > 0) {
                 list.innerHTML = users.map(user => `
                     <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
                         <td style="padding: 16px;">${user.username}</td>
                         <td style="padding: 16px; color: var(--fg-secondary);">${user.email}</td>
-                        <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${user.plan || 'FREE'}</span></td>
-                        <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">${user.joined_date}</td>
+                        <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${user.role}</span></td>
                         <td style="padding: 16px; text-align: right;">
                             <button onclick="deleteUser('${user.id}')" style="background: transparent; border: none; color: #f87171; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Delete</button>
                         </td>
                     </tr>
                 `).join('');
+            } else {
+                list.innerHTML = `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                        <td colspan="4" style="padding: 40px; text-align: center; color: var(--fg-secondary);">No users found in the database.</td>
+                    </tr>
+                `;
             }
         } catch (error) {
-            console.log("Using mock user data for admin preview.");
+            const list = document.getElementById('adminUserList');
+            if (list) {
+                list.innerHTML = `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                        <td colspan="4" style="padding: 40px; text-align: center; color: #f87171;">Unable to load users.</td>
+                    </tr>
+                `;
+            }
         }
     }
 

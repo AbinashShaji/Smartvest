@@ -11,49 +11,62 @@
     </div>
 
     <div style="display: grid; grid-template-columns: 1fr; gap: 20px;" id="adminReviewsContainer">
-        <!-- Review Card 1 -->
-        <div class="glass-card" style="padding: 24px; display: flex; justify-content: space-between; align-items: center;">
-            <div style="flex: 1;">
-                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                    <span style="color: #fff;">★★★★★</span>
-                    <span style="font-size: 0.8rem; font-weight: 700;">Sarah Chen</span>
-                </div>
-                <p style="color: var(--fg-secondary); font-size: 0.9rem;">"The stability indicator is a lifesaver. I finally feel in control of my financial future."</p>
-            </div>
-            <div style="display: flex; gap: 12px; margin-left: 20px;">
-                <span class="glass-card" style="padding: 6px 12px; font-size: 0.75rem; background: rgba(74, 222, 128, 0.1); color: #4ade80; border: none;">APPROVED</span>
-                <button class="btn-premium btn-secondary" style="padding: 6px 12px; font-size: 0.75rem; color: #f87171;">Delete</button>
-            </div>
-        </div>
-
-        <!-- Review Card 2 -->
-        <div class="glass-card" style="padding: 24px; display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.01);">
-            <div style="flex: 1;">
-                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                    <span style="color: #fff;">★★★★☆</span>
-                    <span style="font-size: 0.8rem; font-weight: 700;">Mike Ross</span>
-                </div>
-                <p style="color: var(--fg-secondary); font-size: 0.9rem;">"Clean layout, but would love a dark mode toggle for the dash."</p>
-            </div>
-            <div style="display: flex; gap: 12px; margin-left: 20px;">
-                <button class="btn-premium" style="padding: 6px 16px; font-size: 0.75rem;">Approve</button>
-                <button class="btn-premium btn-secondary" style="padding: 6px 12px; font-size: 0.75rem; color: #f87171;">Delete</button>
-            </div>
-        </div>
+        <div class="glass-card" style="padding: 24px; text-align: center; color: var(--fg-secondary);">Loading reviews from the database...</div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    async function loadReviews() {
+    async function deleteReview(reviewId) {
+        if (!confirm('Delete this review?')) return;
+
         try {
-            const reviews = await API.request('/api/admin/reviews-list');
-            // Logic to render if API exists
+            await API.deleteReview(reviewId);
+            loadReviews();
         } catch (error) {
-            console.log("Mock reviews moderator active.");
+            alert('Error deleting review: ' + error.message);
         }
     }
+
+    async function loadReviews() {
+        try {
+            const reviews = await API.getReviews();
+            const container = document.getElementById('adminReviewsContainer');
+            if (!container) return;
+
+            if (!reviews || reviews.length === 0) {
+                container.innerHTML = '<div class="glass-card" style="padding: 24px; text-align: center; color: var(--fg-secondary);">No reviews have been submitted yet.</div>';
+                return;
+            }
+
+            container.innerHTML = reviews.map(item => {
+                const rating = Number(item.rating || 0);
+                return `
+                    <div class="glass-card" style="padding: 24px; display: flex; justify-content: space-between; align-items: center; gap: 20px;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap;">
+                                <span style="color: #fff;">${'★'.repeat(rating)}${'☆'.repeat(Math.max(0, 5 - rating))}</span>
+                                <span style="font-size: 0.8rem; font-weight: 700;">${item.username || 'SmartVest User'}</span>
+                                <span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${item.status || 'PENDING'}</span>
+                            </div>
+                            <p style="color: var(--fg-secondary); font-size: 0.9rem;">${item.comment || ''}</p>
+                            <p style="font-size: 0.75rem; color: var(--fg-secondary); margin-top: 10px;">${item.date || ''}</p>
+                        </div>
+                        <div style="display: flex; gap: 12px; margin-left: 20px;">
+                            <button class="btn-premium btn-secondary" style="padding: 6px 12px; font-size: 0.75rem; color: #f87171;" onclick="deleteReview(${item.id})">Delete</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } catch (error) {
+            const container = document.getElementById('adminReviewsContainer');
+            if (container) {
+                container.innerHTML = '<div class="glass-card" style="padding: 24px; text-align: center; color: #f87171;">Unable to load reviews.</div>';
+            }
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', loadReviews);
 </script>
 {% endblock %}
