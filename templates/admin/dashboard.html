@@ -28,17 +28,33 @@
 </div>
 
 <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
-    <!-- System Activity Chart -->
     <div class="glass-card" style="padding: 32px;">
-        <h3 style="margin-bottom: 24px;">Platform Growth (User Registrations)</h3>
-        <canvas id="growthChart" style="max-height: 350px;"></canvas>
+        <h3 style="margin-bottom: 24px;">Live Market Insight</h3>
+        <div class="stats-grid" style="margin-bottom: 24px;">
+            <div class="glass-card stat-card">
+                <p class="label">Total Stocks</p>
+                <p class="value" id="marketTotal">0</p>
+            </div>
+            <div class="glass-card stat-card">
+                <p class="label">Good</p>
+                <p class="value" id="marketGood">0</p>
+            </div>
+            <div class="glass-card stat-card">
+                <p class="label">Bad</p>
+                <p class="value" id="marketBad">0</p>
+            </div>
+            <div class="glass-card stat-card">
+                <p class="label">Stable</p>
+                <p class="value" id="marketStable">0</p>
+            </div>
+        </div>
+        <p id="marketInsightText" style="color: var(--fg-secondary); font-size: 0.95rem;">Loading market insight...</p>
     </div>
 
-    <!-- Market Control -->
     <div class="glass-card" style="padding: 32px; background: rgba(255,255,255,0.02);">
         <h3 style="margin-bottom: 24px;">Global Market Control</h3>
         <p style="color: var(--fg-secondary); font-size: 0.9rem; margin-bottom: 32px;">Adjust the global market condition to update all user suggestions.</p>
-        
+
         <div style="display: flex; flex-direction: column; gap: 16px;">
             <button onclick="updateMarket('bullish')" class="btn-premium btn-secondary" style="height: 50px; justify-content: flex-start;">
                 <span style="color: #4ade80; margin-right: 12px;">●</span> Bullish (High Growth)
@@ -50,47 +66,22 @@
                 <span style="color: #f87171; margin-right: 12px;">●</span> Bearish (Recession Mode)
             </button>
         </div>
-        
+
         <p id="marketStatus" style="text-align: center; margin-top: 24px; font-size: 0.85rem; font-weight: 600; color: #4ade80;">CURRENTLY: STABLE</p>
     </div>
 </div>
 
 <div class="glass-card" style="margin-top: 40px; padding: 32px;">
-    <h3 style="margin-bottom: 24px;">System Health Logs</h3>
-    <div style="font-family: monospace; font-size: 0.85rem; color: var(--fg-secondary); display: flex; flex-direction: column; gap: 8px;">
-        <p><span style="color: #fff;">[2024-04-14 15:22:01]</span> INFO: Backup synchronized with main DB cluster.</p>
-        <p><span style="color: #fff;">[2024-04-14 15:18:45]</span> WARN: Latency spike detected in /api/investment module.</p>
-        <p><span style="color: #fff;">[2024-04-14 15:10:12]</span> SUCCESS: Market matrix updated to 'Bullish' by Admin_01.</p>
-    </div>
+    <h3 style="margin-bottom: 24px;">Admin Status</h3>
+    <p id="adminStatusNote" style="color: var(--fg-secondary);">Loading admin status...</p>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', () => {
-        const ctx = document.getElementById('growthChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
-                datasets: [{
-                    label: 'New Users',
-                    data: [400, 600, 850, 1100, 1400, 1800],
-                    borderColor: '#ffffff',
-                    fill: false,
-                    tension: 0.4
-                }]
-            },
-            options: {
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { ticks: { color: '#a1a1aa' } },
-                    y: { ticks: { color: '#a1a1aa' } }
-                }
-            }
-        });
-
         loadAdminStats();
+        loadMarketInsight();
     });
 
     async function loadAdminStats() {
@@ -108,6 +99,23 @@
         }
     }
 
+    async function loadMarketInsight() {
+        try {
+            const insight = await API.getAdminMarketInsight();
+            if (!insight) return;
+
+            document.getElementById('marketTotal').innerText = insight.total ?? 0;
+            document.getElementById('marketGood').innerText = insight.good ?? 0;
+            document.getElementById('marketBad').innerText = insight.bad ?? 0;
+            document.getElementById('marketStable').innerText = insight.stable ?? 0;
+            document.getElementById('marketInsightText').innerText = insight.market_status || 'Market status unavailable.';
+            document.getElementById('adminStatusNote').innerText = `Live stock analysis loaded from data/stock.csv (${insight.total ?? 0} rows).`;
+        } catch (error) {
+            document.getElementById('marketInsightText').innerText = 'Unable to load market insight.';
+            document.getElementById('adminStatusNote').innerText = 'Unable to load the live stock breakdown right now.';
+        }
+    }
+
     async function updateMarket(state) {
         const status = document.getElementById('marketStatus');
         status.innerText = 'UPDATING...';
@@ -115,6 +123,7 @@
             await API.updateMarket(state);
             status.innerText = 'CURRENTLY: ' + state.toUpperCase();
             status.style.color = state === 'bullish' ? '#4ade80' : (state === 'bearish' ? '#f87171' : '#fff');
+            await loadAdminStats();
         } catch (error) {
             status.innerText = 'UPDATE FAILED';
             status.style.color = '#f87171';

@@ -52,7 +52,7 @@ def api_expenses():
         
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM expenses WHERE user_id = ?", (user_id,))
+        cursor.execute("SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC", (user_id,))
         user_data = [dict(row) for row in cursor.fetchall()]
         conn.close()
         
@@ -103,6 +103,69 @@ def api_add_expense():
         conn.close()
 
         return jsonify({"status": "success", "data": new_entry})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+@expense_bp.route("/api/expense/delete", methods=["DELETE", "POST"])
+def api_delete_expense():
+    """
+    Purpose: Delete an existing expense based on ID.
+    Input: JSON containing expense_id
+    Output: Success message
+    """
+    if not config.is_logged_in():
+        return jsonify({"status": "error", "message": "Login required"}), 401
+
+    try:
+        data = request.get_json(silent=True) or {}
+        expense_id = data.get("expense_id")
+        user_id = config.get_current_user()["user_id"]
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM expenses WHERE id = ? AND user_id = ?", (expense_id, user_id))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"status": "success", "message": "Expense deleted"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+@expense_bp.route("/api/expense/update", methods=["POST"])
+def api_update_expense():
+    """
+    Purpose: Update an expense (amount, category, date).
+    Input: JSON with expense_id, amount, category, date
+    Output: Success message
+    """
+    if not config.is_logged_in():
+        return jsonify({"status": "error", "message": "Login required"}), 401
+
+    try:
+        data = request.get_json(silent=True) or {}
+        expense_id = data.get("expense_id")
+        amount = data.get("amount")
+        category = data.get("category")
+        date = data.get("date")
+        
+        user_id = config.get_current_user()["user_id"]
+
+        try:
+            amount_value = float(amount)
+        except (TypeError, ValueError):
+            return jsonify({"status": "error", "message": "Amount must be a valid number."}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE expenses 
+            SET amount = ?, category = ?, date = ?
+            WHERE id = ? AND user_id = ?
+        """, (amount_value, category, date, expense_id, user_id))
+        conn.commit()
+        conn.close()
+
+        return jsonify({"status": "success", "message": "Expense updated"})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
@@ -228,51 +291,49 @@ def api_upload_csv():
     if not config.is_logged_in():
         return jsonify({"status": "error", "message": "Login required"}), 401
     
-    uploaded = request.files.get("file")
-    if uploaded is None or not uploaded.filename:
+    file = request.files.get("file")
+    if file is None or not file.filename:
         return jsonify({"status": "error", "message": "Please choose a CSV file."}), 400
     
     try:
         user_id = config.get_current_user()["user_id"]
         
-        # Read the uploaded file as text
-        stream = io.StringIO(uploaded.stream.read().decode("utf-8"), newline=None)
+        import pandas as pd
+        df = pd.read_csv(file)
         
-        # Parse CSV assuming headers: amount, category, date
-        csv_reader = csv.DictReader(stream)
+        if "date" in df.columns:
+            df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.strftime("%Y-%m-%d")
         
-        # Connect to the database
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Simple loop to read and insert each row
-        for row in csv_reader:
+        success_count = 0
+        for _, row in df.iterrows():
             amount = row.get("amount")
             category = row.get("category")
-            date = row.get("date")
-            description = "CSV Import"  # Default generic description
+            date_str = row.get("date")
+            description = "CSV Import"
 
-            if amount in (None, ""):
+            if pd.isna(amount) or pd.isna(date_str):
                 continue
-
+            
             try:
                 amount_value = float(amount)
             except (TypeError, ValueError):
                 continue
             
-            # Insert the row into the expenses table
             cursor.execute("""
                 INSERT INTO expenses (user_id, amount, category, date, description)
                 VALUES (?, ?, ?, ?, ?)
-            """, (user_id, amount_value, category, date, description))
+            """, (user_id, amount_value, category, date_str, description))
+            success_count += 1
             
-        # Save all the new expenses
         conn.commit()
         conn.close()
         
         return jsonify({
             "status": "success", 
-            "data": {"message": f"{uploaded.filename} uploaded and data saved successfully."}
+            "data": {"message": f"{success_count} rows successfully imported!"}
         })
         
     except Exception as e:
@@ -283,29 +344,26 @@ def api_export_data():
     """
     Purpose: Exports user expenses as a downloadable CSV.
     Input: None
-    Output: CSV text/binary file.
+    Output: JSON returning download path
     """
     if not config.is_logged_in():
-        return "Authentication required.", 401
+        return jsonify({"status": "error", "message": "Login required"}), 401
 
     try:
         user_id = config.get_current_user()["user_id"]
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT description, category, amount, date FROM expenses WHERE user_id = ?", (user_id,))
-        expenses = cursor.fetchall()
+        cursor.execute("SELECT amount, category, date FROM expenses WHERE user_id = ?", (user_id,))
+        data = [dict(row) for row in cursor.fetchall()]
         conn.close()
         
-        csv_buffer = io.StringIO()
-        writer = csv.writer(csv_buffer)
-        writer.writerow(["description", "category", "amount", "date"])
+        import pandas as pd
+        df = pd.DataFrame(data)
         
-        for expense in expenses:
-            writer.writerow([expense["description"], expense["category"], expense["amount"], expense["date"]])
-
-        return csv_buffer.getvalue(), 200, {
-            "Content-Type": "text/csv",
-            "Content-Disposition": f"attachment; filename=smartvest_export_user_{user_id}.csv",
-        }
-    except Exception:
-        return "Error generating export.", 500
+        file_path = "static/expenses_export.csv"
+        df.to_csv(file_path, index=False)
+        
+        return jsonify({"file": "/static/expenses_export.csv"})
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500

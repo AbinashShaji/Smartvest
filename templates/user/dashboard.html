@@ -4,186 +4,459 @@
 {% block page_title %}Financial Overview{% endblock %}
 
 {% block content %}
-<!-- Stats Cards -->
-<div class="stats-grid">
-    <div class="glass-card stat-card">
-        <p class="label">Current Income</p>
-        <p class="value" id="currentIncome">₹0.00</p>
-        <p style="font-size: 0.8rem; color: var(--fg-secondary); margin-top: 4px;">Latest stored monthly income</p>
-    </div>
-    <div class="glass-card stat-card">
-        <p class="label">Total Expenses</p>
-        <p class="value" id="totalExpenses">$0.00</p>
-        <p style="font-size: 0.8rem; color: #f87171; margin-top: 4px;">+12% from last month</p>
-    </div>
-    <div class="glass-card stat-card">
-        <p class="label">Total Savings</p>
-        <p class="value" id="totalSavings">$0.00</p>
-        <p style="font-size: 0.8rem; color: #4ade80; margin-top: 4px;">+5% from last month</p>
-    </div>
-    <div class="glass-card stat-card">
-        <p class="label">Goal Progress</p>
-        <p class="value" id="goalProgress">0%</p>
-        <div style="height: 6px; width: 100%; background: rgba(255,255,255,0.05); border-radius: 3px; margin-top: 12px; overflow: hidden;">
-            <div id="goalProgressSubBar" style="height: 100%; width: 0%; background: #fff; transition: 1s;"></div>
-        </div>
-    </div>
-    <div class="glass-card stat-card">
-        <p class="label">Active Alerts</p>
-        <p class="value" id="alertCount">0</p>
-        <p style="font-size: 0.8rem; color: var(--fg-secondary); margin-top: 4px;">System healthy</p>
-    </div>
-</div>
-
-<div class="dashboard-main-grid">
-    <!-- Main Chart -->
-    <div class="glass-card" style="padding: 32px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-            <h3>Expense Trends</h3>
-            <select class="smartvest-select" style="min-width: 120px;">
-                <option>Monthly</option>
-                <option>Weekly</option>
-            </select>
-        </div>
-        <canvas id="expenseChart" style="max-height: 300px;"></canvas>
-    </div>
-
-    <!-- AI Insights -->
-    <div class="glass-card" style="padding: 32px; background: radial-gradient(circle at top right, rgba(255,255,255,0.03), transparent);">
-        <h3 style="margin-bottom: 20px;">Intelligent Insights</h3>
-        <div id="aiInsights" style="display: flex; flex-direction: column; gap: 20px;">
-            <div style="display: flex; gap: 12px;">
-                <div style="color: #4ade80;">✦</div>
-                <p style="font-size: 0.95rem; color: var(--fg-secondary);">
-                    Your <span style="color: #fff; font-weight: 500;">dining expenses</span> have increased by 20% this week. Consider setting a limit.
+<div class="page-stack">
+    <section class="glass-card section-card">
+        <div class="section-header">
+            <div>
+                <span class="section-eyebrow">Live Analysis</span>
+                <h1 style="margin-top: 10px; font-size: clamp(2rem, 4vw, 3rem);">Financial Overview</h1>
+                <p class="muted-copy" style="max-width: 760px;">
+                    Review your income, expenses, savings, and charted spending patterns in one clean workspace.
                 </p>
             </div>
-            <div style="display: flex; gap: 12px;">
-                <div style="color: #60a5fa;">✦</div>
-                <p style="font-size: 0.95rem; color: var(--fg-secondary);">
-                    You've reached <span style="color: #fff; font-weight: 500;">85% of your 'Vacation' goal</span>. You're on track to complete it by next month.
-                </p>
+            <div class="summary-badge">Real data from SQLite</div>
+        </div>
+    </section>
+
+    <div class="stats-grid metrics-grid">
+        <div class="glass-card metric-card">
+            <div>
+                <p class="metric-label">Income</p>
+                <p class="metric-value" id="currentIncome">$0.00</p>
             </div>
-            <div style="display: flex; gap: 12px;">
-                <div style="color: #c084fc;">✦</div>
-                <p style="font-size: 0.95rem; color: var(--fg-secondary);">
-                    The market is currently <span style="color: #fff; font-weight: 500;">stable</span>. It's a gold time to increase your SIP contributions.
-                </p>
+            <p class="metric-note">Latest monthly income stored in the database.</p>
+        </div>
+        <div class="glass-card metric-card">
+            <div>
+                <p class="metric-label">Total Expense</p>
+                <p class="metric-value" id="totalExpenses">$0.00</p>
             </div>
+            <p class="metric-note">All recorded expenses for the current account.</p>
+        </div>
+        <div class="glass-card metric-card">
+            <div>
+                <p class="metric-label">Savings</p>
+                <p class="metric-value" id="totalSavings">$0.00</p>
+            </div>
+            <p class="metric-note">Income minus expenses, clipped at zero.</p>
+        </div>
+        <div class="glass-card metric-card">
+            <div>
+                <p class="metric-label">Savings Rate</p>
+                <p class="metric-value" id="savingsRate">0%</p>
+            </div>
+            <p class="metric-note">Calculated from your live income snapshot.</p>
         </div>
     </div>
-</div>
 
-<div class="glass-card" style="padding: 32px;">
-    <h3>Recent Activity</h3>
-<div class="table-responsive">
-    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
-        <thead>
-            <tr style="text-align: left; color: var(--fg-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--glass-border);">
-                <th style="padding: 12px;">DESCRIPTION</th>
-                <th style="padding: 12px;">CATEGORY</th>
-                <th style="padding: 12px;">DATE</th>
-                <th style="padding: 12px; text-align: right;">AMOUNT</th>
-            </tr>
-        </thead>
-        <tbody id="recentActivity">
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                <td colspan="4" style="padding: 40px; text-align: center; color: var(--fg-secondary);">Loading recent activity...</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
+    <section class="glass-card section-card">
+        <div class="section-header">
+            <div>
+                <h3 style="margin-bottom: 6px;">Visual Analysis</h3>
+                <p class="muted-copy">Three backend-generated charts with more breathing room and larger display areas.</p>
+            </div>
+            <button type="button" class="btn-premium btn-secondary" onclick="refreshDashboardCharts()">
+                Refresh Charts
+            </button>
+        </div>
+
+        <div class="chart-grid">
+            <figure class="glass-card chart-card">
+                <div>
+                    <h4>Category Spending</h4>
+                    <p class="muted-copy">Where your money is going by category.</p>
+                </div>
+                <div class="chart-frame">
+                    <img id="barChartImg" src="" alt="Category spending chart">
+                </div>
+            </figure>
+
+            <figure class="glass-card chart-card">
+                <div>
+                    <h4>Expense Distribution</h4>
+                    <p class="muted-copy">A cleaner slice view of category weight.</p>
+                </div>
+                <div class="chart-frame">
+                    <img id="pieChartImg" src="" alt="Expense distribution chart">
+                </div>
+            </figure>
+
+            <figure class="glass-card chart-card">
+                <div>
+                    <h4>Spending Over Time</h4>
+                    <p class="muted-copy">Daily movement in your expense history.</p>
+                </div>
+                <div class="chart-frame">
+                    <img id="lineChartImg" src="" alt="Spending over time chart">
+                </div>
+            </figure>
+        </div>
+    </section>
+
+    <section class="insight-grid">
+        <article class="glass-card insight-card">
+            <div class="section-header">
+                <div>
+                    <h3 style="margin-bottom: 6px;">Insight Summary</h3>
+                    <p class="muted-copy">Derived from your live financial data.</p>
+                </div>
+            </div>
+            <div id="dashboardSummary" class="insight-list">
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p class="muted-copy">Loading analysis summary...</p>
+                </div>
+            </div>
+        </article>
+
+        <article class="glass-card insight-card">
+            <div class="section-header">
+                <div>
+                    <h3 style="margin-bottom: 6px;">Live Breakdown</h3>
+                    <p class="muted-copy">Key signals from the current dataset.</p>
+                </div>
+            </div>
+            <div id="liveBreakdown" class="insight-list">
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p class="muted-copy">Loading live breakdown...</p>
+                </div>
+            </div>
+        </article>
+    </section>
+
+    <section class="glass-card section-card">
+        <div class="section-header">
+            <div>
+                <h3 style="margin-bottom: 6px;">Investment Signals</h3>
+                <p class="muted-copy">Savings-based guidance tied directly to the live analysis output.</p>
+            </div>
+            <div class="summary-badge" id="dashboardRiskLevel">Risk: --</div>
+        </div>
+        <div class="analysis-summary-grid">
+            <div class="glass-card insight-card">
+                <p class="metric-label">Investment Suggestion</p>
+                <p id="dashboardInvestmentSuggestion" style="font-size: 1rem; line-height: 1.8;">Loading recommendation...</p>
+            </div>
+            <div class="glass-card insight-card">
+                <p class="metric-label">Recommended Stocks</p>
+                <div id="dashboardRecommendedStocks" class="insight-list">
+                    <div class="insight-item">
+                        <span class="insight-dot"></span>
+                        <p class="muted-copy">Loading recommended stocks...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="glass-card section-card">
+        <div class="section-header">
+            <div>
+                <h3 style="margin-bottom: 6px;">Stock Watchlist</h3>
+                <p class="muted-copy">All stock rows are classified from <code>data/stock.csv</code>.</p>
+            </div>
+            <div class="summary-badge" id="dashboardStockSummary">0 stocks loaded</div>
+        </div>
+        <div id="dashboardStockList" class="analysis-summary-grid"></div>
+    </section>
+
+    <section class="glass-card section-card">
+        <div class="section-header">
+            <div>
+                <h3 style="margin-bottom: 6px;">Stock Charts</h3>
+                <p class="muted-copy">Each chart is generated from live CSV rows and saved in <code>/static/</code>.</p>
+            </div>
+        </div>
+        <div id="dashboardStockCharts" class="chart-grid"></div>
+    </section>
+
+    <section class="glass-card section-card">
+        <div class="section-header">
+            <div>
+                <h3 style="margin-bottom: 6px;">Recent Activity</h3>
+                <p class="muted-copy">A short list of the latest database entries for quick review.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align: left; color: var(--fg-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--glass-border);">
+                        <th style="padding: 12px;">DESCRIPTION</th>
+                        <th style="padding: 12px;">CATEGORY</th>
+                        <th style="padding: 12px;">DATE</th>
+                        <th style="padding: 12px; text-align: right;">AMOUNT</th>
+                    </tr>
+                </thead>
+                <tbody id="recentActivity">
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                        <td colspan="4" class="empty-state">Loading recent activity...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-        initCharts();
-        loadDashboardData();
-        loadRecentActivity();
+    document.addEventListener('DOMContentLoaded', () => {
+        loadDashboard();
     });
 
-    function initCharts() {
-        const ctx = document.getElementById('expenseChart').getContext('2d');
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                datasets: [{
-                    label: 'Expenses',
-                    data: [1200, 1900, 1500, 2100, 1800, 2400],
-                    borderColor: '#ffffff',
-                    borderWidth: 2,
-                    tension: 0.4,
-                    fill: true,
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)'
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: {
-                    x: { grid: { display: false }, ticks: { color: '#a1a1aa' } },
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#a1a1aa' } }
-                }
-            }
-        });
+    async function loadDashboard() {
+        const frame = await API.getStockAnalysis().catch(() => null);
+        await Promise.all([
+            loadStats(),
+            loadCharts(frame),
+            loadInsights(frame),
+            loadRecentActivity(),
+        ]);
     }
 
-    async function loadDashboardData() {
+    function safeNumber(value) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : 0;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    async function loadStats() {
         try {
             const data = await API.getDashboard();
-            document.getElementById('currentIncome').innerText = formatCurrency(data.monthly_income || 0).replace('$', '₹');
-            document.getElementById('totalExpenses').innerText = formatCurrency(data.total_expenses || 0);
-            document.getElementById('totalSavings').innerText = formatCurrency(data.total_savings || 0);
-            const progress = data.goal_progress || 0;
-            document.getElementById('goalProgress').innerText = progress + '%';
-            document.getElementById('goalProgressSubBar').style.width = progress + '%';
-            document.getElementById('alertCount').innerText = data.alert_count ?? 0;
+            const income = safeNumber(data.monthly_income);
+            const totalExpenses = safeNumber(data.total_expenses);
+            const totalSavings = safeNumber(data.total_savings);
+            const savingsRate = income > 0 ? (totalSavings / income) * 100 : 0;
+
+            document.getElementById('currentIncome').innerText = formatCurrency(income);
+            document.getElementById('totalExpenses').innerText = formatCurrency(totalExpenses);
+            document.getElementById('totalSavings').innerText = formatCurrency(totalSavings);
+            document.getElementById('savingsRate').innerText = `${Math.max(0, savingsRate).toFixed(1)}%`;
         } catch (error) {
-            document.getElementById('totalExpenses').innerText = "$0.00";
-            document.getElementById('totalSavings').innerText = "$0.00";
-            document.getElementById('goalProgress').innerText = "0%";
-            document.getElementById('goalProgressSubBar').style.width = "0%";
-            document.getElementById('alertCount').innerText = "0";
+            document.getElementById('currentIncome').innerText = '$0.00';
+            document.getElementById('totalExpenses').innerText = '$0.00';
+            document.getElementById('totalSavings').innerText = '$0.00';
+            document.getElementById('savingsRate').innerText = '0%';
+        }
+    }
+
+    async function loadCharts(frame) {
+        const barImg = document.getElementById('barChartImg');
+        const pieImg = document.getElementById('pieChartImg');
+        const lineImg = document.getElementById('lineChartImg');
+        const stockList = document.getElementById('dashboardStockList');
+        const stockCharts = document.getElementById('dashboardStockCharts');
+        const stockSummary = document.getElementById('dashboardStockSummary');
+        let data = frame || null;
+
+        try {
+            data = frame || await API.getStockAnalysis();
+            const stamp = `?v=${Date.now()}`;
+
+            if (data && data.bar_chart) {
+                barImg.src = `${data.bar_chart}${stamp}`;
+                pieImg.src = `${data.pie_chart}${stamp}`;
+                lineImg.src = `${data.line_chart}${stamp}`;
+                barImg.style.display = 'block';
+                pieImg.style.display = 'block';
+                lineImg.style.display = 'block';
+            } else {
+                [barImg, pieImg, lineImg].forEach((img) => {
+                    img.removeAttribute('src');
+                    img.style.display = 'none';
+                });
+            }
+        } catch (error) {
+            [barImg, pieImg, lineImg].forEach((img) => {
+                img.removeAttribute('src');
+                img.style.display = 'none';
+            });
+        }
+
+        if (data && Array.isArray(data.stocks)) {
+            const recommended = Array.isArray(data.recommended_stocks) ? data.recommended_stocks : [];
+
+            stockSummary.innerText = `${data.stocks.length} stocks loaded`;
+
+            stockList.innerHTML = data.stocks.map((stock) => `
+                <div class="glass-card insight-card">
+                    <p class="metric-label">${escapeHtml(stock.name)}</p>
+                    <p style="margin: 8px 0 12px;">
+                        <strong>Status:</strong> ${escapeHtml(stock.status)}
+                        <br>
+                        <strong>Change:</strong> ${safeNumber(stock.change).toFixed(2)}
+                    </p>
+                </div>
+            `).join('');
+
+            stockCharts.innerHTML = data.stocks.map((stock) => `
+                <figure class="glass-card chart-card">
+                    <div>
+                        <h4>${escapeHtml(stock.name)} Trend</h4>
+                        <p class="muted-copy">${escapeHtml(stock.status)} stock with ${safeNumber(stock.change).toFixed(2)} change.</p>
+                    </div>
+                    <div class="chart-frame">
+                        <img src="${escapeHtml(stock.chart)}?v=${Date.now()}" alt="${escapeHtml(stock.name)} stock chart">
+                    </div>
+                </figure>
+            `).join('');
+
+            const recommendedBox = document.getElementById('dashboardRecommendedStocks');
+            if (recommended.length > 0) {
+                recommendedBox.innerHTML = recommended.map((stock) => `
+                    <div class="insight-item">
+                        <span class="insight-dot"></span>
+                        <p>${escapeHtml(stock.name)} - ${escapeHtml(stock.status)}</p>
+                    </div>
+                `).join('');
+            } else {
+                recommendedBox.innerHTML = `
+                    <div class="insight-item">
+                        <span class="insight-dot"></span>
+                    <p class="muted-copy">No stocks match the current risk level.</p>
+                </div>
+            `;
+        } else {
+            stockSummary.innerText = '0 stocks loaded';
+            stockList.innerHTML = `
+                <div class="glass-card insight-card">
+                    <p class="muted-copy">No stock data available.</p>
+                </div>
+            `;
+            stockCharts.innerHTML = `
+                <div class="glass-card insight-card">
+                    <p class="muted-copy">No stock charts available.</p>
+                </div>
+            `;
+            document.getElementById('dashboardRecommendedStocks').innerHTML = `
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p class="muted-copy">No stocks available right now.</p>
+                </div>
+            `;
+        }
+    }
+    }
+
+    async function loadInsights(frame) {
+        const summaryBox = document.getElementById('dashboardSummary');
+        const breakdownBox = document.getElementById('liveBreakdown');
+        const suggestionBox = document.getElementById('dashboardInvestmentSuggestion');
+        const riskBadge = document.getElementById('dashboardRiskLevel');
+
+        try {
+            const [report, stockData, dashboard] = await Promise.all([
+                API.getExpenseAnalysis(),
+                frame ? Promise.resolve(frame) : API.getStockAnalysis(),
+                API.getDashboard(),
+            ]);
+
+            const summaryText = report?.summary || 'No summary available yet.';
+            const savingsMessage = stockData?.savings_message || 'Savings insight unavailable.';
+            const spendingMessage = stockData?.spending_message || 'Spending insight unavailable.';
+            const topCategory = stockData?.top_category && stockData.top_category !== 'None' ? stockData.top_category : 'No category data yet';
+            const riskLevel = stockData?.risk_level || 'Low';
+            const suggestion = stockData?.investment_suggestion || 'Investment guidance unavailable.';
+            const savingsRate = dashboard?.monthly_income > 0
+                ? ((safeNumber(dashboard.total_savings) / safeNumber(dashboard.monthly_income)) * 100).toFixed(1)
+                : '0.0';
+            const stockSummary = stockData?.stock_summary;
+
+            summaryBox.innerHTML = `
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p>${escapeHtml(summaryText)}</p>
+                </div>
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p>${escapeHtml(savingsMessage)}</p>
+                </div>
+            `;
+
+            breakdownBox.innerHTML = `
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p><strong>Top category:</strong> ${escapeHtml(topCategory)}</p>
+                </div>
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p><strong>Spending note:</strong> ${escapeHtml(spendingMessage)}</p>
+                </div>
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p><strong>Savings rate:</strong> ${escapeHtml(savingsRate)}%</p>
+                </div>
+            `;
+
+            suggestionBox.innerText = suggestion;
+            riskBadge.innerText = `Risk: ${riskLevel}`;
+
+            if (stockSummary) {
+                document.getElementById('dashboardStockSummary').innerText = `${stockSummary.total} stocks | ${stockSummary.good} good | ${stockSummary.bad} bad | ${stockSummary.stable} stable`;
+            }
+        } catch (error) {
+            summaryBox.innerHTML = `
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p class="muted-copy">Unable to load the latest summary right now.</p>
+                </div>
+            `;
+            breakdownBox.innerHTML = `
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p class="muted-copy">Unable to load live breakdown right now.</p>
+                </div>
+            `;
+            suggestionBox.innerText = 'Unable to load recommendation right now.';
         }
     }
 
     async function loadRecentActivity() {
+        const list = document.getElementById('recentActivity');
+
         try {
             const expenses = await API.getExpenses();
-            const list = document.getElementById('recentActivity');
-            if (!list) return;
 
             if (!expenses || !Array.isArray(expenses) || expenses.length === 0) {
                 list.innerHTML = `
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                        <td colspan="4" style="padding: 40px; text-align: center; color: var(--fg-secondary);">No expenses yet. Add your first entry in the Expenses page.</td>
+                    <tr>
+                        <td colspan="4" class="empty-state">No expenses yet. Add your first entry in the Expenses page.</td>
                     </tr>
                 `;
                 return;
             }
 
             const recent = expenses.slice(0, 5);
-            list.innerHTML = recent.map(exp => `
+            list.innerHTML = recent.map((exp) => `
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                    <td style="padding: 16px;">${exp.description}</td>
-                    <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${exp.category}</span></td>
-                    <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">${exp.date}</td>
-                    <td style="padding: 16px; text-align: right; font-weight: 600;">-$${Number(exp.amount || 0).toFixed(2)}</td>
+                    <td style="padding: 16px;">${escapeHtml(exp.description)}</td>
+                    <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${escapeHtml(exp.category)}</span></td>
+                    <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">${escapeHtml(exp.date)}</td>
+                    <td style="padding: 16px; text-align: right; font-weight: 600;">-$${safeNumber(exp.amount).toFixed(2)}</td>
                 </tr>
             `).join('');
         } catch (error) {
-            const list = document.getElementById('recentActivity');
-            if (list) {
-                list.innerHTML = `
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                        <td colspan="4" style="padding: 40px; text-align: center; color: #f87171;">Unable to load recent activity.</td>
-                    </tr>
-                `;
-            }
+            list.innerHTML = `
+                <tr>
+                    <td colspan="4" class="empty-state">Unable to load recent activity.</td>
+                </tr>
+            `;
         }
+    }
+
+    async function refreshDashboardCharts() {
+        const frame = await API.getStockAnalysis().catch(() => null);
+        await loadCharts(frame);
+        await loadInsights(frame);
     }
 </script>
 {% endblock %}

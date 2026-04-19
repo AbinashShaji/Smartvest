@@ -48,6 +48,7 @@ const API = {
     // Analysis Modules (/api/analysis/)
     getDashboard: () => API.request('/api/analysis/data'),
     getExpenseAnalysis: () => API.request('/api/analysis/report'),
+    getStockAnalysis: () => API.request('/api/analysis/dataframe'),
 
     // Expense Modules (/api/expense/)
     getExpenses: () => API.request('/api/expense/all'),
@@ -62,15 +63,15 @@ const API = {
 
     // Investment Modules (/api/investment/)
     getOverview: () => API.request('/api/investment/data'),
-    getStrategies: () => API.request('/api/investment/strategy/all'),
-    getMarketStatus: () => API.request('/api/investment/market/status'),
 
     // Admin & Community Modules (/api/admin/)
+    getMarketMetrics: () => API.request('/api/admin/market-metrics'),
     submitFeedback: (data) => API.request('/api/feedback/add', { method: 'POST', body: JSON.stringify(data) }),
     submitReview: (data) => API.request('/api/review/add', { method: 'POST', body: JSON.stringify(data) }),
     getReviews: () => API.request('/api/admin/review/all'),
     getFeedback: () => API.request('/api/admin/feedback/all'),
     getAdminStats: () => API.request('/api/admin/stats'),
+    getAdminMarketInsight: () => API.request('/api/admin/market-insight'),
     getAdminUsers: () => API.request('/api/admin/user/all'),
     deleteUser: (userId) => API.request(`/api/admin/user/delete`, { method: 'DELETE', body: JSON.stringify({ userId }) }),
     deleteReview: (reviewId) => API.request(`/api/admin/review/delete`, { method: 'DELETE', body: JSON.stringify({ reviewId }) }),
