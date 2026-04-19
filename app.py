@@ -6,7 +6,7 @@ During refactoring, we have moved all the messy code into 'Modules'.
 This file now stays clean and only handles connecting everything together.
 """
 import config
-from flask import Flask
+from flask import Flask, jsonify
 
 # 1. Initialize the Flask Application
 from utils.db import init_db, create_admin
@@ -27,6 +27,7 @@ from modules.admin import admin_bp
 from modules.settings import settings_bp
 from modules.feedback import feedback_bp
 from modules.review import review_bp
+from modules.analysis import build_market_metrics
 
 # 3. Register our Blueprints with the App
 # This 'plugs in' the routes from our module files into app.py
@@ -38,6 +39,25 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(settings_bp)
 app.register_blueprint(feedback_bp)
 app.register_blueprint(review_bp)
+
+
+@app.route("/api/admin/market-metrics")
+def api_admin_market_metrics():
+    """
+    Purpose : Returns live market metrics derived from data/stock.csv.
+    Input   : None
+    Output  : JSON with summary, market status, movers, counts, and chart paths.
+    """
+    if not config.is_admin():
+        return jsonify({"status": "error", "message": "Forbidden."}), 403
+
+    try:
+        return jsonify({
+            "status": "success",
+            "data": build_market_metrics()
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
 
 # 4. Start the Application
 if __name__ == "__main__":

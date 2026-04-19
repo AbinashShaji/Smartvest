@@ -9,6 +9,7 @@ Purpose : Handles all admin-only pages and their data APIs.
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 import config
 from utils.db import get_db_connection   # ← real database helper
+from modules.analysis import analyze_stock_rows, load_stock_csv
 
 # Create the Admin Blueprint
 admin_bp = Blueprint('admin', __name__)
@@ -73,6 +74,19 @@ def admin_reviews_page():
         return redirect(url_for('analysis.dashboard'))
 
     return render_template("admin/reviews.html")
+
+
+@admin_bp.route("/admin/market-metrics")
+def admin_market_metrics_page():
+    """
+    Purpose : Renders the Market Metrics page for stock.csv analysis.
+    Input   : None
+    Output  : Admin-protected HTML page.
+    """
+    if not config.is_admin():
+        return redirect(url_for('analysis.dashboard'))
+
+    return render_template("admin/market_metrics.html")
 
 
 # =============================================================================
@@ -230,6 +244,43 @@ def api_admin_market():
         config.MARKET_STATE["state"] = state
 
         return jsonify({"status": "success", "data": {"state": state}})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@admin_bp.route("/api/admin/market-insight")
+def api_admin_market_insight():
+    """
+    Purpose : Summarizes the stock market mix from data/stock.csv.
+    Output  : JSON with Good / Bad / Stable counts and a short market status message.
+    """
+    if not config.is_admin():
+        return jsonify({"status": "error", "message": "Forbidden."}), 403
+
+    try:
+        stocks = load_stock_csv()
+        analyzed_stocks, status_counts = analyze_stock_rows(stocks, generate_charts=False)
+        good_count = status_counts["Good"]
+        bad_count = status_counts["Bad"]
+        stable_count = status_counts["Stable"]
+        total_count = len(analyzed_stocks)
+
+        if good_count > bad_count:
+            market_status = "Market is performing well"
+        else:
+            market_status = "Market is unstable"
+
+        return jsonify({
+            "status": "success",
+            "data": {
+                "total": total_count,
+                "good": good_count,
+                "bad": bad_count,
+                "stable": stable_count,
+                "market_status": market_status,
+            }
+        })
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400

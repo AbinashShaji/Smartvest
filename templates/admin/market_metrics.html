@@ -1,0 +1,245 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Market Metrics - SmartVest{% endblock %}
+{% block page_title %}Market Metrics{% endblock %}
+
+{% block content %}
+<div class="page-stack">
+    <section class="glass-card section-card">
+        <div class="section-header">
+            <div>
+                <span class="section-eyebrow">Stock CSV Analysis</span>
+                <h1 style="margin-top: 10px; font-size: clamp(2rem, 4vw, 3rem);">Market Metrics</h1>
+                <p class="muted-copy" style="max-width: 760px;">
+                    This admin page reads the live <code>data/stock.csv</code> file, classifies every stock, and shows the overall market state.
+                </p>
+            </div>
+            <div class="summary-badge" id="marketStatusBadge">Loading...</div>
+        </div>
+    </section>
+
+    <div class="stats-grid metrics-grid">
+        <div class="glass-card metric-card">
+            <div>
+                <p class="metric-label">Good</p>
+                <p class="metric-value" id="countGood">0</p>
+            </div>
+            <p class="metric-note">Stocks above +5% from day1 to day10.</p>
+        </div>
+        <div class="glass-card metric-card">
+            <div>
+                <p class="metric-label">Bad</p>
+                <p class="metric-value" id="countBad">0</p>
+            </div>
+            <p class="metric-note">Stocks below -5% from day1 to day10.</p>
+        </div>
+        <div class="glass-card metric-card">
+            <div>
+                <p class="metric-label">Stable</p>
+                <p class="metric-value" id="countStable">0</p>
+            </div>
+            <p class="metric-note">Stocks staying in the middle range.</p>
+        </div>
+        <div class="glass-card metric-card">
+            <div>
+                <p class="metric-label">Total Stocks</p>
+                <p class="metric-value" id="countTotal">0</p>
+            </div>
+            <p class="metric-note">Loaded directly from the CSV file.</p>
+        </div>
+    </div>
+
+    <section class="glass-card section-card">
+        <div class="section-header">
+            <div>
+                <h3 style="margin-bottom: 6px;">Market Summary</h3>
+                <p class="muted-copy">The summary chart is overwritten every time the API runs.</p>
+            </div>
+        </div>
+        <div class="analysis-summary-grid">
+            <div class="glass-card insight-card">
+                <p class="metric-label">Summary</p>
+                <p id="marketSummaryText" style="font-size: 1rem; line-height: 1.8;">Loading market summary...</p>
+            </div>
+            <div class="glass-card insight-card">
+                <p class="metric-label">Status</p>
+                <p id="marketStatusText" style="font-size: 1rem; line-height: 1.8;">Loading status...</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="glass-card section-card">
+        <div class="section-header">
+            <div>
+                <h3 style="margin-bottom: 6px;">Charts</h3>
+                <p class="muted-copy">A live trend line and a Good/Bad/Stable summary bar chart.</p>
+            </div>
+        </div>
+        <div class="chart-grid">
+            <figure class="glass-card chart-card">
+                <div>
+                    <h4>Market Trend</h4>
+                    <p class="muted-copy">Average day1 to day10 movement across all stocks.</p>
+                </div>
+                <div class="chart-frame">
+                    <img id="trendChartImg" alt="Market trend chart">
+                </div>
+            </figure>
+
+            <figure class="glass-card chart-card">
+                <div>
+                    <h4>Market Summary</h4>
+                    <p class="muted-copy">Classification counts for the current CSV file.</p>
+                </div>
+                <div class="chart-frame">
+                    <img id="summaryChartImg" alt="Market summary chart">
+                </div>
+            </figure>
+        </div>
+    </section>
+
+    <section class="analysis-summary-grid">
+        <article class="glass-card section-card">
+            <div class="section-header">
+                <div>
+                    <h3 style="margin-bottom: 6px;">Top Gainers</h3>
+                    <p class="muted-copy">Highest percentage growth from day1 to day10.</p>
+                </div>
+            </div>
+            <div id="topGainersList" class="insight-list">
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p class="muted-copy">Loading top gainers...</p>
+                </div>
+            </div>
+        </article>
+
+        <article class="glass-card section-card">
+            <div class="section-header">
+                <div>
+                    <h3 style="margin-bottom: 6px;">Top Losers</h3>
+                    <p class="muted-copy">Lowest percentage performance from day1 to day10.</p>
+                </div>
+            </div>
+            <div id="topLosersList" class="insight-list">
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p class="muted-copy">Loading top losers...</p>
+                </div>
+            </div>
+        </article>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadMarketMetrics();
+    });
+
+    function safeNumber(value) {
+        const num = Number(value);
+        return Number.isFinite(num) ? num : 0;
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function formatPercent(value) {
+        const num = safeNumber(value);
+        const prefix = num > 0 ? '+' : '';
+        return `${prefix}${num.toFixed(2)}%`;
+    }
+
+    function renderStockList(items, emptyMessage) {
+        if (!Array.isArray(items) || items.length === 0) {
+            return `
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p class="muted-copy">${escapeHtml(emptyMessage)}</p>
+                </div>
+            `;
+        }
+
+        return items.map((stock) => `
+            <div class="insight-item">
+                <span class="insight-dot"></span>
+                <p>
+                    <strong>${escapeHtml(stock.name)}</strong>
+                    <br>
+                    Status: ${escapeHtml(stock.status)}
+                    <br>
+                    Change: ${formatPercent(stock.percent_change)}
+                </p>
+            </div>
+        `).join('');
+    }
+
+    async function loadMarketMetrics() {
+        try {
+            const data = await API.getMarketMetrics();
+            const counts = data?.counts || {};
+            const charts = data?.charts || {};
+            const marketStatus = data?.market_status || 'Stable';
+
+            document.getElementById('marketStatusBadge').innerText = marketStatus;
+            document.getElementById('marketStatusText').innerText = marketStatus;
+            document.getElementById('marketSummaryText').innerText = data?.summary || 'No market summary is available.';
+            document.getElementById('countGood').innerText = safeNumber(counts.good).toFixed(0);
+            document.getElementById('countBad').innerText = safeNumber(counts.bad).toFixed(0);
+            document.getElementById('countStable').innerText = safeNumber(counts.stable).toFixed(0);
+            document.getElementById('countTotal').innerText = safeNumber(counts.total).toFixed(0);
+
+            const stamp = `?v=${Date.now()}`;
+            const trendImg = document.getElementById('trendChartImg');
+            const summaryImg = document.getElementById('summaryChartImg');
+
+            if (charts.trend) {
+                trendImg.src = `${charts.trend}${stamp}`;
+            } else {
+                trendImg.removeAttribute('src');
+            }
+
+            if (charts.summary) {
+                summaryImg.src = `${charts.summary}${stamp}`;
+            } else {
+                summaryImg.removeAttribute('src');
+            }
+
+            document.getElementById('topGainersList').innerHTML = renderStockList(
+                Array.isArray(data?.top_gainers) ? data.top_gainers : [],
+                'No gainers found in the current CSV file.'
+            );
+            document.getElementById('topLosersList').innerHTML = renderStockList(
+                Array.isArray(data?.top_losers) ? data.top_losers : [],
+                'No losers found in the current CSV file.'
+            );
+        } catch (error) {
+            document.getElementById('marketStatusBadge').innerText = 'Unavailable';
+            document.getElementById('marketSummaryText').innerText = 'Unable to load market metrics right now.';
+            document.getElementById('marketStatusText').innerText = 'Unavailable';
+            document.getElementById('trendChartImg').removeAttribute('src');
+            document.getElementById('summaryChartImg').removeAttribute('src');
+            document.getElementById('topGainersList').innerHTML = `
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p class="muted-copy">Unable to load top gainers.</p>
+                </div>
+            `;
+            document.getElementById('topLosersList').innerHTML = `
+                <div class="insight-item">
+                    <span class="insight-dot"></span>
+                    <p class="muted-copy">Unable to load top losers.</p>
+                </div>
+            `;
+        }
+    }
+</script>
+{% endblock %}
