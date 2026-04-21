@@ -171,7 +171,7 @@
             document.getElementById('analysisIncome').innerText = formatCurrency(income);
             document.getElementById('analysisExpense').innerText = formatCurrency(expenses);
             document.getElementById('analysisSavings').innerText = formatCurrency(savings);
-            document.getElementById('analysisRate').innerText = `${Math.max(0, savingsRate).toFixed(1)}%`;
+            document.getElementById('analysisRate').innerText = `${savingsRate.toFixed(1)}%`;
             document.getElementById('analysisGoalProgress').innerText = `${safeNumber(dashboard.goal_progress).toFixed(0)}%`;
             document.getElementById('analysisAlerts').innerText = `${safeNumber(dashboard.alert_count).toFixed(0)}`;
             document.getElementById('analysisSummaryText').innerText = report.summary || 'No summary text is available yet.';

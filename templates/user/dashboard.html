@@ -240,7 +240,7 @@
             document.getElementById('currentIncome').innerText = formatCurrency(income);
             document.getElementById('totalExpenses').innerText = formatCurrency(totalExpenses);
             document.getElementById('totalSavings').innerText = formatCurrency(totalSavings);
-            document.getElementById('savingsRate').innerText = `${Math.max(0, savingsRate).toFixed(1)}%`;
+            document.getElementById('savingsRate').innerText = `${savingsRate.toFixed(1)}%`;
         } catch (error) {
             document.getElementById('currentIncome').innerText = '$0.00';
             document.getElementById('totalExpenses').innerText = '$0.00';
@@ -322,9 +322,10 @@
                 recommendedBox.innerHTML = `
                     <div class="insight-item">
                         <span class="insight-dot"></span>
-                    <p class="muted-copy">No stocks match the current risk level.</p>
-                </div>
-            `;
+                        <p class="muted-copy">No stocks match the current risk level.</p>
+                    </div>
+                `;
+            }
         } else {
             stockSummary.innerText = '0 stocks loaded';
             stockList.innerHTML = `
@@ -344,7 +345,6 @@
                 </div>
             `;
         }
-    }
     }
 
     async function loadInsights(frame) {

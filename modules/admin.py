@@ -266,7 +266,9 @@ def api_admin_market_insight():
         stable_count = status_counts["Stable"]
         total_count = len(analyzed_stocks)
 
-        if good_count > bad_count:
+        if total_count == 0:
+            market_status = "No market data available"
+        elif good_count > bad_count:
             market_status = "Market is performing well"
         else:
             market_status = "Market is unstable"
