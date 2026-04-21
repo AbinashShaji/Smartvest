@@ -89,3 +89,8 @@ def api_investment_overview():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
+
+@investment_bp.route("/api/investment")
+def api_investment_alias():
+    """Compatibility alias for older clients expecting /api/investment."""
+    return api_investment_overview()

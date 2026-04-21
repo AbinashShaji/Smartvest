@@ -9,7 +9,6 @@ from flask import Blueprint, render_template, jsonify, redirect, url_for
 import config
 from utils.db import get_db_connection   # ← real database helper
 import os
-import time
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
@@ -21,6 +20,26 @@ plt.style.use("dark_background")
 analysis_bp = Blueprint('analysis', __name__)
 
 STOCK_DAY_COLUMNS = [f"day{i}" for i in range(1, 11)]
+
+
+def _coerce_float(value, default=0.0):
+    """Convert a value to float safely, falling back to default on bad input."""
+    try:
+        if value is None:
+            return default
+        if pd.isna(value):
+            return default
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _sum_numeric(rows, key):
+    """Sum a numeric key from SQLite rows without crashing on null values."""
+    total = 0.0
+    for row in rows:
+        total += _coerce_float(row[key])
+    return total
 
 
 def _safe_stock_name(name):
@@ -35,16 +54,20 @@ def load_stock_csv():
     Purpose : Load stock data from the CSV file used by the upgrade.
     Output  : Pandas DataFrame with the expected stock columns.
     """
-    stocks = pd.read_csv("data/stock.csv")
-
     required_columns = ["name"] + STOCK_DAY_COLUMNS
-    missing_columns = [column for column in required_columns if column not in stocks.columns]
-    if missing_columns:
-        raise ValueError(
-            "stock.csv is missing required columns: " + ", ".join(missing_columns)
-        )
+    try:
+        stocks = pd.read_csv("data/stock.csv")
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        return pd.DataFrame(columns=required_columns)
 
-    return stocks[required_columns]
+    if "name" not in stocks.columns:
+        stocks["name"] = ""
+
+    for column in STOCK_DAY_COLUMNS:
+        if column not in stocks.columns:
+            stocks[column] = pd.NA
+
+    return stocks.reindex(columns=required_columns)
 
 
 def analyze_stock_rows(stocks, generate_charts=True):
@@ -61,8 +84,8 @@ def analyze_stock_rows(stocks, generate_charts=True):
 
     for index, row in stocks.iterrows():
         stock_name = str(row["name"]).strip() or f"Stock {index + 1}"
-        prices = row[1:].values.astype(float)
-        change = float(prices[-1] - prices[0])
+        prices = [ _coerce_float(row[column]) for column in STOCK_DAY_COLUMNS ]
+        change = float(prices[-1] - prices[0]) if prices else 0.0
 
         if change > 5:
             status = "Good"
@@ -76,7 +99,7 @@ def analyze_stock_rows(stocks, generate_charts=True):
         chart_path = ""
         if generate_charts:
             safe_name = _safe_stock_name(stock_name)
-            file_name = f"{safe_name}_{index}_{int(time.time() * 1000)}_stock.png"
+            file_name = f"{safe_name}_stock.png"
             file_path = os.path.join("static", file_name)
 
             days = [f"Day {i}" for i in range(1, len(prices) + 1)]
@@ -97,7 +120,7 @@ def analyze_stock_rows(stocks, generate_charts=True):
             "name": stock_name,
             "status": status,
             "change": round(change, 2),
-            "prices": [float(price) for price in prices.tolist()],
+            "prices": [float(price) for price in prices],
             "chart": chart_path,
         })
 
@@ -192,7 +215,9 @@ def build_market_metrics():
             })
 
     total_count = len(stock_rows)
-    if good_count > bad_count:
+    if total_count == 0:
+        market_status = "No market data available"
+    elif good_count > bad_count:
         market_status = "Growth"
     elif bad_count > good_count:
         market_status = "Down"
@@ -273,29 +298,22 @@ def get_user_financial_snapshot(user_id):
     )
     expense_rows = cursor.fetchall()
 
-    total_expenses = 0.0
-    for row in expense_rows:
-        total_expenses = total_expenses + row["amount"]
+    total_expenses = _sum_numeric(expense_rows, "amount")
 
     cursor.execute(
         "SELECT amount FROM income WHERE user_id = ? ORDER BY id DESC LIMIT 1",
         (user_id,)
     )
     income_row = cursor.fetchone()
-    monthly_income = income_row["amount"] if income_row is not None else 0.0
+    monthly_income = _coerce_float(income_row["amount"]) if income_row is not None else 0.0
 
     conn.close()
 
     savings = monthly_income - total_expenses
-    if savings < 0:
-        savings = 0.0
 
     if monthly_income > 0:
         savings_rate = ((monthly_income - total_expenses) / monthly_income) * 100
     else:
-        savings_rate = 0.0
-
-    if savings_rate < 0:
         savings_rate = 0.0
 
     risk_level = get_risk_level(savings_rate)
@@ -391,9 +409,7 @@ def api_dashboard_data():
         expense_rows = cursor.fetchall()   # Returns a list of rows
 
         # Step 5: Add up all expense amounts using a simple loop
-        total_expenses = 0.0
-        for row in expense_rows:
-            total_expenses = total_expenses + row["amount"]
+        total_expenses = _sum_numeric(expense_rows, "amount")
 
         # Step 6: Fetch this user's monthly income (most recent record)
         cursor.execute(
@@ -403,10 +419,7 @@ def api_dashboard_data():
         income_row = cursor.fetchone()
 
         # Step 7: If no income record found, treat income as 0
-        if income_row is not None:
-            monthly_income = income_row["amount"]
-        else:
-            monthly_income = 0.0
+        monthly_income = _coerce_float(income_row["amount"]) if income_row is not None else 0.0
 
         # Fetch goals from database using user_id
         cursor.execute(
@@ -416,19 +429,14 @@ def api_dashboard_data():
         goal_rows = cursor.fetchall()
         
         # Add up all targets and saved amounts
-        total_target = 0.0
-        total_saved = 0.0
-        for row in goal_rows:
-            total_target = total_target + row["target_amount"]
-            total_saved = total_saved + row["saved_amount"]
+        total_target = _sum_numeric(goal_rows, "target_amount")
+        total_saved = _sum_numeric(goal_rows, "saved_amount")
 
         # Step 8: Close the database — we are done reading
         conn.close()
 
-        # Step 9: Calculate savings (cannot go below zero)
+        # Step 9: Calculate savings exactly as income minus expenses.
         total_savings = monthly_income - total_expenses
-        if total_savings < 0:
-            total_savings = 0.0
 
         # Calculate progress safely (handle division by zero if target_amount is 0)
         if total_target > 0:
@@ -452,6 +460,12 @@ def api_dashboard_data():
     except Exception as e:
         # If anything goes wrong, return the error message so we can debug it
         return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@analysis_bp.route("/api/dashboard")
+def api_dashboard_alias():
+    """Compatibility alias for older clients expecting /api/dashboard."""
+    return api_dashboard_data()
 
 
 @analysis_bp.route("/api/analysis/report")
@@ -482,9 +496,7 @@ def api_expense_analysis():
         expense_rows = cursor.fetchall()
 
         # Step 5: Sum up the expenses using a plain loop
-        total_expenses = 0.0
-        for row in expense_rows:
-            total_expenses = total_expenses + row["amount"]
+        total_expenses = _sum_numeric(expense_rows, "amount")
 
         # Step 6: Fetch the user's most recent monthly income
         cursor.execute(
@@ -494,10 +506,7 @@ def api_expense_analysis():
         income_row = cursor.fetchone()
 
         # Step 7: Default income to 0 when no data exists
-        if income_row is not None:
-            monthly_income = income_row["amount"]
-        else:
-            monthly_income = 0.0
+        monthly_income = _coerce_float(income_row["amount"]) if income_row is not None else 0.0
 
         # Step 8: Close the database connection
         conn.close()
@@ -507,10 +516,6 @@ def api_expense_analysis():
         if monthly_income > 0:
             savings_rate = ((monthly_income - total_expenses) / monthly_income) * 100
         else:
-            savings_rate = 0.0
-
-        # Savings rate cannot be negative (you can't save negative money in this display)
-        if savings_rate < 0:
             savings_rate = 0.0
 
         # Step 10: Build a plain-English summary sentence
@@ -528,6 +533,12 @@ def api_expense_analysis():
 
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@analysis_bp.route("/api/analysis")
+def api_analysis_alias():
+    """Compatibility alias for older clients expecting /api/analysis."""
+    return api_expense_analysis()
 
 
 # =============================================================================
