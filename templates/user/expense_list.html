@@ -1,0 +1,174 @@
+{% extends "user/base_app.html" %}
+
+{% block title %}Expense List - SmartVest{% endblock %}
+{% block page_title %}Expense List{% endblock %}
+
+{% block content %}
+<div class="expense-module-shell" data-expense-page="list">
+    <div class="expense-module-header">
+        <div>
+            <p class="expense-eyebrow">Expense Module</p>
+            <h1>Expense List</h1>
+            <p class="expense-lead">Review saved expenses, filter the rows you need, and manage entries with edit and delete modals.</p>
+        </div>
+        <div class="expense-chip">Sorted by latest date first</div>
+    </div>
+
+    <nav class="expense-tab-bar" aria-label="Expense module navigation">
+        <a class="expense-tab-link {% if expense_page == 'add' %}active{% endif %}" href="/expenses">Add Expense</a>
+        <a class="expense-tab-link {% if expense_page == 'list' %}active{% endif %}" href="/expenses/list">Expense List</a>
+        <a class="expense-tab-link {% if expense_page == 'export' %}active{% endif %}" href="/expenses/export">Export Expense</a>
+    </nav>
+
+    <section class="expense-card">
+        <div class="expense-card-header">
+            <div>
+                <h3>Filters</h3>
+                <p class="expense-card-copy">Switch between a single day, a date range, a month, or a year.</p>
+            </div>
+        </div>
+
+        <form id="expenseFilterForm" class="expense-filter-grid">
+            <div class="expense-field">
+                <label class="expense-label" for="expenseFilterMode">Filter Type</label>
+                <select id="expenseFilterMode" class="expense-select" name="filter_mode">
+                    <option value="single_day">Single Day</option>
+                    <option value="date_range">Date Range</option>
+                    <option value="month">Month</option>
+                    <option value="year">Year</option>
+                </select>
+            </div>
+
+            <div class="expense-field expense-filter-group" data-filter-group="single_day">
+                <label class="expense-label" for="expenseSingleDay">Date</label>
+                <input id="expenseSingleDay" class="expense-input" type="date" name="single_day">
+            </div>
+
+            <div class="expense-field expense-filter-group" data-filter-group="date_range" hidden>
+                <label class="expense-label" for="expenseDateFrom">From</label>
+                <input id="expenseDateFrom" class="expense-input" type="date" name="date_from">
+            </div>
+
+            <div class="expense-field expense-filter-group" data-filter-group="date_range" hidden>
+                <label class="expense-label" for="expenseDateTo">To</label>
+                <input id="expenseDateTo" class="expense-input" type="date" name="date_to">
+            </div>
+
+            <div class="expense-field expense-filter-group" data-filter-group="month" hidden>
+                <label class="expense-label" for="expenseMonth">Month</label>
+                <input id="expenseMonth" class="expense-input" type="month" name="month">
+            </div>
+
+            <div class="expense-field expense-filter-group" data-filter-group="year" hidden>
+                <label class="expense-label" for="expenseYear">Year</label>
+                <input id="expenseYear" class="expense-input" type="number" name="year" min="2000" max="2100" placeholder="2026">
+            </div>
+
+            <div class="expense-actions-row" style="grid-column: 1 / -1;">
+                <button type="submit" class="btn-premium">Apply Filters</button>
+                <button id="expenseFilterReset" type="button" class="expense-button-secondary">Reset</button>
+                <p id="expenseListStatus" class="expense-status"></p>
+            </div>
+        </form>
+    </section>
+
+    <section class="expense-card">
+        <div class="expense-toolbar">
+            <div class="expense-actions-row">
+                <label class="expense-inline-note" style="display: inline-flex; align-items: center; gap: 10px;">
+                    <input id="expenseSelectAll" class="expense-checkbox" type="checkbox">
+                    Select all visible
+                </label>
+                <span id="expenseSelectedCount" class="expense-count">0 selected</span>
+            </div>
+            <button id="expenseBulkDeleteBtn" type="button" class="expense-button-danger" disabled>Delete Selected</button>
+        </div>
+
+        <div class="expense-table-wrap">
+            <table class="expense-table">
+                <thead>
+                    <tr>
+                        <th style="width: 56px;"><input id="expenseSelectAllHeader" class="expense-checkbox" type="checkbox" aria-label="Select all visible expenses"></th>
+                        <th>Amount</th>
+                        <th>Category</th>
+                        <th>Date</th>
+                        <th style="text-align: right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="expenseTableBody">
+                    <tr>
+                        <td colspan="5" class="expense-empty-state">Loading expenses...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <div id="expenseEditModal" class="expense-modal-backdrop" aria-hidden="true">
+        <div class="expense-modal expense-modal-wide" role="dialog" aria-modal="true" aria-labelledby="expenseEditModalTitle">
+            <div class="expense-modal-header">
+                <div>
+                    <h3 id="expenseEditModalTitle" class="expense-modal-title">Edit Expense</h3>
+                    <p class="expense-modal-copy">Update the amount, category, or date. The rest of the record stays intact.</p>
+                </div>
+                <button type="button" class="expense-button-secondary" data-close-edit-modal>Close</button>
+            </div>
+
+            <form id="expenseEditForm" class="expense-form-grid" style="margin-top: 20px;">
+                <input type="hidden" name="expense_id" id="expenseEditId">
+
+                <div class="expense-field">
+                    <label class="expense-label" for="expenseEditAmount">Amount</label>
+                    <input id="expenseEditAmount" class="expense-input" type="number" name="amount" step="0.01" min="0" required>
+                </div>
+
+                <div class="expense-field">
+                    <label class="expense-label" for="expenseEditCategory">Category</label>
+                    <select id="expenseEditCategory" class="expense-select" name="category" required>
+                        <option value="Food">Food</option>
+                        <option value="Transport">Transport</option>
+                        <option value="Rent">Rent</option>
+                        <option value="Shopping">Shopping</option>
+                        <option value="Entertainment">Entertainment</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Healthcare">Healthcare</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="expense-field">
+                    <label class="expense-label" for="expenseEditDate">Date</label>
+                    <input id="expenseEditDate" class="expense-input" type="date" name="date" required>
+                </div>
+
+                <div class="expense-actions-row" style="grid-column: 1 / -1;">
+                    <button id="expenseEditSaveBtn" type="submit" class="btn-premium">Save Changes</button>
+                    <button type="button" class="expense-button-secondary" data-close-edit-modal>Cancel</button>
+                    <p id="expenseEditStatus" class="expense-status"></p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="expenseDeleteModal" class="expense-modal-backdrop" aria-hidden="true">
+        <div class="expense-modal" role="dialog" aria-modal="true" aria-labelledby="expenseDeleteModalTitle">
+            <div class="expense-modal-header">
+                <div>
+                    <h3 id="expenseDeleteModalTitle" class="expense-modal-title">Confirm Delete</h3>
+                    <p id="expenseDeleteModalMessage" class="expense-modal-copy">This action cannot be undone.</p>
+                </div>
+                <button type="button" class="expense-button-secondary" data-close-delete-modal>Close</button>
+            </div>
+
+            <div class="expense-modal-actions">
+                <button type="button" class="expense-button-secondary" data-close-delete-modal>Cancel</button>
+                <button id="expenseDeleteConfirmBtn" type="button" class="expense-button-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/expense.js') }}"></script>
+{% endblock %}

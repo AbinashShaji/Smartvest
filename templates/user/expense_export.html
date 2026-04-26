@@ -1,0 +1,73 @@
+{% extends "user/base_app.html" %}
+
+{% block title %}Export Expense - SmartVest{% endblock %}
+{% block page_title %}Export Expense{% endblock %}
+
+{% block content %}
+<div class="expense-module-shell" data-expense-page="export">
+    <div class="expense-module-header">
+        <div>
+            <p class="expense-eyebrow">Expense Module</p>
+            <h1>Export Expense</h1>
+            <p class="expense-lead">Choose a filter, preview the matching rows, and export the selected data as a CSV file.</p>
+        </div>
+        <div class="expense-chip">Filtered export only</div>
+    </div>
+
+    <nav class="expense-tab-bar" aria-label="Expense module navigation">
+        <a class="expense-tab-link {% if expense_page == 'add' %}active{% endif %}" href="/expenses">Add Expense</a>
+        <a class="expense-tab-link {% if expense_page == 'list' %}active{% endif %}" href="/expenses/list">Expense List</a>
+        <a class="expense-tab-link {% if expense_page == 'export' %}active{% endif %}" href="/expenses/export">Export Expense</a>
+    </nav>
+
+    <section class="expense-card">
+        <div class="expense-card-header">
+            <div>
+                <h3>Export Filters</h3>
+                <p class="expense-card-copy">Use a date range, month, or year to narrow the export before downloading.</p>
+            </div>
+        </div>
+
+        <form id="expenseExportForm" class="expense-filter-grid">
+            <div class="expense-field">
+                <label class="expense-label" for="expenseExportMode">Filter Type</label>
+                <select id="expenseExportMode" class="expense-select" name="filter_mode">
+                    <option value="date_range">Date Range</option>
+                    <option value="month">Month</option>
+                    <option value="year">Year</option>
+                </select>
+            </div>
+
+            <div class="expense-field expense-filter-group" data-filter-group="date_range">
+                <label class="expense-label" for="expenseExportFrom">From</label>
+                <input id="expenseExportFrom" class="expense-input" type="date" name="date_from">
+            </div>
+
+            <div class="expense-field expense-filter-group" data-filter-group="date_range">
+                <label class="expense-label" for="expenseExportTo">To</label>
+                <input id="expenseExportTo" class="expense-input" type="date" name="date_to">
+            </div>
+
+            <div class="expense-field expense-filter-group" data-filter-group="month" hidden>
+                <label class="expense-label" for="expenseExportMonth">Month</label>
+                <input id="expenseExportMonth" class="expense-input" type="month" name="month">
+            </div>
+
+            <div class="expense-field expense-filter-group" data-filter-group="year" hidden>
+                <label class="expense-label" for="expenseExportYear">Year</label>
+                <input id="expenseExportYear" class="expense-input" type="number" name="year" min="2000" max="2100" placeholder="2026">
+            </div>
+
+            <div class="expense-actions-row" style="grid-column: 1 / -1;">
+                <button id="expenseExportButton" type="submit" class="btn-premium">Export CSV</button>
+                <button id="expenseExportReset" type="button" class="expense-button-secondary">Reset</button>
+                <p id="expenseExportStatus" class="expense-status"></p>
+            </div>
+        </form>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/expense.js') }}"></script>
+{% endblock %}
