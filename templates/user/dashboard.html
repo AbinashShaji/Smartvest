@@ -4,192 +4,90 @@
 {% block page_title %}Financial Overview{% endblock %}
 
 {% block content %}
-<div class="page-stack">
-    <section class="glass-card section-card">
-        <div class="section-header">
-            <div>
-                <span class="section-eyebrow">Live Analysis</span>
-                <h1 style="margin-top: 10px; font-size: clamp(2rem, 4vw, 3rem);">Financial Overview</h1>
-                <p class="muted-copy" style="max-width: 760px;">
-                    Review your income, expenses, savings, and charted spending patterns in one clean workspace.
-                </p>
-            </div>
-            <div class="summary-badge">Real data from SQLite</div>
+<div class="dashboard-page">
+    <section class="dashboard-hero glass-card">
+        <div>
+            <span class="section-eyebrow">Live Analysis</span>
+            <h1 class="dashboard-title">Financial Overview</h1>
+            <p class="muted-copy dashboard-hero-copy">
+                A clean snapshot of your income, spending, savings, and latest expense activity.
+            </p>
         </div>
+        <div class="summary-badge">Real data from SQLite</div>
     </section>
 
-    <div class="stats-grid metrics-grid">
-        <div class="glass-card metric-card">
-            <div>
-                <p class="metric-label">Income</p>
-                <p class="metric-value" id="currentIncome">$0.00</p>
-            </div>
-            <p class="metric-note">Latest monthly income stored in the database.</p>
-        </div>
-        <div class="glass-card metric-card">
-            <div>
-                <p class="metric-label">Total Expense</p>
-                <p class="metric-value" id="totalExpenses">$0.00</p>
-            </div>
-            <p class="metric-note">All recorded expenses for the current account.</p>
-        </div>
-        <div class="glass-card metric-card">
-            <div>
-                <p class="metric-label">Savings</p>
-                <p class="metric-value" id="totalSavings">$0.00</p>
-            </div>
-            <p class="metric-note">Income minus expenses, clipped at zero.</p>
-        </div>
-        <div class="glass-card metric-card">
-            <div>
-                <p class="metric-label">Savings Rate</p>
-                <p class="metric-value" id="savingsRate">0%</p>
-            </div>
-            <p class="metric-note">Calculated from your live income snapshot.</p>
-        </div>
-    </div>
-
-    <section class="glass-card section-card">
-        <div class="section-header">
-            <div>
-                <h3 style="margin-bottom: 6px;">Visual Analysis</h3>
-                <p class="muted-copy">Three backend-generated charts with more breathing room and larger display areas.</p>
-            </div>
-            <button type="button" class="btn-premium btn-secondary" onclick="refreshDashboardCharts()">
-                Refresh Charts
-            </button>
-        </div>
-
-        <div class="chart-grid">
-            <figure class="glass-card chart-card">
-                <div>
-                    <h4>Category Spending</h4>
-                    <p class="muted-copy">Where your money is going by category.</p>
-                </div>
-                <div class="chart-frame">
-                    <img id="barChartImg" src="" alt="Category spending chart">
-                </div>
-            </figure>
-
-            <figure class="glass-card chart-card">
-                <div>
-                    <h4>Expense Distribution</h4>
-                    <p class="muted-copy">A cleaner slice view of category weight.</p>
-                </div>
-                <div class="chart-frame">
-                    <img id="pieChartImg" src="" alt="Expense distribution chart">
-                </div>
-            </figure>
-
-            <figure class="glass-card chart-card">
-                <div>
-                    <h4>Spending Over Time</h4>
-                    <p class="muted-copy">Daily movement in your expense history.</p>
-                </div>
-                <div class="chart-frame">
-                    <img id="lineChartImg" src="" alt="Spending over time chart">
-                </div>
-            </figure>
-        </div>
+    <section class="dashboard-kpis">
+        <article class="glass-card dashboard-kpi-card">
+            <p class="metric-label">Income</p>
+            <p class="metric-value" id="currentIncome">$0.00</p>
+            <p class="metric-note">Latest monthly income.</p>
+        </article>
+        <article class="glass-card dashboard-kpi-card">
+            <p class="metric-label">Expense</p>
+            <p class="metric-value" id="totalExpenses">$0.00</p>
+            <p class="metric-note">All recorded expenses.</p>
+        </article>
+        <article class="glass-card dashboard-kpi-card">
+            <p class="metric-label">Savings</p>
+            <p class="metric-value" id="totalSavings">$0.00</p>
+            <p class="metric-note">Income minus expenses.</p>
+        </article>
+        <article class="glass-card dashboard-kpi-card">
+            <p class="metric-label">Rate</p>
+            <p class="metric-value" id="savingsRate">0%</p>
+            <p class="metric-note">Current savings rate.</p>
+        </article>
     </section>
 
-    <section class="insight-grid">
-        <article class="glass-card insight-card">
-            <div class="section-header">
+    <section class="dashboard-grid">
+        <article class="glass-card dashboard-section-card dashboard-insight-card">
+            <div class="section-header dashboard-section-header">
                 <div>
-                    <h3 style="margin-bottom: 6px;">Insight Summary</h3>
-                    <p class="muted-copy">Derived from your live financial data.</p>
+                    <h3>Insight</h3>
+                    <p class="muted-copy">Short summary from live analysis.</p>
                 </div>
             </div>
-            <div id="dashboardSummary" class="insight-list">
-                <div class="insight-item">
-                    <span class="insight-dot"></span>
-                    <p class="muted-copy">Loading analysis summary...</p>
+            <div class="dashboard-insight">
+                <p id="dashboardSummary" class="dashboard-summary-text">Loading summary...</p>
+                <div class="dashboard-insight-meta">
+                    <span class="dashboard-insight-label">Top Category</span>
+                    <strong id="dashboardTopCategory">No data yet</strong>
                 </div>
             </div>
         </article>
 
-        <article class="glass-card insight-card">
-            <div class="section-header">
+        <article class="glass-card dashboard-section-card dashboard-chart-card">
+            <div class="section-header dashboard-section-header">
                 <div>
-                    <h3 style="margin-bottom: 6px;">Live Breakdown</h3>
-                    <p class="muted-copy">Key signals from the current dataset.</p>
+                    <h3>Category Spending</h3>
+                    <p class="muted-copy">Single chart view from live data.</p>
                 </div>
             </div>
-            <div id="liveBreakdown" class="insight-list">
-                <div class="insight-item">
-                    <span class="insight-dot"></span>
-                    <p class="muted-copy">Loading live breakdown...</p>
-                </div>
+            <div class="chart-frame dashboard-chart-frame">
+                <img id="dashboardChartImg" src="" alt="Category spending chart">
             </div>
         </article>
     </section>
 
-    <section class="glass-card section-card">
-        <div class="section-header">
+    <section class="glass-card dashboard-section-card">
+        <div class="section-header dashboard-section-header">
             <div>
-                <h3 style="margin-bottom: 6px;">Investment Signals</h3>
-                <p class="muted-copy">Savings-based guidance tied directly to the live analysis output.</p>
-            </div>
-            <div class="summary-badge" id="dashboardRiskLevel">Risk: --</div>
-        </div>
-        <div class="analysis-summary-grid">
-            <div class="glass-card insight-card">
-                <p class="metric-label">Investment Suggestion</p>
-                <p id="dashboardInvestmentSuggestion" style="font-size: 1rem; line-height: 1.8;">Loading recommendation...</p>
-            </div>
-            <div class="glass-card insight-card">
-                <p class="metric-label">Recommended Stocks</p>
-                <div id="dashboardRecommendedStocks" class="insight-list">
-                    <div class="insight-item">
-                        <span class="insight-dot"></span>
-                        <p class="muted-copy">Loading recommended stocks...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="glass-card section-card">
-        <div class="section-header">
-            <div>
-                <h3 style="margin-bottom: 6px;">Stock Watchlist</h3>
-                <p class="muted-copy">All stock rows are classified from <code>data/stock.csv</code>.</p>
-            </div>
-            <div class="summary-badge" id="dashboardStockSummary">0 stocks loaded</div>
-        </div>
-        <div id="dashboardStockList" class="analysis-summary-grid"></div>
-    </section>
-
-    <section class="glass-card section-card">
-        <div class="section-header">
-            <div>
-                <h3 style="margin-bottom: 6px;">Stock Charts</h3>
-                <p class="muted-copy">Each chart is generated from live CSV rows and saved in <code>/static/</code>.</p>
-            </div>
-        </div>
-        <div id="dashboardStockCharts" class="chart-grid"></div>
-    </section>
-
-    <section class="glass-card section-card">
-        <div class="section-header">
-            <div>
-                <h3 style="margin-bottom: 6px;">Recent Activity</h3>
-                <p class="muted-copy">A short list of the latest database entries for quick review.</p>
+                <h3>Recent Activity</h3>
+                <p class="muted-copy">Last 5 expenses only.</p>
             </div>
         </div>
         <div class="table-responsive">
-            <table style="width: 100%; border-collapse: collapse;">
+            <table class="dashboard-table">
                 <thead>
-                    <tr style="text-align: left; color: var(--fg-secondary); font-size: 0.85rem; border-bottom: 1px solid var(--glass-border);">
-                        <th style="padding: 12px;">DESCRIPTION</th>
-                        <th style="padding: 12px;">CATEGORY</th>
-                        <th style="padding: 12px;">DATE</th>
-                        <th style="padding: 12px; text-align: right;">AMOUNT</th>
+                    <tr>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Date</th>
+                        <th class="dashboard-table-amount">Amount</th>
                     </tr>
                 </thead>
                 <tbody id="recentActivity">
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
+                    <tr>
                         <td colspan="4" class="empty-state">Loading recent activity...</td>
                     </tr>
                 </tbody>
@@ -200,263 +98,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        loadDashboard();
-    });
-
-    async function loadDashboard() {
-        const frame = await API.getStockAnalysis().catch(() => null);
-        await Promise.all([
-            loadStats(),
-            loadCharts(frame),
-            loadInsights(frame),
-            loadRecentActivity(),
-        ]);
-    }
-
-    function safeNumber(value) {
-        const num = Number(value);
-        return Number.isFinite(num) ? num : 0;
-    }
-
-    function escapeHtml(value) {
-        return String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
-    }
-
-    async function loadStats() {
-        try {
-            const data = await API.getDashboard();
-            const income = safeNumber(data.monthly_income);
-            const totalExpenses = safeNumber(data.total_expenses);
-            const totalSavings = safeNumber(data.total_savings);
-            const savingsRate = income > 0 ? (totalSavings / income) * 100 : 0;
-
-            document.getElementById('currentIncome').innerText = formatCurrency(income);
-            document.getElementById('totalExpenses').innerText = formatCurrency(totalExpenses);
-            document.getElementById('totalSavings').innerText = formatCurrency(totalSavings);
-            document.getElementById('savingsRate').innerText = `${savingsRate.toFixed(1)}%`;
-        } catch (error) {
-            document.getElementById('currentIncome').innerText = '$0.00';
-            document.getElementById('totalExpenses').innerText = '$0.00';
-            document.getElementById('totalSavings').innerText = '$0.00';
-            document.getElementById('savingsRate').innerText = '0%';
-        }
-    }
-
-    async function loadCharts(frame) {
-        const barImg = document.getElementById('barChartImg');
-        const pieImg = document.getElementById('pieChartImg');
-        const lineImg = document.getElementById('lineChartImg');
-        const stockList = document.getElementById('dashboardStockList');
-        const stockCharts = document.getElementById('dashboardStockCharts');
-        const stockSummary = document.getElementById('dashboardStockSummary');
-        let data = frame || null;
-
-        try {
-            data = frame || await API.getStockAnalysis();
-            const stamp = `?v=${Date.now()}`;
-
-            if (data && data.bar_chart) {
-                barImg.src = `${data.bar_chart}${stamp}`;
-                pieImg.src = `${data.pie_chart}${stamp}`;
-                lineImg.src = `${data.line_chart}${stamp}`;
-                barImg.style.display = 'block';
-                pieImg.style.display = 'block';
-                lineImg.style.display = 'block';
-            } else {
-                [barImg, pieImg, lineImg].forEach((img) => {
-                    img.removeAttribute('src');
-                    img.style.display = 'none';
-                });
-            }
-        } catch (error) {
-            [barImg, pieImg, lineImg].forEach((img) => {
-                img.removeAttribute('src');
-                img.style.display = 'none';
-            });
-        }
-
-        if (data && Array.isArray(data.stocks)) {
-            const recommended = Array.isArray(data.recommended_stocks) ? data.recommended_stocks : [];
-
-            stockSummary.innerText = `${data.stocks.length} stocks loaded`;
-
-            stockList.innerHTML = data.stocks.map((stock) => `
-                <div class="glass-card insight-card">
-                    <p class="metric-label">${escapeHtml(stock.name)}</p>
-                    <p style="margin: 8px 0 12px;">
-                        <strong>Status:</strong> ${escapeHtml(stock.status)}
-                        <br>
-                        <strong>Change:</strong> ${safeNumber(stock.change).toFixed(2)}
-                    </p>
-                </div>
-            `).join('');
-
-            stockCharts.innerHTML = data.stocks.map((stock) => `
-                <figure class="glass-card chart-card">
-                    <div>
-                        <h4>${escapeHtml(stock.name)} Trend</h4>
-                        <p class="muted-copy">${escapeHtml(stock.status)} stock with ${safeNumber(stock.change).toFixed(2)} change.</p>
-                    </div>
-                    <div class="chart-frame">
-                        <img src="${escapeHtml(stock.chart)}?v=${Date.now()}" alt="${escapeHtml(stock.name)} stock chart">
-                    </div>
-                </figure>
-            `).join('');
-
-            const recommendedBox = document.getElementById('dashboardRecommendedStocks');
-            if (recommended.length > 0) {
-                recommendedBox.innerHTML = recommended.map((stock) => `
-                    <div class="insight-item">
-                        <span class="insight-dot"></span>
-                        <p>${escapeHtml(stock.name)} - ${escapeHtml(stock.status)}</p>
-                    </div>
-                `).join('');
-            } else {
-                recommendedBox.innerHTML = `
-                    <div class="insight-item">
-                        <span class="insight-dot"></span>
-                        <p class="muted-copy">No stocks match the current risk level.</p>
-                    </div>
-                `;
-            }
-        } else {
-            stockSummary.innerText = '0 stocks loaded';
-            stockList.innerHTML = `
-                <div class="glass-card insight-card">
-                    <p class="muted-copy">No stock data available.</p>
-                </div>
-            `;
-            stockCharts.innerHTML = `
-                <div class="glass-card insight-card">
-                    <p class="muted-copy">No stock charts available.</p>
-                </div>
-            `;
-            document.getElementById('dashboardRecommendedStocks').innerHTML = `
-                <div class="insight-item">
-                    <span class="insight-dot"></span>
-                    <p class="muted-copy">No stocks available right now.</p>
-                </div>
-            `;
-        }
-    }
-
-    async function loadInsights(frame) {
-        const summaryBox = document.getElementById('dashboardSummary');
-        const breakdownBox = document.getElementById('liveBreakdown');
-        const suggestionBox = document.getElementById('dashboardInvestmentSuggestion');
-        const riskBadge = document.getElementById('dashboardRiskLevel');
-
-        try {
-            const [report, stockData, dashboard] = await Promise.all([
-                API.getExpenseAnalysis(),
-                frame ? Promise.resolve(frame) : API.getStockAnalysis(),
-                API.getDashboard(),
-            ]);
-
-            const summaryText = report?.summary || 'No summary available yet.';
-            const savingsMessage = stockData?.savings_message || 'Savings insight unavailable.';
-            const spendingMessage = stockData?.spending_message || 'Spending insight unavailable.';
-            const topCategory = stockData?.top_category && stockData.top_category !== 'None' ? stockData.top_category : 'No category data yet';
-            const riskLevel = stockData?.risk_level || 'Low';
-            const suggestion = stockData?.investment_suggestion || 'Investment guidance unavailable.';
-            const savingsRate = dashboard?.monthly_income > 0
-                ? ((safeNumber(dashboard.total_savings) / safeNumber(dashboard.monthly_income)) * 100).toFixed(1)
-                : '0.0';
-            const stockSummary = stockData?.stock_summary;
-
-            summaryBox.innerHTML = `
-                <div class="insight-item">
-                    <span class="insight-dot"></span>
-                    <p>${escapeHtml(summaryText)}</p>
-                </div>
-                <div class="insight-item">
-                    <span class="insight-dot"></span>
-                    <p>${escapeHtml(savingsMessage)}</p>
-                </div>
-            `;
-
-            breakdownBox.innerHTML = `
-                <div class="insight-item">
-                    <span class="insight-dot"></span>
-                    <p><strong>Top category:</strong> ${escapeHtml(topCategory)}</p>
-                </div>
-                <div class="insight-item">
-                    <span class="insight-dot"></span>
-                    <p><strong>Spending note:</strong> ${escapeHtml(spendingMessage)}</p>
-                </div>
-                <div class="insight-item">
-                    <span class="insight-dot"></span>
-                    <p><strong>Savings rate:</strong> ${escapeHtml(savingsRate)}%</p>
-                </div>
-            `;
-
-            suggestionBox.innerText = suggestion;
-            riskBadge.innerText = `Risk: ${riskLevel}`;
-
-            if (stockSummary) {
-                document.getElementById('dashboardStockSummary').innerText = `${stockSummary.total} stocks | ${stockSummary.good} good | ${stockSummary.bad} bad | ${stockSummary.stable} stable`;
-            }
-        } catch (error) {
-            summaryBox.innerHTML = `
-                <div class="insight-item">
-                    <span class="insight-dot"></span>
-                    <p class="muted-copy">Unable to load the latest summary right now.</p>
-                </div>
-            `;
-            breakdownBox.innerHTML = `
-                <div class="insight-item">
-                    <span class="insight-dot"></span>
-                    <p class="muted-copy">Unable to load live breakdown right now.</p>
-                </div>
-            `;
-            suggestionBox.innerText = 'Unable to load recommendation right now.';
-        }
-    }
-
-    async function loadRecentActivity() {
-        const list = document.getElementById('recentActivity');
-
-        try {
-            const expenses = await API.getExpenses();
-
-            if (!expenses || !Array.isArray(expenses) || expenses.length === 0) {
-                list.innerHTML = `
-                    <tr>
-                        <td colspan="4" class="empty-state">No expenses yet. Add your first entry in the Expenses page.</td>
-                    </tr>
-                `;
-                return;
-            }
-
-            const recent = expenses.slice(0, 5);
-            list.innerHTML = recent.map((exp) => `
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                    <td style="padding: 16px;">${escapeHtml(exp.description)}</td>
-                    <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${escapeHtml(exp.category)}</span></td>
-                    <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">${escapeHtml(exp.date)}</td>
-                    <td style="padding: 16px; text-align: right; font-weight: 600;">-$${safeNumber(exp.amount).toFixed(2)}</td>
-                </tr>
-            `).join('');
-        } catch (error) {
-            list.innerHTML = `
-                <tr>
-                    <td colspan="4" class="empty-state">Unable to load recent activity.</td>
-                </tr>
-            `;
-        }
-    }
-
-    async function refreshDashboardCharts() {
-        const frame = await API.getStockAnalysis().catch(() => null);
-        await loadCharts(frame);
-        await loadInsights(frame);
-    }
-</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}
