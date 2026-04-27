@@ -21,6 +21,7 @@ app.secret_key = config.SECRET_KEY
 # Each blueprint handles a specific part of the app (e.g., Auth, Expenses)
 from modules.auth import auth_bp
 from modules.expense import expense_bp
+from modules.income import income_bp
 from modules.analysis import analysis_bp
 from modules.investment import investment_bp
 from modules.admin import admin_bp
@@ -33,6 +34,7 @@ from modules.analysis import build_market_metrics
 # This 'plugs in' the routes from our module files into app.py
 app.register_blueprint(auth_bp)
 app.register_blueprint(expense_bp)
+app.register_blueprint(income_bp)
 app.register_blueprint(analysis_bp)
 app.register_blueprint(investment_bp)
 app.register_blueprint(admin_bp)

@@ -9,6 +9,7 @@ from flask import Blueprint, render_template, jsonify, redirect, url_for
 import config
 from utils.db import get_db_connection   # ← real database helper
 import os
+from datetime import datetime
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
@@ -401,15 +402,36 @@ def api_dashboard_data():
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # Step 4: Fetch ALL expenses that belong to this user
+        # Step 4: Fetch expense rows that belong to this user
         cursor.execute(
-            "SELECT amount FROM expenses WHERE user_id = ?",
+            "SELECT amount, date FROM expenses WHERE user_id = ?",
             (user_id,)
         )
         expense_rows = cursor.fetchall()   # Returns a list of rows
 
-        # Step 5: Add up all expense amounts using a simple loop
-        total_expenses = _sum_numeric(expense_rows, "amount")
+        expenses_list = []
+        for row in expense_rows:
+            expenses_list.append({
+                "amount": row["amount"],
+                "date": row["date"],
+            })
+
+        df = pd.DataFrame(expenses_list)
+        if not df.empty:
+            df["date"] = pd.to_datetime(df["date"])
+
+        now = datetime.now()
+        if not df.empty:
+            df_current = df[
+                (df["date"].dt.month == now.month) &
+                (df["date"].dt.year == now.year)
+            ]
+            current_expense = float(df_current["amount"].sum())
+            total_expense = float(df["amount"].sum())
+        else:
+            df_current = df
+            current_expense = 0.0
+            total_expense = 0.0
 
         # Step 6: Fetch this user's monthly income (most recent record)
         cursor.execute(
@@ -435,8 +457,8 @@ def api_dashboard_data():
         # Step 8: Close the database — we are done reading
         conn.close()
 
-        # Step 9: Calculate savings exactly as income minus expenses.
-        total_savings = monthly_income - total_expenses
+        # Step 9: Calculate current savings exactly as income minus current month expenses.
+        current_savings = monthly_income - current_expense
 
         # Calculate progress safely (handle division by zero if target_amount is 0)
         if total_target > 0:
@@ -448,11 +470,12 @@ def api_dashboard_data():
         return jsonify({
             "status": "success",
             "data": {
-                "total_expenses": round(total_expenses, 2),
-                "total_savings":  round(total_savings, 2),
+                "current_expense": round(current_expense, 2),
+                "total_expense": round(total_expense, 2),
+                "monthly_income": round(monthly_income, 2),
+                "current_savings": round(current_savings, 2),
                 "goal_progress":  round(goal_progress),
                 "alert_count":    0,
-                "monthly_income": round(monthly_income, 2),
                 "username": config.get_current_user()["username"],
             }
         })
@@ -593,43 +616,48 @@ def api_expenses_dataframe():
 
         if not df.empty:
             df = df.sort_values(by="date", ascending=False)
+            df["date"] = pd.to_datetime(df["date"])
 
         # Purpose: Add financial metrics calculation
         # Input: pandas total_expense and database fetched income
         # Output: JSON with total_expense, income, savings, and savings_rate
         
-        # 1. Use existing total_expense from pandas
+        now = datetime.now()
         if not df.empty:
-            total_expense = float(df["amount"].sum())
+            df_current = df[
+                (df["date"].dt.month == now.month) &
+                (df["date"].dt.year == now.year)
+            ]
         else:
-            total_expense = 0.0
+            df_current = df
 
-        # 3. Calculate: savings = income - total_expense
-        savings = income - total_expense
+        expense = float(df_current["amount"].sum()) if not df_current.empty else 0.0
+        print("USED EXPENSE:", expense)
+        print("CURRENT MONTH:", now.month)
+
+        # 3. Calculate: savings = income - expense
+        savings = income - expense
 
         # 4. Calculate savings rate:
-        if income > 0:
-            savings_rate = (savings / income) * 100
-        else:
-            savings_rate = 0.0
+        savings_rate = (savings / income) * 100 if income > 0 else 0
 
         # Purpose: Generate simple smart insights
         # Input: pandas DataFrame and savings_rate
         # Output: JSON response with insights messages appended
 
         # 1. Find highest spending category
-        if not df.empty:
-            top_category = df.groupby("category")["amount"].sum().idxmax()
+        if not df_current.empty:
+            top_category = df_current.groupby("category")["amount"].sum().idxmax()
         else:
             top_category = "None"
 
         # 2. Create savings insight
-        if savings_rate < 20:
-            savings_msg = "Your savings are low. Try to reduce expenses."
-        elif savings_rate < 40:
-            savings_msg = "Your savings are moderate."
+        if savings_rate < 0:
+            savings_msg = "You are overspending this month"
+        elif savings_rate < 20:
+            savings_msg = "Your savings are low"
         else:
-            savings_msg = "Great job! You are saving well."
+            savings_msg = "You are saving well"
 
         # 3. Create spending insight
         if not df.empty:
@@ -722,7 +750,7 @@ def api_expenses_dataframe():
             line_chart_path = "/static/line_chart.png"
 
         return jsonify({
-            "total_expense": total_expense,
+            "total_expense": expense,
             "income": income,
             "savings": savings,
             "savings_rate": savings_rate,
