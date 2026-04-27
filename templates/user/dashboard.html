@@ -5,78 +5,103 @@
 
 {% block content %}
 <div class="dashboard-page">
-    <section class="dashboard-hero glass-card">
-        <div>
-            <span class="section-eyebrow">Live Analysis</span>
+    <section class="dashboard-topbar glass-card">
+        <div class="dashboard-topbar-copy">
+            <span class="section-eyebrow">Live finance workspace</span>
             <h1 class="dashboard-title">Financial Overview</h1>
-            <p class="muted-copy dashboard-hero-copy">
-                A clean snapshot of your income, spending, savings, and latest expense activity.
+            <p class="muted-copy dashboard-lead">
+                A premium snapshot of your income, expenses, savings, and spending rhythm.
             </p>
         </div>
-        <div class="summary-badge">Real data from SQLite</div>
+
+        <div class="dashboard-topbar-actions">
+            <label class="dashboard-search">
+                <span class="dashboard-search-label">Search activity</span>
+                <input id="dashboardSearch" type="search" class="dashboard-search-input" placeholder="Search by note or category">
+            </label>
+            <div class="dashboard-user-chip">
+                <span class="dashboard-user-dot"></span>
+                <div>
+                    <div class="dashboard-user-name">{% if user %}{{ user.username }}{% else %}User{% endif %}</div>
+                    <div class="dashboard-user-sub">SmartVest member</div>
+                </div>
+            </div>
+        </div>
     </section>
 
-    <section class="dashboard-kpis">
-        <article class="glass-card dashboard-kpi-card">
-            <p class="metric-label">Income</p>
+    <section class="dashboard-kpi-strip">
+        <article class="glass-card dashboard-kpi-card" id="dashboardIncomeCard">
+            <div class="dashboard-kpi-header">
+                <p class="metric-label">Income</p>
+                <button type="button" class="dashboard-kpi-link" id="incomeActionBtn">Set Income</button>
+            </div>
             <p class="metric-value" id="currentIncome">$0.00</p>
-            <p class="metric-note">Latest monthly income.</p>
+            <p class="metric-note" id="incomeNote">Monthly income is not set yet.</p>
+            <p class="dashboard-warning" id="incomeWarning" hidden>Please set your monthly income to unlock savings insights.</p>
         </article>
         <article class="glass-card dashboard-kpi-card">
-            <p class="metric-label">Expense</p>
+            <p class="metric-label">Expenses</p>
             <p class="metric-value" id="totalExpenses">$0.00</p>
             <p class="metric-note">All recorded expenses.</p>
         </article>
-        <article class="glass-card dashboard-kpi-card">
+        <article class="glass-card dashboard-kpi-card dashboard-kpi-card--accent">
             <p class="metric-label">Savings</p>
             <p class="metric-value" id="totalSavings">$0.00</p>
             <p class="metric-note">Income minus expenses.</p>
         </article>
         <article class="glass-card dashboard-kpi-card">
-            <p class="metric-label">Rate</p>
+            <p class="metric-label">Savings Rate</p>
             <p class="metric-value" id="savingsRate">0%</p>
             <p class="metric-note">Current savings rate.</p>
         </article>
     </section>
 
-    <section class="dashboard-grid">
-        <article class="glass-card dashboard-section-card dashboard-insight-card">
-            <div class="section-header dashboard-section-header">
+    <section class="dashboard-main-grid">
+        <article class="glass-card dashboard-chart-panel">
+            <div class="dashboard-panel-header">
                 <div>
-                    <h3>Insight</h3>
-                    <p class="muted-copy">Short summary from live analysis.</p>
+                    <h3>Spending Trend</h3>
+                    <p class="muted-copy">Monthly expense movement based on live data.</p>
                 </div>
+                <span class="summary-badge" id="dashboardTrendLabel">Last 6 months</span>
             </div>
-            <div class="dashboard-insight">
-                <p id="dashboardSummary" class="dashboard-summary-text">Loading summary...</p>
-                <div class="dashboard-insight-meta">
-                    <span class="dashboard-insight-label">Top Category</span>
-                    <strong id="dashboardTopCategory">No data yet</strong>
-                </div>
+            <div class="dashboard-chart-frame">
+                <canvas id="dashboardTrendChart" height="320"></canvas>
+                <div id="dashboardChartEmpty" class="dashboard-empty-state" hidden>No spending data yet.</div>
             </div>
         </article>
 
-        <article class="glass-card dashboard-section-card dashboard-chart-card">
-            <div class="section-header dashboard-section-header">
-                <div>
-                    <h3>Category Spending</h3>
-                    <p class="muted-copy">Single chart view from live data.</p>
+        <aside class="dashboard-side-panel">
+            <article class="glass-card dashboard-side-card">
+                <p class="metric-label">Top Expense Category</p>
+                <p class="dashboard-side-value" id="dashboardTopCategory">No data yet</p>
+                <p class="metric-note">Highest spending category from recent expenses.</p>
+            </article>
+
+            <article class="glass-card dashboard-side-card">
+                <p class="metric-label">Insight Summary</p>
+                <p class="dashboard-side-copy" id="dashboardSummary">Loading summary...</p>
+            </article>
+
+            <article class="glass-card dashboard-side-card">
+                <p class="metric-label">Alert</p>
+                <div class="dashboard-alert" id="dashboardAlert">
+                    <span class="dashboard-alert-badge dashboard-alert-badge--neutral" id="dashboardAlertBadge">Neutral</span>
+                    <p class="dashboard-side-copy" id="dashboardAlertText">No alert yet.</p>
                 </div>
-            </div>
-            <div class="chart-frame dashboard-chart-frame">
-                <img id="dashboardChartImg" src="" alt="Category spending chart">
-            </div>
-        </article>
+            </article>
+        </aside>
     </section>
 
-    <section class="glass-card dashboard-section-card">
-        <div class="section-header dashboard-section-header">
+    <section class="glass-card dashboard-activity-panel">
+        <div class="dashboard-panel-header">
             <div>
                 <h3>Recent Activity</h3>
                 <p class="muted-copy">Last 5 expenses only.</p>
             </div>
+            <span class="summary-badge" id="dashboardActivityCount">0 items</span>
         </div>
-        <div class="table-responsive">
+        <div class="dashboard-activity-table-wrap">
             <table class="dashboard-table">
                 <thead>
                     <tr>
@@ -94,6 +119,30 @@
             </table>
         </div>
     </section>
+</div>
+
+<div class="dashboard-modal" id="incomeModal" aria-hidden="true">
+    <div class="dashboard-modal-panel glass-card">
+        <div class="dashboard-modal-header">
+            <div>
+                <p class="section-eyebrow">Monthly Income</p>
+                <h3 id="incomeModalTitle">Set Income</h3>
+            </div>
+            <button type="button" class="dashboard-modal-close" id="closeIncomeModal" aria-label="Close income modal">x</button>
+        </div>
+
+        <form id="incomeForm" class="dashboard-modal-form">
+            <label class="dashboard-field">
+                <span>Monthly Income</span>
+                <input id="incomeAmount" type="number" class="dashboard-input" min="0" step="0.01" placeholder="50000" required>
+            </label>
+            <p class="dashboard-warning" id="incomeFormError" hidden></p>
+            <div class="dashboard-modal-actions">
+                <button type="button" class="dashboard-secondary-btn" id="cancelIncomeBtn">Cancel</button>
+                <button type="submit" class="btn-premium" id="saveIncomeBtn">Save Income</button>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}
 
