@@ -1901,9 +1901,10 @@ nav.glass-nav {
     min-height: 360px;
 }
 
-.dashboard-chart-frame canvas {
+.dashboard-chart-frame img {
     width: 100% !important;
     height: 360px !important;
+    object-fit: contain;
 }
 
 .dashboard-empty-state {
@@ -2155,7 +2156,7 @@ nav.glass-nav {
         min-height: 280px;
     }
 
-    .dashboard-chart-frame canvas {
+    .dashboard-chart-frame img {
         height: 280px !important;
     }
 

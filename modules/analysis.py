@@ -5,11 +5,12 @@ Purpose : Handles the Dashboard and Analysis pages + their data APIs.
           ALL financial data now comes from the SQLite database — no more config lists.
 """
 
-from flask import Blueprint, render_template, jsonify, redirect, url_for
+from flask import Blueprint, render_template, jsonify, redirect, url_for, request, session
 import config
 from utils.db import get_db_connection   # ← real database helper
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
+from typing import Any, Dict
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
@@ -172,6 +173,727 @@ def _save_empty_chart(file_path, title, message):
     plt.close()
 
 
+def _month_key_from_timestamp(value: pd.Timestamp) -> str:
+    """Build a YYYY-MM key from a pandas timestamp."""
+    return f"{value.year:04d}-{value.month:02d}"
+
+
+def _month_label_from_key(month_key: str) -> str:
+    """Convert a YYYY-MM key into a short readable label."""
+    try:
+        parsed = datetime.strptime(month_key + "-01", "%Y-%m-%d")
+        return parsed.strftime("%b %Y")
+    except ValueError:
+        return month_key
+
+
+def _build_month_series(df: pd.DataFrame, *, start_months_ago: int, count: int) -> list[dict]:
+    """Build a consecutive monthly trend series with zero-filled gaps."""
+    if count <= 0:
+        return []
+
+    today = datetime.now()
+    month_keys: list[str] = []
+    for offset in range(start_months_ago, start_months_ago - count, -1):
+        shifted = (pd.Timestamp(today.year, today.month, 1) - pd.DateOffset(months=offset))
+        month_keys.append(_month_key_from_timestamp(shifted))
+
+    monthly_totals: dict[str, float] = {}
+    if not df.empty:
+        monthly_groups = df.groupby(df["date"].dt.to_period("M"))["amount"].sum()
+        for period, amount in monthly_groups.items():
+            monthly_totals[str(period)] = float(amount)
+
+    series = []
+    for month_key in month_keys:
+        series.append({
+            "month": month_key,
+            "label": _month_label_from_key(month_key),
+            "expense": round(monthly_totals.get(month_key, 0.0), 2),
+        })
+    return series
+
+
+def _save_pie_chart(file_path, labels, values, title, empty_message):
+    """Write a pie chart, falling back to a placeholder when there is no data."""
+    if not labels or not values or sum(values) <= 0:
+        _save_empty_chart(file_path, title, empty_message)
+        return
+
+    plt.figure(figsize=(7, 7))
+    colors = ["#00c2ff", "#22c55e", "#f59e0b", "#f97316", "#a78bfa", "#ef4444"]
+    plt.pie(values, labels=labels, autopct="%1.1f%%", colors=colors[: len(values)], textprops={"color": "white"})
+    plt.title(title, color="white")
+    plt.tight_layout()
+    plt.savefig(file_path, facecolor="black")
+    plt.close()
+
+
+def _save_line_chart(file_path, trend_data, title, empty_message):
+    """Write a line chart or a placeholder when no trend data exists."""
+    if not trend_data or not any(_coerce_float(item.get("expense")) > 0 for item in trend_data):
+        _save_empty_chart(file_path, title, empty_message)
+        return
+
+    plt.figure(figsize=(8, 4))
+    labels = [item.get("label") or item.get("month") or "" for item in trend_data]
+    values = [_coerce_float(item.get("expense")) for item in trend_data]
+    plt.plot(labels, values, marker="o", linewidth=2, color="#00c2ff")
+    plt.title(title, color="white")
+    plt.xlabel("Month", color="white")
+    plt.ylabel("Amount", color="white")
+    plt.xticks(rotation=25, color="white")
+    plt.yticks(color="white")
+    plt.grid(alpha=0.2)
+    plt.tight_layout()
+    plt.savefig(file_path, facecolor="black")
+    plt.close()
+
+
+def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any]) -> Dict[str, str]:
+    """Generate and overwrite the financial charts used by the UI."""
+    os.makedirs("static", exist_ok=True)
+
+    category_chart = "static/current_pie.png"
+    trend_chart = "static/current_trend.png"
+    yearly_trend_chart = "static/yearly_trend.png"
+
+    category_breakdown = current.get("category_breakdown") or []
+    _save_pie_chart(
+        category_chart,
+        [str(item.get("category") or "Other") for item in category_breakdown],
+        [_coerce_float(item.get("amount")) for item in category_breakdown],
+        "Category Breakdown",
+        "No category data yet",
+    )
+
+    _save_line_chart(
+        trend_chart,
+        current.get("trend_data") or [],
+        "Monthly Spending Trend",
+        "No spending trend yet",
+    )
+
+    _save_line_chart(
+        yearly_trend_chart,
+        yearly.get("trend_data") or [],
+        "Yearly Spending Trend",
+        "No yearly trend yet",
+    )
+
+    return {
+        "current_pie": "/static/current_pie.png",
+        "current_trend": "/static/current_trend.png",
+        "yearly_trend_chart": "/static/yearly_trend.png",
+        "category_chart": "/static/current_pie.png",
+        "trend_chart": "/static/current_trend.png",
+    }
+
+
+def _trend_direction(values: list[float]) -> str:
+    """Classify a sequence as increasing, decreasing, or stable."""
+    cleaned = [float(value) for value in values if _coerce_float(value) is not None]
+    cleaned = [value for value in cleaned if value >= 0]
+    if len(cleaned) < 2:
+        return "stable"
+
+    first = cleaned[0]
+    last = cleaned[-1]
+    if first <= 0 and last > 0:
+        return "increasing"
+
+    change = ((last - first) / first) * 100 if first > 0 else 0.0
+    if change > 5:
+        return "increasing"
+    if change < -5:
+        return "decreasing"
+    return "stable"
+
+
+def _coefficient_of_variation(values: list[float]) -> float:
+    """Return a normalized volatility measure for expense series."""
+    cleaned = [float(value) for value in values if value is not None]
+    cleaned = [value for value in cleaned if value >= 0]
+    if len(cleaned) < 2:
+        return 0.0
+
+    mean_value = sum(cleaned) / len(cleaned)
+    if mean_value <= 0:
+        return 0.0
+
+    variance = sum((value - mean_value) ** 2 for value in cleaned) / len(cleaned)
+    return (variance ** 0.5) / mean_value
+
+
+def _safe_label_month(item: Dict[str, Any]) -> str:
+    """Return a display label from a monthly point."""
+    return item.get("label") or item.get("month") or "--"
+
+
+def calculate_avg_savings(monthly_income: float, expense_history: list[float]) -> float:
+    """
+    Purpose : Calculate average savings over the last N months.
+    Input   : monthly_income (float), expense_history (list of monthly expense totals).
+    Output  : Average monthly savings (income − expense) as a float.
+    """
+    if not expense_history or monthly_income <= 0:
+        return 0.0
+
+    # Calculate savings for each month: income minus that month's expense
+    savings_per_month = [monthly_income - expense for expense in expense_history]
+    return sum(savings_per_month) / len(savings_per_month)
+
+
+def calculate_savings_volatility(monthly_income: float, expense_history: list[float]) -> float:
+    """
+    Purpose : Measure how stable the user's savings are month-to-month.
+    Input   : monthly_income (float), expense_history (list of monthly expense totals).
+    Output  : Coefficient of variation (0 = perfectly stable, higher = more volatile).
+    """
+    if not expense_history or monthly_income <= 0 or len(expense_history) < 2:
+        return 0.0
+
+    # Convert expenses into savings values
+    savings_per_month = [monthly_income - expense for expense in expense_history]
+
+    # Calculate mean savings
+    mean_savings = sum(savings_per_month) / len(savings_per_month)
+    if mean_savings <= 0:
+        return 1.0  # Fully unstable — no positive average savings
+
+    # Calculate standard deviation
+    variance = sum((s - mean_savings) ** 2 for s in savings_per_month) / len(savings_per_month)
+    std_dev = variance ** 0.5
+
+    # Coefficient of variation = std_dev / mean
+    return std_dev / mean_savings
+
+
+def calculate_emergency_fund(
+    monthly_income: float,
+    avg_monthly_expense: float,
+    current_savings: float,
+    manual_target: float = 0.0,
+) -> Dict[str, Any]:
+    """
+    Purpose : Evaluate the user's emergency-fund readiness.
+    Input   : monthly_income, avg_monthly_expense, current_savings, optional manual_target.
+    Output  : Dictionary with target, current, remaining, coverage months, and status.
+    """
+    # Target = max(2 × income, 1.5 × avg_expense), or manual override if provided
+    auto_target = max(2.0 * monthly_income, 1.5 * avg_monthly_expense)
+    target = manual_target if manual_target > 0 else auto_target
+
+    # Remaining amount needed
+    remaining = max(0.0, target - current_savings)
+
+    # Coverage = how many months of expenses the savings can cover
+    coverage = (current_savings / avg_monthly_expense) if avg_monthly_expense > 0 else 0.0
+
+    # Status classification based on coverage months
+    if coverage < 1:
+        status = "Critical"
+        tone = "red"
+    elif coverage < 2:
+        status = "Low"
+        tone = "orange"
+    elif coverage < 4:
+        status = "Moderate"
+        tone = "yellow"
+    else:
+        status = "Strong"
+        tone = "green"
+
+    return {
+        "target": round(target, 2),
+        "current": round(current_savings, 2),
+        "remaining": round(remaining, 2),
+        "coverage_months": round(coverage, 2),
+        "status": status,
+        "tone": tone,
+    }
+
+
+def detect_spike_categories(category_change: list) -> list:
+    """
+    Purpose : Find categories that spiked compared to the previous month.
+    Input   : category_change list from get_analysis_data.
+    Output  : List of {category, increase, percent} for categories that went up >15%.
+    """
+    spikes = []
+    for item in category_change:
+        change_pct = item.get("change_percent", 0.0)
+        direction = item.get("direction", "flat")
+        # Only flag categories that increased more than 15% vs previous month
+        if direction == "up" and change_pct > 15:
+            spikes.append({
+                "category": item["category"],
+                "increase": item["change_amount"],
+                "percent": change_pct,
+            })
+    return spikes
+
+
+def get_analysis_data(user_id=None):
+    """Build the single source of truth for the analysis page."""
+    if user_id is None:
+        current_user = config.get_current_user() or {}
+        user_id = current_user.get("user_id")
+
+    if user_id is None:
+        raise ValueError("Login required")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        "SELECT amount, category, date FROM expenses WHERE user_id = ?",
+        (user_id,)
+    )
+    expense_rows = [dict(row) for row in cursor.fetchall()]
+
+    cursor.execute(
+        "SELECT amount FROM income WHERE user_id = ? ORDER BY id DESC LIMIT 1",
+        (user_id,)
+    )
+    income_row = cursor.fetchone()
+    monthly_income = _coerce_float(income_row["amount"]) if income_row is not None else 0.0
+    conn.close()
+
+    df = pd.DataFrame(expense_rows, columns=["amount", "category", "date"])
+    if not df.empty:
+        df["amount"] = pd.to_numeric(df["amount"], errors="coerce").fillna(0.0)
+        df["category"] = df["category"].fillna("Other").astype(str).str.strip()
+        df["category"] = df["category"].replace("", "Other")
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        df = df.dropna(subset=["date"])
+        df = df.sort_values(by="date", ascending=False)
+
+    now = datetime.now()
+    prev_month_date = now.replace(day=1) - timedelta(days=1)
+
+    if not df.empty:
+        df_current = df[
+            (df["date"].dt.month == now.month) &
+            (df["date"].dt.year == now.year)
+        ]
+        df_prev = df[
+            (df["date"].dt.month == prev_month_date.month) &
+            (df["date"].dt.year == prev_month_date.year)
+        ]
+    else:
+        df_current = df
+        df_prev = df
+
+    current_expense = float(df_current["amount"].sum()) if not df_current.empty else 0.0
+    prev_expense = float(df_prev["amount"].sum()) if not df_prev.empty else 0.0
+    savings = monthly_income - current_expense
+    savings_rate = (savings / monthly_income) * 100 if monthly_income > 0 else 0.0
+    change_percent = ((current_expense - prev_expense) / prev_expense) * 100 if prev_expense > 0 else 0.0
+
+    current_category_map: Dict[str, float] = {}
+    prev_category_map: Dict[str, float] = {}
+    category_breakdown = []
+    category_change = []
+    top_category = None
+    top_category_percent = 0.0
+
+    if not df_current.empty:
+        current_totals = (
+            df_current.groupby("category")["amount"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+        if not current_totals.empty:
+            top_category = current_totals.idxmax()
+            for category, amount in current_totals.items():
+                value = round(float(amount), 2)
+                current_category_map[category] = value
+                percent = round((value / current_expense) * 100, 2) if current_expense > 0 else 0.0
+                category_breakdown.append({
+                    "category": category,
+                    "amount": value,
+                    "percent": percent,
+                })
+                if category == top_category:
+                    top_category_percent = percent
+
+    if not df_prev.empty:
+        prev_totals = df_prev.groupby("category")["amount"].sum().sort_values(ascending=False)
+        for category, amount in prev_totals.items():
+            prev_category_map[category] = round(float(amount), 2)
+
+    category_names = sorted(set(current_category_map) | set(prev_category_map), key=lambda name: max(current_category_map.get(name, 0.0), prev_category_map.get(name, 0.0)), reverse=True)
+    for category in category_names:
+        current_amount = current_category_map.get(category, 0.0)
+        previous_amount = prev_category_map.get(category, 0.0)
+        delta = round(current_amount - previous_amount, 2)
+        if previous_amount > 0:
+            delta_percent = round((delta / previous_amount) * 100, 2)
+        elif current_amount > 0:
+            delta_percent = 100.0
+        else:
+            delta_percent = 0.0
+        category_change.append({
+            "category": category,
+            "current_amount": current_amount,
+            "previous_amount": previous_amount,
+            "change_amount": delta,
+            "change_percent": delta_percent,
+            "direction": "up" if delta > 0 else "down" if delta < 0 else "flat",
+        })
+
+    current_trend_data = _build_month_series(df, start_months_ago=5, count=6)
+    yearly_trend_data = []
+    if not df.empty:
+        monthly_expense = (
+            df.groupby(df["date"].dt.to_period("M"))["amount"]
+            .sum()
+            .sort_index()
+        )
+        for period, amount in monthly_expense.items():
+            yearly_trend_data.append({
+                "month": str(period),
+                "label": period.strftime("%b %Y"),
+                "expense": round(float(amount), 2),
+            })
+
+    months_count = int(df["date"].dt.to_period("M").nunique()) if not df.empty else 0
+    total_income = monthly_income * months_count
+    total_expense = float(df["amount"].sum()) if not df.empty else 0.0
+    total_savings = total_income - total_expense
+
+    # ── Phase 2: Build last-3-months expense history for savings analysis ──
+    last_3_expenses: list[float] = []  # expense total for each of the last 3 months
+    for offset in range(2, -1, -1):    # 2, 1, 0 → three months ending at current month
+        shifted = (pd.Timestamp(now.year, now.month, 1) - pd.DateOffset(months=offset))
+        mk = _month_key_from_timestamp(shifted)
+        month_total = 0.0
+        if not df.empty:
+            mask = (
+                (df["date"].dt.month == shifted.month) &
+                (df["date"].dt.year == shifted.year)
+            )
+            month_total = float(df.loc[mask, "amount"].sum())
+        last_3_expenses.append(month_total)
+
+    avg_savings = calculate_avg_savings(monthly_income, last_3_expenses)
+    savings_vol = calculate_savings_volatility(monthly_income, last_3_expenses)
+    avg_monthly_expense = sum(last_3_expenses) / len(last_3_expenses) if last_3_expenses else 0.0
+
+    # Check for a backend EF override stored in session
+    ef_manual_target = 0.0
+    try:
+        ef_manual_target = float(session.get("ef_manual_target", 0.0))
+    except (TypeError, ValueError):
+        ef_manual_target = 0.0
+
+    emergency = calculate_emergency_fund(
+        monthly_income, avg_monthly_expense, savings,
+        manual_target=ef_manual_target,
+    )
+
+    best_month = None
+    worst_month = None
+    if yearly_trend_data:
+        monthly_savings_rows = [
+            {
+                **item,
+                "savings": round(monthly_income - float(item["expense"]), 2),
+            }
+            for item in yearly_trend_data
+        ]
+        best_month = max(monthly_savings_rows, key=lambda item: item["savings"])
+        worst_month = max(monthly_savings_rows, key=lambda item: item["expense"])
+    else:
+        monthly_savings_rows = []
+
+    current_values = [item["expense"] for item in current_trend_data]
+    yearly_values = [item["expense"] for item in yearly_trend_data]
+    current_direction = _trend_direction(current_values)
+    yearly_direction = _trend_direction(yearly_values)
+    volatility = _coefficient_of_variation(current_values)
+    yearly_volatility = _coefficient_of_variation(yearly_values)
+
+    recurring_spend = 0.0
+    for category in set(current_category_map) & set(prev_category_map):
+        recurring_spend += min(current_category_map.get(category, 0.0), prev_category_map.get(category, 0.0))
+    fixed_ratio = round((recurring_spend / current_expense) * 100, 2) if current_expense > 0 else 0.0
+    variable_ratio = round(100.0 - fixed_ratio, 2) if current_expense > 0 else 0.0
+
+    if monthly_income <= 0:
+        savings_condition = "Income is missing, so savings analysis is limited."
+    elif savings_rate <= 0:
+        savings_condition = "Savings are negative this month."
+    elif savings_rate < 20:
+        savings_condition = "Savings are below a healthy range."
+    else:
+        savings_condition = "Savings are in a healthy range."
+
+    if monthly_income <= 0:
+        current_insight = (
+            "Monthly income is not set yet.\n"
+            "Spending cannot be compared against savings until income is available.\n"
+            "Set income to unlock more precise guidance."
+        )
+    else:
+        current_insight = (
+            f"Change vs last month: {'+' if change_percent > 0 else ''}{change_percent:.1f}%.\n"
+            f"Top category impact: {top_category or 'No dominant category'} accounts for {top_category_percent:.1f}% of current spending.\n"
+            f"Savings condition: {savings_condition}"
+        )
+
+    if savings_rate < 0:
+        alert = {
+            "label": "Risk",
+            "tone": "red",
+            "text": "You are overspending. Reduce discretionary spending immediately.",
+        }
+    elif savings_rate < 20:
+        alert = {
+            "label": "Watch",
+            "tone": "yellow",
+            "text": "Savings are low. Protect core categories and trim variable spend.",
+        }
+    else:
+        alert = {
+            "label": "Healthy",
+            "tone": "green",
+            "text": "Savings are on track. Keep recurring transfers consistent.",
+        }
+
+    cost_cutting = []
+    for item in category_breakdown[:3]:
+        potential = round(item["amount"] * 0.15, 2)
+        cost_cutting.append({
+            "category": item["category"],
+            "current_amount": item["amount"],
+            "potential_savings": potential,
+            "note": f"Target a 15% reduction in {item['category']}.",
+        })
+
+    if savings_rate < 0:
+        efficiency_label = "RISK"
+        efficiency_tone = "red"
+        efficiency_text = "Savings are negative and need immediate correction."
+    elif savings_rate < 20:
+        efficiency_label = "LOW"
+        efficiency_tone = "yellow"
+        efficiency_text = "Savings are below the ideal range."
+    elif savings_rate <= 35:
+        efficiency_label = "GOOD"
+        efficiency_tone = "green"
+        efficiency_text = "Savings are within a healthy range."
+    else:
+        efficiency_label = "GOOD"
+        efficiency_tone = "green"
+        efficiency_text = "Savings are strong. Keep the current structure."
+
+    risk = {
+        "overspending_warning": "Spending is higher than income." if savings < 0 else "",
+        "low_savings_alert": "Savings are below 20%." if savings_rate < 20 else "",
+        "volatility_warning": "Spending is volatile month to month." if volatility >= 0.35 else "",
+    }
+
+    if savings < 0:
+        current_verdict = "Immediate action required: spending is above income."
+    elif savings_rate < 20 or volatility >= 0.35:
+        current_verdict = "Caution: tighten variable spending and rebuild savings momentum."
+    else:
+        current_verdict = "Healthy month: spending is controlled and savings behavior is strong."
+
+    current_tip = "Trim the top category first, then redirect that amount into savings."
+    if cost_cutting:
+        current_tip = f"Reduce {cost_cutting[0]['category']} by about {cost_cutting[0]['potential_savings']:.2f} and move it to savings."
+
+    current_detailed = {
+        "category_breakdown": category_breakdown,
+        "category_change": category_change[:5],
+        "pattern_analysis": {
+            "direction": current_direction,
+            "fixed_ratio": fixed_ratio,
+            "variable_ratio": variable_ratio,
+            "volatility": round(volatility * 100, 2),
+            "observation": (
+                f"Spending is {current_direction} with {fixed_ratio:.1f}% fixed-like spend and {variable_ratio:.1f}% variable spend."
+            ),
+        },
+        "cost_cutting": cost_cutting,
+        "savings_efficiency": {
+            "current_rate": round(savings_rate, 2),
+            "ideal_min": 20.0,
+            "ideal_max": 35.0,
+            "label": efficiency_label,
+            "tone": efficiency_tone,
+            "text": efficiency_text,
+        },
+        "risk": risk,
+        "verdict": current_verdict,
+    }
+
+    if yearly_trend_data:
+        yearly_monthly_breakdown = []
+        for item in yearly_trend_data:
+            yearly_monthly_breakdown.append({
+                "month": item["month"],
+                "label": item["label"],
+                "expense": item["expense"],
+                "savings": round(monthly_income - item["expense"], 2),
+            })
+        yearly_category_totals = (
+            df.groupby("category")["amount"]
+            .sum()
+            .sort_values(ascending=False)
+        )
+        top_yearly_category = None
+        if not yearly_category_totals.empty:
+            top_yearly_category = {
+                "category": yearly_category_totals.idxmax(),
+                "amount": round(float(yearly_category_totals.max()), 2),
+                "share": round((float(yearly_category_totals.max()) / total_expense) * 100, 2) if total_expense > 0 else 0.0,
+            }
+        yearly_variance = _coefficient_of_variation(yearly_values)
+        yearly_direction_text = yearly_direction
+        spike_month = max(yearly_monthly_breakdown, key=lambda item: item["expense"])
+    else:
+        yearly_monthly_breakdown = []
+        top_yearly_category = None
+        yearly_variance = 0.0
+        yearly_direction_text = "stable"
+        spike_month = None
+
+    yearly_savings_rate = (total_savings / total_income) * 100 if total_income > 0 else 0.0
+    yearly_score = 100
+    yearly_score -= min(35, max(0, (1 - max(yearly_savings_rate, 0) / 40) * 35))
+    yearly_score -= min(20, yearly_volatility * 40)
+    yearly_score -= 8 if yearly_direction == "increasing" else 0
+    yearly_score = round(max(0, min(100, yearly_score)))
+
+    if yearly_score >= 80:
+        yearly_verdict = "Excellent yearly performance with strong discipline."
+    elif yearly_score >= 60:
+        yearly_verdict = "Good yearly performance with some room to optimize."
+    elif yearly_score >= 40:
+        yearly_verdict = "Moderate yearly performance. Stabilize expenses and improve consistency."
+    else:
+        yearly_verdict = "Weak yearly performance. Review recurring spend and build a tighter plan."
+
+    optimization = []
+    if top_yearly_category:
+        optimization.append({
+            "category": top_yearly_category["category"],
+            "potential_savings": round(top_yearly_category["amount"] * 0.1, 2),
+            "note": "Top yearly category offers the clearest reduction opportunity.",
+        })
+    for item in sorted(category_change, key=lambda row: abs(row["change_amount"]), reverse=True)[:2]:
+        if item["change_amount"] > 0:
+            optimization.append({
+                "category": item["category"],
+                "potential_savings": round(item["change_amount"] * 0.5, 2),
+                "note": "Reduce the recent increase before it compounds.",
+            })
+
+    yearly_insight = (
+        f"Yearly trend: {yearly_direction_text} with volatility at {yearly_variance * 100:.1f}%.\n"
+        f"Performance summary: total savings are {round(total_savings, 2):.2f} across {months_count} months.\n"
+        f"Best month: {(best_month or {}).get('label') or '--'} | Worst month: {(worst_month or {}).get('label') or '--'}."
+    )
+
+    yearly_detailed = {
+        "monthly_breakdown": yearly_monthly_breakdown,
+        "trend_analysis": {
+            "direction": yearly_direction_text,
+            "spike_month": spike_month,
+            "volatility": round(yearly_variance * 100, 2),
+        },
+        "best_month": best_month,
+        "worst_month": worst_month,
+        "category_dominance": top_yearly_category,
+        "consistency": {
+            "label": "stable" if yearly_variance < 0.25 else "unstable",
+            "tone": "green" if yearly_variance < 0.25 else "yellow",
+            "variance": round(yearly_variance * 100, 2),
+            "text": "Monthly expenses are relatively steady." if yearly_variance < 0.25 else "Monthly expenses fluctuate significantly.",
+        },
+        "optimization": optimization,
+        "score": yearly_score,
+        "savings_rate": round(yearly_savings_rate, 2),
+        "verdict": yearly_verdict,
+    }
+
+    current = {
+        "income": round(monthly_income, 2),
+        "expense": round(current_expense, 2),
+        "savings": round(savings, 2),
+        "savings_rate": round(savings_rate, 2),
+        "prev_expense": round(prev_expense, 2),
+        "change_percent": round(change_percent, 2),
+        "top_category": top_category,
+        "category_breakdown": category_breakdown,
+        "trend_data": current_trend_data,
+        "insight": current_insight,
+        "tip": current_tip,
+        "alert": alert,
+        "detailed": current_detailed,
+    }
+
+    yearly = {
+        "months_count": months_count,
+        "total_income": round(total_income, 2),
+        "total_expense": round(total_expense, 2),
+        "total_savings": round(total_savings, 2),
+        "best_month": best_month,
+        "worst_month": worst_month,
+        "trend_data": yearly_trend_data,
+        "insight": yearly_insight,
+        "detailed": yearly_detailed,
+    }
+
+    charts = _generate_financial_charts(current, yearly)
+
+    # ── savings_behavior + emergency fund sections ──
+    # Determine savings trend direction from the 3-month history
+    savings_history_values = [monthly_income - e for e in last_3_expenses]
+    if len(savings_history_values) >= 2:
+        if savings_history_values[-1] > savings_history_values[0]:
+            savings_trend = "increasing"
+        elif savings_history_values[-1] < savings_history_values[0]:
+            savings_trend = "decreasing"
+        else:
+            savings_trend = "flat"
+    else:
+        savings_trend = "flat"
+
+    # Detect which categories caused spending spikes
+    spike_categories = detect_spike_categories(category_change)
+
+    savings_behavior = {
+        "avg_savings": round(avg_savings, 2),
+        "volatility": round(savings_vol, 4),
+        "stable": savings_vol < 0.30,
+        "trend": savings_trend,
+        "spike_categories": spike_categories,
+        "history": [
+            {
+                "month": _month_key_from_timestamp(
+                    pd.Timestamp(now.year, now.month, 1) - pd.DateOffset(months=2 - i)
+                ),
+                "expense": round(last_3_expenses[i], 2),
+                "savings": round(monthly_income - last_3_expenses[i], 2),
+            }
+            for i in range(len(last_3_expenses))
+        ],
+    }
+
+    return {
+        "current": current,
+        "yearly": yearly,
+        "charts": charts,
+        "savings_behavior": savings_behavior,
+        "emergency": emergency,
+    }
+
+
 def build_market_metrics():
     """
     Purpose : Analyze data/stock.csv and build admin market metrics.
@@ -289,36 +1011,47 @@ def get_user_financial_snapshot(user_id):
     """
     Purpose : Calculate the current user's income, expenses, savings and risk level.
     Output  : Dictionary used by investment-related APIs.
+
+    FIX (Phase 1): Now uses CURRENT-MONTH expenses only, not total history.
+    This prevents inflated "total_expenses" from corrupting savings/risk calculations.
     """
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    # ── Get current-month expenses only ──
+    now = datetime.now()
+    month_start = now.strftime("%Y-%m-01")
+    next_month = (now.replace(day=1) + timedelta(days=32)).replace(day=1)
+    month_end = next_month.strftime("%Y-%m-%d")
+
     cursor.execute(
-        "SELECT amount FROM expenses WHERE user_id = ?",
-        (user_id,)
+        "SELECT amount FROM expenses WHERE user_id = ? AND date >= ? AND date < ?",
+        (user_id, month_start, month_end),
     )
     expense_rows = cursor.fetchall()
+    current_month_expenses = _sum_numeric(expense_rows, "amount")
 
-    total_expenses = _sum_numeric(expense_rows, "amount")
-
+    # ── Get latest monthly income ──
     cursor.execute(
         "SELECT amount FROM income WHERE user_id = ? ORDER BY id DESC LIMIT 1",
-        (user_id,)
+        (user_id,),
     )
     income_row = cursor.fetchone()
     monthly_income = _coerce_float(income_row["amount"]) if income_row is not None else 0.0
 
     conn.close()
 
-    savings = monthly_income - total_expenses
+    # ── Calculate savings using monthly figures only ──
+    savings = monthly_income - current_month_expenses
 
     if monthly_income > 0:
-        savings_rate = ((monthly_income - total_expenses) / monthly_income) * 100
+        savings_rate = (savings / monthly_income) * 100
     else:
         savings_rate = 0.0
 
     risk_level = get_risk_level(savings_rate)
 
+    # ── Investment suggestion based on monthly savings ──
     if savings <= 0:
         suggestion = "You have no savings. Focus on reducing expenses."
     elif savings_rate < 20:
@@ -329,14 +1062,12 @@ def get_user_financial_snapshot(user_id):
         suggestion = "You have strong savings. Consider stocks and diversified investments."
 
     return {
-        "total_expenses": round(total_expenses, 2),
+        "total_expenses": round(current_month_expenses, 2),
         "income": round(monthly_income, 2),
         "savings": round(savings, 2),
         "savings_rate": round(savings_rate, 2),
         "risk_level": risk_level,
-        "investment_suggestion": suggestion,
     }
-
 
 
 # =============================================================================
@@ -347,17 +1078,16 @@ def get_user_financial_snapshot(user_id):
 def dashboard():
     """
     Purpose : Renders the central Intelligence Dashboard page.
-    Input   : None  (user_id is taken from the session automatically)
+    Input   : None (user_id is taken from the session automatically).
     Output  : HTML page, or redirect to login if not logged in.
     """
-    # Safety check — only logged-in users can see the dashboard
     if not config.is_logged_in():
-        return redirect(url_for('auth.login'))
+        return redirect(url_for("auth.login"))
 
     return render_template(
         "user/dashboard.html",
         active_page="dashboard",
-        user=config.get_current_user()
+        user=config.get_current_user(),
     )
 
 
@@ -365,16 +1095,16 @@ def dashboard():
 def analysis_page():
     """
     Purpose : Renders the Financial Efficiency Report page.
-    Input   : None
+    Input   : None.
     Output  : HTML page, or redirect to login if not logged in.
     """
     if not config.is_logged_in():
-        return redirect(url_for('auth.login'))
+        return redirect(url_for("auth.login"))
 
     return render_template(
         "user/analysis.html",
         active_page="analysis",
-        user=config.get_current_user()
+        user=config.get_current_user(),
     )
 
 
@@ -384,104 +1114,14 @@ def analysis_page():
 
 @analysis_bp.route("/api/analysis/data")
 def api_dashboard_data():
-    """
-    Purpose : Calculates high-level financial metrics for the logged-in user.
-              Reads expenses and income from the SQLite database.
-    Input   : None  (user_id comes from session)
-    Output  : JSON with total_expenses, total_savings, goal_progress, username.
-    """
-    # Step 1: Make sure user is logged in
     if not config.is_logged_in():
         return jsonify({"status": "error", "message": "Login required"}), 401
 
     try:
-        # Step 2: Get the integer user_id from the session
         user_id = config.get_current_user()["user_id"]
-
-        # Step 3: Open a database connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Step 4: Fetch expense rows that belong to this user
-        cursor.execute(
-            "SELECT amount, date FROM expenses WHERE user_id = ?",
-            (user_id,)
-        )
-        expense_rows = cursor.fetchall()   # Returns a list of rows
-
-        expenses_list = []
-        for row in expense_rows:
-            expenses_list.append({
-                "amount": row["amount"],
-                "date": row["date"],
-            })
-
-        df = pd.DataFrame(expenses_list)
-        if not df.empty:
-            df["date"] = pd.to_datetime(df["date"])
-
-        now = datetime.now()
-        if not df.empty:
-            df_current = df[
-                (df["date"].dt.month == now.month) &
-                (df["date"].dt.year == now.year)
-            ]
-            current_expense = float(df_current["amount"].sum())
-            total_expense = float(df["amount"].sum())
-        else:
-            df_current = df
-            current_expense = 0.0
-            total_expense = 0.0
-
-        # Step 6: Fetch this user's monthly income (most recent record)
-        cursor.execute(
-            "SELECT amount FROM income WHERE user_id = ? ORDER BY id DESC LIMIT 1",
-            (user_id,)
-        )
-        income_row = cursor.fetchone()
-
-        # Step 7: If no income record found, treat income as 0
-        monthly_income = _coerce_float(income_row["amount"]) if income_row is not None else 0.0
-
-        # Fetch goals from database using user_id
-        cursor.execute(
-            "SELECT target_amount, saved_amount FROM goals WHERE user_id = ?",
-            (user_id,)
-        )
-        goal_rows = cursor.fetchall()
-        
-        # Add up all targets and saved amounts
-        total_target = _sum_numeric(goal_rows, "target_amount")
-        total_saved = _sum_numeric(goal_rows, "saved_amount")
-
-        # Step 8: Close the database — we are done reading
-        conn.close()
-
-        # Step 9: Calculate current savings exactly as income minus current month expenses.
-        current_savings = monthly_income - current_expense
-
-        # Calculate progress safely (handle division by zero if target_amount is 0)
-        if total_target > 0:
-            goal_progress = (total_saved / total_target) * 100
-        else:
-            goal_progress = 0.0
-
-        # Step 10: Return the results as JSON
-        return jsonify({
-            "status": "success",
-            "data": {
-                "current_expense": round(current_expense, 2),
-                "total_expense": round(total_expense, 2),
-                "monthly_income": round(monthly_income, 2),
-                "current_savings": round(current_savings, 2),
-                "goal_progress":  round(goal_progress),
-                "alert_count":    0,
-                "username": config.get_current_user()["username"],
-            }
-        })
-
+        analysis_data = get_analysis_data(user_id)
+        return jsonify({"status": "success", "data": analysis_data})
     except Exception as e:
-        # If anything goes wrong, return the error message so we can debug it
         return jsonify({"status": "error", "message": str(e)}), 400
 
 
@@ -493,67 +1133,30 @@ def api_dashboard_alias():
 
 @analysis_bp.route("/api/analysis/report")
 def api_expense_analysis():
-    """
-    Purpose : Generates a savings-efficiency report for the logged-in user.
-              Reads expenses and income from the SQLite database.
-    Input   : None  (user_id comes from session)
-    Output  : JSON with a summary sentence, total_expenses, and income.
-    """
-    # Step 1: Verify the user is logged in
     if not config.is_logged_in():
         return jsonify({"status": "error", "message": "Login required"}), 401
 
     try:
-        # Step 2: Get the integer user_id from the session
         user_id = config.get_current_user()["user_id"]
+        analysis_data = get_analysis_data(user_id)
+        current = analysis_data["current"]
 
-        # Step 3: Open a database connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Step 4: Fetch all expense amounts for this user
-        cursor.execute(
-            "SELECT amount FROM expenses WHERE user_id = ?",
-            (user_id,)
-        )
-        expense_rows = cursor.fetchall()
-
-        # Step 5: Sum up the expenses using a plain loop
-        total_expenses = _sum_numeric(expense_rows, "amount")
-
-        # Step 6: Fetch the user's most recent monthly income
-        cursor.execute(
-            "SELECT amount FROM income WHERE user_id = ? ORDER BY id DESC LIMIT 1",
-            (user_id,)
-        )
-        income_row = cursor.fetchone()
-
-        # Step 7: Default income to 0 when no data exists
-        monthly_income = _coerce_float(income_row["amount"]) if income_row is not None else 0.0
-
-        # Step 8: Close the database connection
-        conn.close()
-
-        # Step 9: Calculate savings rate as a percentage
-        # Formula: savings_rate = ((income - expenses) / income) * 100
-        if monthly_income > 0:
-            savings_rate = ((monthly_income - total_expenses) / monthly_income) * 100
+        if current["savings_rate"] < 0:
+            summary_text = "You are overspending this month."
+        elif current["savings_rate"] < 20:
+            summary_text = "Your savings are low."
         else:
-            savings_rate = 0.0
+            summary_text = "You are saving well."
 
-        # Step 10: Build a plain-English summary sentence
-        summary_text = f"You are currently saving {savings_rate:.0f}% of your monthly income."
-
-        # Step 11: Return the data as JSON
         return jsonify({
             "status": "success",
             "data": {
-                "summary":        summary_text,
-                "total_expenses": round(total_expenses, 2),
-                "income":         round(monthly_income, 2),
-            }
+                "summary": summary_text,
+                "total_expenses": round(current["expense"], 2),
+                "income": round(current["income"], 2),
+                "analysis": analysis_data,
+            },
         })
-
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
@@ -564,214 +1167,56 @@ def api_analysis_alias():
     return api_expense_analysis()
 
 
-# =============================================================================
-# DATA ANALYSIS ROUTES (Pandas Integration)
-# =============================================================================
-
 @analysis_bp.route("/api/analysis/dataframe")
 def api_expenses_dataframe():
-    """
-    Purpose : Convert expense data from SQLite into a pandas DataFrame.
-    Input   : user_id from the current session.
-    Output  : JSON response confirming the DataFrame was successfully created.
-    """
-    # 1. Get user_id from current session
     if not config.is_logged_in():
         return jsonify({"status": "error", "message": "Login required"}), 401
 
     try:
         user_id = config.get_current_user()["user_id"]
-
-        # 2. Fetch expenses from database
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            "SELECT amount, category, date FROM expenses WHERE user_id = ?",
-            (user_id,)
-        )
-        expense_rows = cursor.fetchall()
-
-        # 2. Fetch income from database using user_id
-        cursor.execute(
-            "SELECT amount FROM income WHERE user_id = ? ORDER BY id DESC LIMIT 1",
-            (user_id,)
-        )
-        income_row = cursor.fetchone()
-        income = float(income_row["amount"]) if income_row else 0.0
-
-        conn.close()
-
-        # 3. Store data as list of dictionaries
-        expenses_list = []
-        for row in expense_rows:
-            expenses_list.append({
-                "amount": row["amount"],
-                "category": row["category"],
-                "date": row["date"]
-            })
-
-        # 4. Convert to pandas DataFrame
-        df = pd.DataFrame(expenses_list)
-
-        if not df.empty:
-            df = df.sort_values(by="date", ascending=False)
-            df["date"] = pd.to_datetime(df["date"])
-
-        # Purpose: Add financial metrics calculation
-        # Input: pandas total_expense and database fetched income
-        # Output: JSON with total_expense, income, savings, and savings_rate
-        
-        now = datetime.now()
-        if not df.empty:
-            df_current = df[
-                (df["date"].dt.month == now.month) &
-                (df["date"].dt.year == now.year)
-            ]
-        else:
-            df_current = df
-
-        expense = float(df_current["amount"].sum()) if not df_current.empty else 0.0
-        print("USED EXPENSE:", expense)
-        print("CURRENT MONTH:", now.month)
-
-        # 3. Calculate: savings = income - expense
-        savings = income - expense
-
-        # 4. Calculate savings rate:
-        savings_rate = (savings / income) * 100 if income > 0 else 0
-
-        # Purpose: Generate simple smart insights
-        # Input: pandas DataFrame and savings_rate
-        # Output: JSON response with insights messages appended
-
-        # 1. Find highest spending category
-        if not df_current.empty:
-            top_category = df_current.groupby("category")["amount"].sum().idxmax()
-        else:
-            top_category = "None"
-
-        # 2. Create savings insight
-        if savings_rate < 0:
-            savings_msg = "You are overspending this month"
-        elif savings_rate < 20:
-            savings_msg = "Your savings are low"
-        else:
-            savings_msg = "You are saving well"
-
-        # 3. Create spending insight
-        if not df.empty:
-            spending_msg = "You spend most on " + str(top_category)
-        else:
-            spending_msg = "You have no expenses yet."
-
-        # Purpose: Generate investment suggestion and risk profile
-        # Input: savings, savings_rate
-        # Output: suggestion string and risk level label
-        if savings <= 0:
-            suggestion = "You have no savings. Focus on reducing expenses."
-        elif savings_rate < 20:
-            suggestion = "Your savings are low. Build an emergency fund first."
-        elif savings_rate < 40:
-            suggestion = "You can start investing in mutual funds or SIP."
-        else:
-            suggestion = "You have strong savings. Consider stocks and diversified investments."
-
-        risk_level = get_risk_level(savings_rate)
-
-        # Load stock CSV data and build stock analysis results
-        stock_analysis = []
-        stock_counts = {"Good": 0, "Bad": 0, "Stable": 0}
-        stock_error = ""
-
-        try:
-            stock_frame = load_stock_csv()
-            stock_analysis, stock_counts = analyze_stock_rows(stock_frame, generate_charts=True)
-        except Exception as stock_exception:
-            stock_error = str(stock_exception)
-
-        recommended_stocks = filter_recommended_stocks(stock_analysis, risk_level)
-
-        # Purpose: Generate matplotlib charts
-        # Input: existing df
-        # Output: paths to saved static images
-
-        bar_chart_path = ""
-        pie_chart_path = ""
-        line_chart_path = ""
-
-        if not df.empty:
-            # Category Data
-            category_data = df.groupby("category")["amount"].sum()
-
-            # 3. Bar Chart (colorful)
-            plt.figure(figsize=(7,4))
-            category_data.plot(
-                kind="bar",
-                color=["#00c2ff", "#ff7b00", "#00ff9d", "#ff4d6d", "#ffd60a"]
-            )
-            plt.title("Category Spending", color="white")
-            plt.xlabel("Category", color="white")
-            plt.ylabel("Amount", color="white")
-            plt.xticks(rotation=30)
-            plt.tight_layout()
-            plt.savefig("static/bar_chart.png")
-            plt.close()
-            bar_chart_path = "/static/bar_chart.png"
-
-            # 4. Pie Chart (colorful)
-            plt.figure(figsize=(5,5))
-            category_data.plot(
-                kind="pie",
-                autopct="%1.1f%%",
-                colors=["#00c2ff", "#ff7b00", "#00ff9d", "#ff4d6d", "#ffd60a"]
-            )
-            plt.title("Expense Distribution", color="white")
-            plt.ylabel("")  # remove default label
-            plt.tight_layout()
-            plt.savefig("static/pie_chart.png")
-            plt.close()
-            pie_chart_path = "/static/pie_chart.png"
-
-            # 5. Line Chart (trend)
-            df["date"] = pd.to_datetime(df["date"])
-            date_data = df.groupby("date")["amount"].sum()
-
-            plt.figure(figsize=(7,4))
-            date_data.plot(kind="line", marker="o", color="#00c2ff")
-            plt.title("Spending Over Time", color="white")
-            plt.xlabel("Date", color="white")
-            plt.ylabel("Amount", color="white")
-            plt.xticks(rotation=30)
-            plt.grid(alpha=0.2)
-            plt.tight_layout()
-            plt.savefig("static/line_chart.png")
-            plt.close()
-            line_chart_path = "/static/line_chart.png"
-
-        return jsonify({
-            "total_expense": expense,
-            "income": income,
-            "savings": savings,
-            "savings_rate": savings_rate,
-            "risk_level": risk_level,
-            "top_category": top_category,
-            "savings_message": savings_msg,
-            "spending_message": spending_msg,
-            "investment_suggestion": suggestion,
-            "stock_summary": {
-                "total": len(stock_analysis),
-                "good": stock_counts["Good"],
-                "bad": stock_counts["Bad"],
-                "stable": stock_counts["Stable"],
-            },
-            "stocks": stock_analysis,
-            "recommended_stocks": recommended_stocks,
-            "stock_error": stock_error,
-            "bar_chart": bar_chart_path,
-            "pie_chart": pie_chart_path,
-            "line_chart": line_chart_path
-        })
-
+        return jsonify({"status": "success", "data": get_analysis_data(user_id)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@analysis_bp.route("/api/analysis/ef-override", methods=["POST"])
+def api_ef_override():
+    """
+    Purpose : Store a custom emergency fund target in the user's session.
+    Input   : JSON body with "months" (float or int).
+    Output  : JSON confirmation with the refreshed emergency-fund data.
+    """
+    if not config.is_logged_in():
+        return jsonify({"status": "error", "message": "Login required"}), 401
+
+    data = request.get_json(silent=True) or {}
+    try:
+        months = float(data.get("months", 0))
+        if months <= 0:
+            return jsonify({"status": "error", "message": "Invalid target value"}), 400
+
+        user_id = config.get_current_user()["user_id"]
+        analysis_data = get_analysis_data(user_id)
+        history = analysis_data.get("savings_behavior", {}).get("history", [])
+        if history:
+            avg_monthly_expense = sum(_coerce_float(item.get("expense", 0.0)) for item in history) / len(history)
+        else:
+            avg_monthly_expense = _coerce_float(analysis_data.get("current", {}).get("expense", 0.0))
+
+        if avg_monthly_expense <= 0:
+            return jsonify({"status": "error", "message": "Emergency fund target cannot be updated yet"}), 400
+
+        target = round(months * avg_monthly_expense, 2)
+        session["ef_manual_target"] = target
+
+        updated_data = get_analysis_data(user_id)
+        return jsonify({
+            "status": "success",
+            "data": {
+                "months": months,
+                "target": target,
+                "emergency": updated_data.get("emergency", {}),
+            },
+        })
+    except (TypeError, ValueError):
+        return jsonify({"status": "error", "message": "Invalid target value"}), 400

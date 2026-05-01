@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from modules.analysis import get_analysis_data
 from utils.db import get_db_connection
 
 
@@ -79,62 +80,33 @@ def _goal_type(goal_row: Dict[str, Any]) -> str:
     return "short" if target <= 5000 else "long"
 
 
-def build_goal_analysis(user_id: int) -> Dict[str, Any]:
+def build_goal_analysis(user_id: Optional[int] = None, analysis_snapshot: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """
     Build a safe goal analysis snapshot from live expense and income data.
     The values are computed from the most recent three months of savings.
     """
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT amount, category, date FROM expenses WHERE user_id = ?",
-        (user_id,),
-    )
-    expense_rows = [dict(row) for row in cursor.fetchall()]
-
-    cursor.execute(
-        "SELECT amount FROM income WHERE user_id = ? ORDER BY id DESC LIMIT 1",
-        (user_id,),
-    )
-    income_row = cursor.fetchone()
-    monthly_income = _coerce_float(income_row["amount"]) if income_row is not None else 0.0
-    conn.close()
-
-    expense_totals_by_category: Dict[str, float] = {}
-    monthly_expenses: Dict[str, float] = {}
-
-    for row in expense_rows:
-        amount = _coerce_float(row.get("amount"))
-        category = str(row.get("category") or "Other").strip() or "Other"
-        expense_totals_by_category[category] = expense_totals_by_category.get(category, 0.0) + amount
-
-        parsed_date = _parse_date(row.get("date"))
-        if parsed_date is None:
-            continue
-
-        month_key = _month_key(parsed_date)
-        monthly_expenses[month_key] = monthly_expenses.get(month_key, 0.0) + amount
-
-    today = datetime.now()
-    month_keys: List[str] = []
-    month_labels: List[str] = []
-    for offset in (-2, -1, 0):
-        year, month = _shift_month(today.year, today.month, offset)
-        key = f"{year:04d}-{month:02d}"
-        month_keys.append(key)
-        month_labels.append(_month_label(key))
+    if analysis_snapshot is None:
+        if user_id is None:
+            raise ValueError("user_id or analysis_snapshot is required")
+        snapshot = get_analysis_data(user_id)
+    else:
+        snapshot = analysis_snapshot
+    current = snapshot.get("current", {})
+    yearly = snapshot.get("yearly", {})
+    monthly_income = _coerce_float(current.get("income"))
+    top_category = current.get("top_category")
+    trend_data = list(yearly.get("trend_data") or current.get("trend_data") or [])
 
     last_three_months: List[Dict[str, Any]] = []
     savings_values: List[float] = []
-    for key, label in zip(month_keys, month_labels):
-        expenses = monthly_expenses.get(key, 0.0)
+    for item in trend_data[-3:]:
+        expenses = _coerce_float(item.get("expense"))
         savings = monthly_income - expenses
         savings_values.append(savings)
         last_three_months.append(
             {
-                "month": key,
-                "label": label,
+                "month": item.get("month"),
+                "label": item.get("label") or item.get("month") or "",
                 "expenses": round(expenses, 2),
                 "savings": round(savings, 2),
             }
@@ -148,10 +120,6 @@ def build_goal_analysis(user_id: int) -> Dict[str, Any]:
         avg_savings = 0.0
         min_savings = 0.0
         max_savings = 0.0
-
-    top_category = None
-    if expense_totals_by_category:
-        top_category = max(expense_totals_by_category.items(), key=lambda item: item[1])[0]
 
     if top_category:
         tip = f"Reduce {top_category} spending to free up more money for this goal."
@@ -203,18 +171,34 @@ def enrich_goal_row(goal_row: Dict[str, Any], analysis: Dict[str, Any], extra_sa
     worst_months = _estimate_months(remaining, effective_min)
 
     if effective_avg <= 0:
-        feasibility = "Unrealistic"
+        feasibility = "unrealistic"
         feasibility_tone = "red"
     elif real_months is not None and real_months > 24:
-        feasibility = "Risky"
+        feasibility = "risky"
         feasibility_tone = "yellow"
     else:
-        feasibility = "Feasible"
+        feasibility = "feasible"
         feasibility_tone = "green"
 
     warning = analysis.get("warning") or ""
     if effective_avg > 0 and real_months is not None and real_months > 24:
         warning = "This goal may take more than 24 months at the current saving rate."
+
+    insight = (
+        f"Reach in ~{real_months:.2f} mo"
+        if real_months is not None
+        else "No clear timeline yet"
+    )
+    goal_analysis = {
+        "best_months": best_months,
+        "realistic_months": real_months,
+        "worst_months": worst_months,
+        "feasibility": feasibility,
+        "tone": feasibility_tone,
+        "insight": insight,
+        "warning": warning,
+        "tip": analysis.get("tip", ""),
+    }
 
     return {
         **goal_row,
@@ -224,6 +208,7 @@ def enrich_goal_row(goal_row: Dict[str, Any], analysis: Dict[str, Any], extra_sa
         "remaining_amount": round(remaining, 2),
         "progress_percent": round(progress_percent, 2),
         "progress_bar": round(progress_bar, 2),
+        "analysis": goal_analysis,
         "smart_analysis": {
             "monthly_income": analysis.get("monthly_income", 0.0),
             "last_3_months": analysis.get("last_3_months", []),
@@ -243,7 +228,7 @@ def enrich_goal_row(goal_row: Dict[str, Any], analysis: Dict[str, Any], extra_sa
             "worst_months_display": worst_months,
         },
         "feasibility": {
-            "label": feasibility,
+            "label": feasibility.title(),
             "tone": feasibility_tone,
         },
         "tip": analysis.get("tip", ""),
@@ -251,9 +236,9 @@ def enrich_goal_row(goal_row: Dict[str, Any], analysis: Dict[str, Any], extra_sa
     }
 
 
-def enrich_goal_rows(goal_rows: List[Dict[str, Any]], user_id: int, extra_saving: float = 0.0) -> List[Dict[str, Any]]:
+def enrich_goal_rows(goal_rows: List[Dict[str, Any]], user_id: Optional[int] = None, analysis_snapshot: Optional[Dict[str, Any]] = None, extra_saving: float = 0.0) -> List[Dict[str, Any]]:
     """Load shared analysis once and enrich each goal row in a single pass."""
-    analysis = build_goal_analysis(user_id)
+    analysis = build_goal_analysis(user_id=user_id, analysis_snapshot=analysis_snapshot)
     return [enrich_goal_row(goal_row, analysis, extra_saving=extra_saving) for goal_row in goal_rows]
 
 
@@ -268,4 +253,3 @@ def fetch_goal_by_id(user_id: int, goal_id: Any) -> Optional[Dict[str, Any]]:
     row = cursor.fetchone()
     conn.close()
     return dict(row) if row is not None else None
-
