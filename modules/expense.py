@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, redirect, url_fo
 from datetime import datetime
 import config
 from utils.db import get_db_connection
+from modules.analysis import get_analysis_data
 from modules.goals import enrich_goal_rows, enrich_goal_row, build_goal_analysis
 
 # Create the Expense Blueprint
@@ -287,13 +288,14 @@ def api_goal_status():
         return jsonify({"status": "error", "message": "Login required"}), 401
 
     user_id = config.get_current_user()["user_id"]
+    analysis_snapshot = get_analysis_data(user_id)
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM goals WHERE user_id = ?", (user_id,))
     user_goals = [dict(row) for row in cursor.fetchall()]
     conn.close()
 
-    enriched_goals = enrich_goal_rows(user_goals, user_id)
+    enriched_goals = enrich_goal_rows(user_goals, analysis_snapshot=analysis_snapshot)
     return jsonify({"status": "success", "data": enriched_goals})
 
 
@@ -352,7 +354,8 @@ def api_set_goal():
         new_goal = dict(cursor.fetchone())
         conn.close()
 
-        analysis = build_goal_analysis(user_id)
+        analysis_snapshot = get_analysis_data(user_id)
+        analysis = build_goal_analysis(user_id, analysis_snapshot=analysis_snapshot)
         return jsonify({"status": "success", "data": enrich_goal_row(new_goal, analysis)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
@@ -419,7 +422,8 @@ def api_update_goal():
         if updated_goal is None:
             return jsonify({"status": "error", "message": "Goal not found."}), 404
 
-        analysis = build_goal_analysis(user_id)
+        analysis_snapshot = get_analysis_data(user_id)
+        analysis = build_goal_analysis(user_id, analysis_snapshot=analysis_snapshot)
         return jsonify({"status": "success", "data": enrich_goal_row(dict(updated_goal), analysis)})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400

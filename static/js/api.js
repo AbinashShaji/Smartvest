@@ -49,6 +49,10 @@ const API = {
     getDashboard: () => API.request('/api/analysis/data'),
     getExpenseAnalysis: () => API.request('/api/analysis/report'),
     getStockAnalysis: () => API.request('/api/analysis/dataframe'),
+    updateEmergencyFundTarget: (months) => API.request('/api/analysis/ef-override', {
+        method: 'POST',
+        body: JSON.stringify({ months }),
+    }),
 
     // Expense Modules (/api/expense/)
     getExpenses: () => API.request('/api/expense/all'),

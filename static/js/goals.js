@@ -38,12 +38,13 @@
         return `${Math.max(0, value).toFixed(value >= 10 ? 1 : 2)} mo`;
     }
 
-    function feasibilityTone(label) {
-        const normalized = String(label || '').toLowerCase();
-        if (normalized === 'feasible') return 'green';
-        if (normalized === 'risky') return 'yellow';
-        if (normalized === 'unrealistic') return 'red';
-        return 'neutral';
+    function formatFeasibility(value) {
+        const normalized = String(value || '').trim().toLowerCase();
+        if (!normalized) {
+            return '';
+        }
+
+        return normalized.charAt(0).toUpperCase() + normalized.slice(1);
     }
 
     function apiRequest(endpoint, options = {}) {
@@ -65,65 +66,6 @@
         });
     }
 
-    function computeExtraEstimates(goal, extraSaving) {
-        const remaining = safeNumber(goal.remaining_amount);
-        const baseAvg = safeNumber(goal.smart_analysis?.avg_savings);
-        const baseMin = safeNumber(goal.smart_analysis?.min_savings);
-        const baseMax = safeNumber(goal.smart_analysis?.max_savings);
-        const extra = Math.max(0, safeNumber(extraSaving));
-        const avg = baseAvg + extra;
-        const min = baseMin + extra;
-        const max = baseMax + extra;
-
-        const best = max > 0 ? remaining / max : Number.NaN;
-        const realistic = avg > 0 ? remaining / avg : Number.NaN;
-        const worst = min > 0 ? remaining / min : Number.NaN;
-
-        return { avg, min, max, best, realistic, worst };
-    }
-
-    function feasibilityLabel(goal, estimates) {
-        const baseAvg = safeNumber(goal.smart_analysis?.avg_savings);
-        if (baseAvg <= 0 || estimates.avg <= 0) {
-            return { label: 'Unrealistic', tone: 'red' };
-        }
-
-        if (Number.isFinite(estimates.realistic) && estimates.realistic > 24) {
-            return { label: 'Risky', tone: 'yellow' };
-        }
-
-        return { label: 'Feasible', tone: 'green' };
-    }
-
-    function insightText(estimates) {
-        if (Number.isFinite(estimates.realistic)) {
-            return `Reach in ~${formatMonths(estimates.realistic)}`;
-        }
-
-        return 'No clear timeline yet';
-    }
-
-    function tipText(goal) {
-        const category = goal.smart_analysis?.top_category;
-        if (category) {
-            return `Tip: reduce ${category} spending to speed this goal up.`;
-        }
-
-        return 'Tip: track spending categories for a sharper saving plan.';
-    }
-
-    function warningText(goal, estimates) {
-        if (safeNumber(goal.smart_analysis?.avg_savings) <= 0) {
-            return 'Warning: average savings are non-positive.';
-        }
-
-        if (Number.isFinite(estimates.realistic) && estimates.realistic > 24) {
-            return 'Warning: this may take more than 24 months.';
-        }
-
-        return goal.smart_analysis?.warning || '';
-    }
-
     function renderSummary(goals) {
         const first = goals[0];
         const avgSavings = document.getElementById('summaryAvgSavings');
@@ -131,7 +73,7 @@
         const feasibility = document.getElementById('summaryFeasibility');
         const feasibilityMeta = document.getElementById('summaryFeasibilityMeta');
 
-        if (!first || !first.smart_analysis) {
+        if (!first) {
             if (avgSavings) avgSavings.innerText = 'No data yet';
             if (topCategory) topCategory.innerText = 'No data yet';
             if (feasibility) feasibility.innerText = 'No data yet';
@@ -139,19 +81,19 @@
             return;
         }
 
-        const avg = safeNumber(first.smart_analysis.avg_savings);
-        const top = first.smart_analysis.top_category || 'No data yet';
-        const label = first.feasibility?.label || 'No data yet';
+        const analysis = first.analysis || {};
+        const avg = safeNumber(first.smart_analysis?.avg_savings);
+        const top = first.smart_analysis?.top_category || 'No data yet';
+        const label = formatFeasibility(analysis.feasibility) || 'No data yet';
 
         if (avgSavings) avgSavings.innerText = formatCurrency(avg);
         if (topCategory) topCategory.innerText = top;
         if (feasibility) feasibility.innerText = label;
-        if (feasibilityMeta) feasibilityMeta.innerText = first.warning || 'Based on current savings pace';
+        if (feasibilityMeta) feasibilityMeta.innerText = analysis.warning || 'Based on current savings pace';
     }
 
     function renderGoalCard(goal) {
-        const estimates = computeExtraEstimates(goal, 0);
-        const badge = feasibilityLabel(goal, estimates);
+        const analysis = goal.analysis || {};
         const progressPercent = safeNumber(goal.progress_percent);
         const remaining = safeNumber(goal.remaining_amount);
         const target = safeNumber(goal.target_amount);
@@ -168,18 +110,22 @@
                 data-target="${target}"
                 data-saved="${saved}"
                 data-remaining="${remaining}"
-                data-avg="${safeNumber(goal.smart_analysis?.avg_savings)}"
-                data-min="${safeNumber(goal.smart_analysis?.min_savings)}"
-                data-max="${safeNumber(goal.smart_analysis?.max_savings)}"
-                data-tip="${escapeHtml(goal.smart_analysis?.tip || '')}"
-                data-warning="${escapeHtml(goal.warning || goal.smart_analysis?.warning || '')}"
+                data-progress="${progressPercent}"
+                data-analysis-best="${escapeHtml(analysis.best_months ?? '')}"
+                data-analysis-realistic="${escapeHtml(analysis.realistic_months ?? '')}"
+                data-analysis-worst="${escapeHtml(analysis.worst_months ?? '')}"
+                data-analysis-feasibility="${escapeHtml(analysis.feasibility || '')}"
+                data-analysis-tone="${escapeHtml(analysis.tone || '')}"
+                data-analysis-insight="${escapeHtml(analysis.insight || '')}"
+                data-analysis-warning="${escapeHtml(analysis.warning || '')}"
+                data-analysis-tip="${escapeHtml(analysis.tip || '')}"
             >
                 <div class="goals-card-top">
                     <div>
                         <h4 class="goals-card-title">${escapeHtml(goal.goal_name)}</h4>
                         <p class="goals-card-subtitle">${goal.deadline ? `Deadline: ${escapeHtml(goal.deadline)}` : 'No deadline set'}</p>
                     </div>
-                    <span class="goals-badge goals-badge--${badge.tone}">${badge.label}</span>
+                    <span class="goals-badge goals-badge--${analysis.tone || 'neutral'}">${formatFeasibility(analysis.feasibility) || 'No data yet'}</span>
                 </div>
 
                 <div class="goals-progress">
@@ -210,22 +156,22 @@
                 <div class="goals-stats-grid">
                     <div class="goals-stat">
                         <span class="goals-stat-label">Best</span>
-                        <strong data-role="best-months">${formatMonths(goal.time_estimates?.best_months)}</strong>
+                        <strong data-role="best-months">${formatMonths(analysis.best_months)}</strong>
                     </div>
                     <div class="goals-stat">
                         <span class="goals-stat-label">Realistic</span>
-                        <strong data-role="real-months">${formatMonths(goal.time_estimates?.real_months)}</strong>
+                        <strong data-role="real-months">${formatMonths(analysis.realistic_months)}</strong>
                     </div>
                     <div class="goals-stat">
                         <span class="goals-stat-label">Worst</span>
-                        <strong data-role="worst-months">${formatMonths(goal.time_estimates?.worst_months)}</strong>
+                        <strong data-role="worst-months">${formatMonths(analysis.worst_months)}</strong>
                     </div>
                 </div>
 
                 <div class="goals-insight">
-                    <strong data-role="goal-insight">${escapeHtml(insightText(goal.time_estimates || estimates))}</strong>
-                    <span>${escapeHtml(goal.smart_analysis?.tip || 'No tip available yet')}</span>
-                    <small data-role="goal-warning">${escapeHtml(warningText(goal, estimates))}</small>
+                    <strong data-role="goal-insight">${escapeHtml(analysis.insight)}</strong>
+                    <span data-role="goal-tip">${escapeHtml(analysis.tip || 'No tip available yet')}</span>
+                    <small data-role="goal-warning">${escapeHtml(analysis.warning)}</small>
                     <p class="goals-month-summary">${monthsText}</p>
                 </div>
 
@@ -267,46 +213,39 @@
             return;
         }
 
-        const extraInput = card.querySelector('[data-role="extra-saving"]');
-        const estimates = computeExtraEstimates({
-            remaining_amount: card.dataset.remaining,
-            smart_analysis: {
-                avg_savings: card.dataset.avg,
-                min_savings: card.dataset.min,
-                max_savings: card.dataset.max,
-            },
-        }, extraInput ? extraInput.value : 0);
-        const badge = feasibilityLabel({
-            smart_analysis: { avg_savings: card.dataset.avg },
-        }, estimates);
-        const baseTarget = safeNumber(card.dataset.target);
-        const baseSaved = safeNumber(card.dataset.saved);
-        const remaining = Math.max(0, baseTarget - baseSaved);
-        const progress = baseTarget > 0 ? (baseSaved / baseTarget) * 100 : 0;
+        const remaining = safeNumber(card.dataset.remaining);
+        const progress = safeNumber(card.dataset.progress);
+        const analysis = {
+            best_months: safeNumber(card.dataset.analysisBest, Number.NaN),
+            realistic_months: safeNumber(card.dataset.analysisRealistic, Number.NaN),
+            worst_months: safeNumber(card.dataset.analysisWorst, Number.NaN),
+            feasibility: card.dataset.analysisFeasibility || '',
+            tone: card.dataset.analysisTone || '',
+            insight: card.dataset.analysisInsight || 'No clear timeline yet',
+            warning: card.dataset.analysisWarning || '',
+            tip: card.dataset.analysisTip || '',
+        };
 
         const bestNode = card.querySelector('[data-role="best-months"]');
         const realNode = card.querySelector('[data-role="real-months"]');
         const worstNode = card.querySelector('[data-role="worst-months"]');
         const insightNode = card.querySelector('[data-role="goal-insight"]');
+        const tipNode = card.querySelector('[data-role="goal-tip"]');
         const warningNode = card.querySelector('[data-role="goal-warning"]');
         const badgeNode = card.querySelector('.goals-badge');
         const progressFill = card.querySelector('.goals-progress-fill');
         const progressText = card.querySelector('.goals-progress-row span:first-child');
         const remainingText = card.querySelector('.goals-progress-row span:last-child');
 
-        if (bestNode) bestNode.innerText = formatMonths(estimates.best);
-        if (realNode) realNode.innerText = formatMonths(estimates.realistic);
-        if (worstNode) worstNode.innerText = formatMonths(estimates.worst);
-        if (insightNode) insightNode.innerText = insightText({ best_months: estimates.best, real_months: estimates.realistic, worst_months: estimates.worst });
-        if (warningNode) warningNode.innerText = warningText({
-            smart_analysis: {
-                avg_savings: card.dataset.avg,
-                warning: card.dataset.warning,
-            },
-        }, estimates);
+        if (bestNode) bestNode.innerText = formatMonths(analysis.best_months);
+        if (realNode) realNode.innerText = formatMonths(analysis.realistic_months);
+        if (worstNode) worstNode.innerText = formatMonths(analysis.worst_months);
+        if (insightNode) insightNode.innerText = analysis.insight;
+        if (tipNode) tipNode.innerText = analysis.tip || 'No tip available yet';
+        if (warningNode) warningNode.innerText = analysis.warning;
         if (badgeNode) {
-            badgeNode.className = `goals-badge goals-badge--${badge.tone}`;
-            badgeNode.innerText = badge.label;
+            badgeNode.className = `goals-badge goals-badge--${analysis.tone || 'neutral'}`;
+            badgeNode.innerText = formatFeasibility(analysis.feasibility) || 'No data yet';
         }
         if (progressFill) progressFill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
         if (progressText) progressText.innerText = `${progress.toFixed(0)}% complete`;

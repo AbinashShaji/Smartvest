@@ -1,150 +1,536 @@
 {% extends "user/base_app.html" %}
 
-{% block title %}Investments - SmartVest{% endblock %}
-{% block page_title %}Investment Opportunities{% endblock %}
+{% block title %}Investment Assistant - SmartVest{% endblock %}
+{% block page_title %}Investment Assistant{% endblock %}
+
+{% block head %}
+<style>
+/* ── Investment Page Tabs ── */
+.inv-tabs{display:flex;gap:4px;background:rgba(255,255,255,.03);border:1px solid var(--glass-border);border-radius:var(--radius-md);padding:4px;flex-wrap:wrap;margin-bottom:24px}
+.inv-tab{padding:10px 18px;border-radius:10px;border:none;background:transparent;color:var(--fg-secondary);font-weight:600;font-size:.85rem;cursor:pointer;transition:var(--transition);white-space:nowrap}
+.inv-tab:hover{color:#fff;background:rgba(255,255,255,.05)}
+.inv-tab.active{background:rgba(255,255,255,.1);color:#fff;box-shadow:var(--glow-soft)}
+.inv-panel{display:none;animation:fadeUp .35s ease}
+.inv-panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Cards Grid ── */
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:20px}
+.inv-card{padding:22px;border-radius:var(--radius-md);background:var(--glass-bg);border:1px solid var(--glass-border);backdrop-filter:var(--glass-blur)}
+.inv-card-label{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--fg-secondary);margin-bottom:8px}
+.inv-card-value{font-size:1.6rem;font-weight:800;line-height:1.1}
+.inv-card-note{font-size:.8rem;color:var(--fg-secondary);margin-top:8px}
+
+/* ── Progress Bar ── */
+.inv-progress-track{width:100%;height:10px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden;margin:12px 0}
+.inv-progress-fill{height:100%;border-radius:99px;transition:width .6s ease}
+
+/* ── Status Badges ── */
+.inv-badge{display:inline-block;padding:4px 12px;border-radius:99px;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.inv-badge--green{background:rgba(34,197,94,.15);color:#4ade80;border:1px solid rgba(34,197,94,.3)}
+.inv-badge--yellow{background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3)}
+.inv-badge--orange{background:rgba(249,115,22,.15);color:#fb923c;border:1px solid rgba(249,115,22,.3)}
+.inv-badge--red{background:rgba(239,68,68,.15);color:#f87171;border:1px solid rgba(239,68,68,.3)}
+
+/* ── Allocation Bar ── */
+.alloc-bar{display:flex;height:28px;border-radius:8px;overflow:hidden;margin:12px 0}
+.alloc-safe{background:linear-gradient(90deg,#22c55e,#4ade80)}
+.alloc-growth{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.alloc-legend{display:flex;gap:20px;margin-top:8px;font-size:.8rem}
+.alloc-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px}
+
+/* ── Stock Cards ── */
+.stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.stock-card{padding:20px}
+.stock-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.stock-name{font-weight:700;font-size:1rem}
+.stock-row{display:flex;justify-content:space-between;padding:4px 0;font-size:.85rem;color:var(--fg-secondary)}
+.stock-row span:last-child{color:#fff;font-weight:600}
+
+/* ── Growth Table ── */
+.growth-table{width:100%;border-collapse:collapse;margin-top:12px}
+.growth-table th,.growth-table td{padding:12px 14px;text-align:left;border-bottom:1px solid rgba(255,255,255,.06);font-size:.85rem}
+.growth-table th{color:var(--fg-secondary);font-weight:600;text-transform:uppercase;letter-spacing:.5px;font-size:.75rem}
+.growth-table td{color:#fff}
+.growth-profit{color:#4ade80}
+.growth-diff{color:#fbbf24;font-size:.8rem}
+
+/* ── Action List ── */
+.inv-actions{list-style:none;padding:0;margin:12px 0}
+.inv-actions li{padding:10px 14px;border-left:3px solid rgba(255,255,255,.15);margin-bottom:8px;font-size:.88rem;color:var(--fg-secondary);background:rgba(255,255,255,.02);border-radius:0 8px 8px 0}
+
+/* ── EF Input ── */
+.ef-input-row{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap}
+.ef-input{background:#111;border:1px solid var(--glass-border);color:#fff;padding:10px 14px;border-radius:8px;font-size:.9rem;width:180px}
+.ef-btn{padding:10px 18px;border-radius:8px;border:none;background:#fff;color:#000;font-weight:600;cursor:pointer;font-size:.85rem;transition:var(--transition)}
+.ef-btn:hover{background:#e0e0e0;transform:translateY(-1px)}
+
+/* ── Risk Warning ── */
+.risk-warning{margin-top:20px;padding:16px 20px;border-radius:var(--radius-md);background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);font-size:.85rem;color:#fca5a5}
+
+@media(max-width:768px){
+    .inv-grid{grid-template-columns:1fr}
+    .stock-grid{grid-template-columns:1fr}
+    .growth-table{font-size:.78rem}
+    .growth-table th,.growth-table td{padding:8px 10px}
+}
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="page-stack">
+    <!-- Hero -->
     <section class="glass-card section-card">
         <div class="section-header">
             <div>
-                <span class="section-eyebrow">Live Investment View</span>
-                <h1 style="margin-top: 10px; font-size: clamp(2rem, 4vw, 3rem);">Investment Opportunities</h1>
-                <p class="muted-copy" style="max-width: 760px;">
-                    This page reads directly from the analysis API and shows only real investment guidance from your current financial data.
-                </p>
+                <span class="section-eyebrow">Financial Assistant</span>
+                <h1 style="margin-top:10px;font-size:clamp(1.8rem,4vw,2.6rem)">Investment Assistant</h1>
+                <p class="muted-copy" style="max-width:700px">Personalized investment guidance built from your real financial data — savings behavior, emergency readiness, and market analysis.</p>
             </div>
-            <div class="summary-badge" id="investmentRiskLevel">Risk: --</div>
+            <div class="summary-badge" id="invStatusBadge">Loading...</div>
+        </div>
+        
+        <!-- Decision Block -->
+        <div id="decisionBlock" style="margin-top: 20px; padding: 18px; border-radius: var(--radius-md); background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 id="decisionTitle" style="margin: 0; font-size: 1.3rem;">Decision: --</h3>
+                <span id="decisionConfidence" class="inv-badge inv-badge--green" style="font-size: 0.85rem;">Confidence: --%</span>
+            </div>
+            <p id="decisionImpact" style="color: var(--fg-secondary); font-size: 0.95rem; margin-bottom: 16px;">--</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+                <div>
+                    <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--fg-secondary); margin-bottom: 8px;">Reasons</h4>
+                    <ul id="decisionReasons" class="inv-actions" style="margin: 0;"></ul>
+                </div>
+                <div>
+                    <h4 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1px; color: var(--fg-secondary); margin-bottom: 8px;">Actions</h4>
+                    <ul id="decisionActions" class="inv-actions" style="margin: 0;"></ul>
+                </div>
+            </div>
+            <div id="alertsContainer" style="margin-top: 16px;"></div>
         </div>
     </section>
 
-    <div class="stats-grid metrics-grid">
-        <div class="glass-card metric-card">
-            <div>
-                <p class="metric-label">Financial Status</p>
-                <p class="metric-value" id="investmentFinancialStatus">Loading...</p>
-            </div>
-            <p class="metric-note">Calculated from your current savings and savings rate.</p>
+    <!-- Tabs -->
+    <div class="inv-tabs" id="invTabs" role="tablist">
+        <button class="inv-tab active" data-tab="overview" role="tab">Overview</button>
+        <button class="inv-tab" data-tab="readiness" role="tab">Readiness</button>
+        <button class="inv-tab" data-tab="strategy" role="tab">Strategy</button>
+        <button class="inv-tab" data-tab="portfolio" role="tab">Portfolio</button>
+        <button class="inv-tab" data-tab="stocks" role="tab">Stocks</button>
+        <button class="inv-tab" data-tab="growth" role="tab">Growth</button>
+    </div>
+
+    <!-- ═══ Tab 1: Overview ═══ -->
+    <div class="inv-panel active" id="panel-overview">
+        <div class="inv-grid">
+            <div class="inv-card"><div class="inv-card-label">Avg Savings (3M)</div><div class="inv-card-value" id="ovAvgSavings">--</div><div class="inv-card-note">Rolling 3-month average</div></div>
+            <div class="inv-card"><div class="inv-card-label">Stability</div><div class="inv-card-value" id="ovStability">--</div><div class="inv-card-note" id="ovVolNote">Volatility: --</div></div>
+            <div class="inv-card"><div class="inv-card-label">Investable Amount</div><div class="inv-card-value" id="ovInvest">--</div><div class="inv-card-note">Monthly allocation</div></div>
+            <div class="inv-card"><div class="inv-card-label">Risk Level</div><div class="inv-card-value" id="ovRisk">--</div><div class="inv-card-note">Based on profile</div></div>
         </div>
-        <div class="glass-card metric-card">
-            <div>
-                <p class="metric-label">Investment Suggestion</p>
-                <p class="metric-value" id="investmentSuggestion">Loading...</p>
+        <section class="glass-card section-card">
+            <h3 style="margin-bottom:12px">Financial Status</h3>
+            <p id="ovFinStatus" class="muted-copy">Loading...</p>
+            <p id="ovSuggestion" style="margin-top:10px;font-size:.9rem">Loading...</p>
+            <div style="margin-top: 16px; padding: 16px; background: rgba(255,255,255,0.05); border-radius: var(--radius-md);">
+                <h4 style="margin-bottom: 8px;">Next Immediate Step</h4>
+                <p id="ovNextStep" style="color: #4ade80;">--</p>
             </div>
-            <p class="metric-note">Pulled directly from analysis output.</p>
-        </div>
-        <div class="glass-card metric-card">
-            <div>
-                <p class="metric-label">Risk Level</p>
-                <p class="metric-value" id="investmentRiskLevelCard">Loading...</p>
-            </div>
-            <p class="metric-note">Based on your savings rate.</p>
+        </section>
+        <div class="glass-card section-card" style="margin-top: 20px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.2);">
+            <h4 style="color: #60a5fa; margin-bottom: 8px;">Insights</h4>
+            <p id="ovSummary" style="font-size: 0.95rem; margin-bottom: 4px; font-weight: 600;">--</p>
+            <p id="ovInsight" style="font-size: 0.95rem; margin-bottom: 8px; color: var(--fg-secondary);">--</p>
+            <p id="ovAction" style="font-size: 0.95rem; font-weight: 600; color: #4ade80;">--</p>
         </div>
     </div>
 
-    <section class="glass-card section-card">
-        <div class="section-header">
-            <div>
-                <h3 style="margin-bottom: 6px;">Advice</h3>
-                <p class="muted-copy">Simple actions based on your current risk level.</p>
-            </div>
+    <!-- ═══ Tab 2: Readiness ═══ -->
+    <div class="inv-panel" id="panel-readiness">
+        <div class="inv-grid">
+            <div class="inv-card"><div class="inv-card-label">Emergency Fund Target</div><div class="inv-card-value" id="rdTarget">--</div></div>
+            <div class="inv-card"><div class="inv-card-label">Current Savings</div><div class="inv-card-value" id="rdCurrent">--</div></div>
+            <div class="inv-card"><div class="inv-card-label">Remaining</div><div class="inv-card-value" id="rdRemaining">--</div></div>
+            <div class="inv-card"><div class="inv-card-label">Time to Ready</div><div class="inv-card-value" id="rdTime">--</div></div>
         </div>
-        <div id="investmentAdviceList" class="analysis-summary-grid"></div>
-    </section>
+        <section class="glass-card section-card">
+            <h3 style="margin-bottom:8px">Emergency Fund Progress</h3>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+                <span id="rdStatusBadge" class="inv-badge inv-badge--yellow">--</span>
+                <span id="rdPercent" style="font-weight:700">0%</span>
+            </div>
+            <div class="inv-progress-track"><div class="inv-progress-fill" id="rdProgressBar" style="width:0%;background:#fbbf24"></div></div>
+            <p id="rdExplanation" style="margin-top: 16px; font-size: 0.95rem; color: var(--fg-secondary);">--</p>
+            <div class="ef-input-row">
+                <input type="number" class="ef-input" id="efManualInput" placeholder="EF months" min="1" step="1">
+                <button class="ef-btn" id="efRecalcBtn">Recalculate</button>
+            </div>
+            <p id="efRecalcMsg" class="inv-card-note" style="margin-top:8px"></p>
+            <p class="inv-card-note">Optional: enter how many months of expenses you want to cover, then save the override.</p>
+        </section>
+        <div class="glass-card section-card" style="margin-top: 20px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.2);">
+            <h4 style="color: #60a5fa; margin-bottom: 8px;">Insights</h4>
+            <p id="rdSummary" style="font-size: 0.95rem; margin-bottom: 4px; font-weight: 600;">--</p>
+            <p id="rdInsight" style="font-size: 0.95rem; margin-bottom: 8px; color: var(--fg-secondary);">--</p>
+            <p id="rdAction" style="font-size: 0.95rem; font-weight: 600; color: #4ade80;">--</p>
+        </div>
+    </div>
 
-    <section class="glass-card section-card">
-        <div class="section-header">
-            <div>
-                <h3 style="margin-bottom: 6px;">Recommended Stocks</h3>
-                <p class="muted-copy">Filtered from the live stock analysis output.</p>
-            </div>
-            <div class="summary-badge" id="investmentStockSummary">0 recommendations</div>
+    <!-- ═══ Tab 3: Strategy ═══ -->
+    <div class="inv-panel" id="panel-strategy">
+        <div class="inv-grid">
+            <div class="inv-card"><div class="inv-card-label">Overall Risk</div><div class="inv-card-value" id="stRisk">--</div></div>
+            <div class="inv-card"><div class="inv-card-label">Recommended SIP</div><div class="inv-card-value" id="stInvest">--</div></div>
+            <div class="inv-card"><div class="inv-card-label">Full SIP Potential</div><div class="inv-card-value" id="stFullSip">--</div></div>
         </div>
-        <div id="investmentRecommendationList" class="analysis-summary-grid"></div>
-    </section>
+        <section class="glass-card section-card">
+            <h3 style="margin-bottom:12px">Strategy Explanation</h3>
+            <p id="stExplanation" style="font-size:1rem; line-height:1.6; margin-bottom: 20px;">--</p>
+            
+            <h3 style="margin-bottom:12px">What-If Analysis: Reduce Expenses</h3>
+            <p id="stWhatIfMsg" style="font-size:0.95rem; color:var(--fg-secondary); line-height:1.5;">--</p>
+        </section>
+        <div class="glass-card section-card" style="margin-top: 20px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.2);">
+            <h4 style="color: #60a5fa; margin-bottom: 8px;">Insights</h4>
+            <p id="stSummary" style="font-size: 0.95rem; margin-bottom: 4px; font-weight: 600;">--</p>
+            <p id="stInsight" style="font-size: 0.95rem; margin-bottom: 8px; color: var(--fg-secondary);">--</p>
+            <p id="stAction" style="font-size: 0.95rem; font-weight: 600; color: #4ade80;">--</p>
+        </div>
+    </div>
+
+    <!-- ═══ Tab 4: Portfolio ═══ -->
+    <div class="inv-panel" id="panel-portfolio">
+        <div class="inv-grid">
+            <div class="inv-card"><div class="inv-card-label">Monthly SIP Plan</div><div class="inv-card-value" id="pfInvest">--</div></div>
+            <div class="inv-card"><div class="inv-card-label">Nifty 50 (Large Cap)</div><div class="inv-card-value" id="pfNifty50">--</div><div class="inv-card-note">Stability & Core Growth</div></div>
+            <div class="inv-card"><div class="inv-card-label">Nifty 100 (Balanced)</div><div class="inv-card-value" id="pfNifty100">--</div><div class="inv-card-note">Broader Market Exposure</div></div>
+            <div class="inv-card"><div class="inv-card-label">Midcap (Growth)</div><div class="inv-card-value" id="pfMidcap">--</div><div class="inv-card-note">Aggressive Wealth Creation</div></div>
+        </div>
+        <section class="glass-card section-card">
+            <h3 style="margin-bottom:8px">Allocation Split</h3>
+            <div class="alloc-bar" id="pfAllocBar">
+                <div class="alloc-safe" id="pfAllocNifty50" style="width:0%"></div>
+                <div class="alloc-growth" id="pfAllocNifty100" style="width:0%; background: linear-gradient(90deg, #3b82f6, #60a5fa)"></div>
+                <div class="alloc-growth" id="pfAllocMidcap" style="width:0%; background: linear-gradient(90deg, #f59e0b, #fbbf24)"></div>
+            </div>
+            <div class="alloc-legend">
+                <span><span class="alloc-dot" style="background:#4ade80"></span>Nifty 50</span>
+                <span><span class="alloc-dot" style="background:#60a5fa"></span>Nifty 100</span>
+                <span><span class="alloc-dot" style="background:#fbbf24"></span>Midcap</span>
+            </div>
+            <p id="pfReasoning" style="margin-top:12px; font-size:0.95rem; color:var(--fg-secondary);"></p>
+        </section>
+        <div class="glass-card section-card" style="margin-top: 20px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.2);">
+            <h4 style="color: #60a5fa; margin-bottom: 8px;">Insights</h4>
+            <p id="pfSummary" style="font-size: 0.95rem; margin-bottom: 4px; font-weight: 600;">--</p>
+            <p id="pfInsight" style="font-size: 0.95rem; margin-bottom: 8px; color: var(--fg-secondary);">--</p>
+            <p id="pfAction" style="font-size: 0.95rem; font-weight: 600; color: #4ade80;">--</p>
+        </div>
+    </div>
+
+    <!-- ═══ Tab 5: Stocks ═══ -->
+    <div class="inv-panel" id="panel-stocks">
+        <section class="glass-card section-card" style="margin-bottom: 20px;">
+            <h3>Direct Equity Strategy</h3>
+            <p id="skExplanation" style="font-size: 0.95rem; color: var(--fg-secondary); margin-top: 8px;">--</p>
+        </section>
+        <section class="glass-card section-card">
+            <div class="section-header">
+                <div><h3>Recommended Stocks</h3><p class="muted-copy">Filtered by your risk profile</p></div>
+                <div class="summary-badge" id="skCount">0 stocks</div>
+            </div>
+            <div class="stock-grid" id="skGrid"></div>
+        </section>
+        <div class="glass-card section-card" style="margin-top: 20px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.2);">
+            <h4 style="color: #60a5fa; margin-bottom: 8px;">Insights</h4>
+            <p id="skSummary" style="font-size: 0.95rem; margin-bottom: 4px; font-weight: 600;">--</p>
+            <p id="skInsight" style="font-size: 0.95rem; margin-bottom: 8px; color: var(--fg-secondary);">--</p>
+            <p id="skAction" style="font-size: 0.95rem; font-weight: 600; color: #4ade80;">--</p>
+        </div>
+    </div>
+
+    <!-- ═══ Tab 6: Growth ═══ -->
+    <div class="inv-panel" id="panel-growth">
+        <div class="glass-card section-card" style="margin-bottom: 20px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.2);">
+            <h4 style="color: #60a5fa; margin-bottom: 8px;">Insights</h4>
+            <p id="grSummary" style="font-size: 0.95rem; margin-bottom: 4px; font-weight: 600;">--</p>
+            <p id="grInsight" style="font-size: 0.95rem; margin-bottom: 8px; color: var(--fg-secondary);">--</p>
+            <p id="grAction" style="font-size: 0.95rem; font-weight: 600; color: #4ade80;">--</p>
+        </div>
+
+        <section class="glass-card section-card" id="grSummaryBlock" style="margin-bottom: 20px;">
+            <h3 style="margin-bottom: 12px; color: #4ade80;" id="grSummaryTitle">If you invest ₹X/month:</h3>
+            <div class="inv-grid" style="margin-bottom: 0;">
+                <div class="inv-card" style="padding: 16px;"><div class="inv-card-label">Total Invested (5Y)</div><div class="inv-card-value" id="grSumInvested" style="font-size: 1.2rem;">--</div></div>
+                <div class="inv-card" style="padding: 16px;"><div class="inv-card-label">Expected Value (5Y)</div><div class="inv-card-value" id="grSumValue" style="font-size: 1.2rem;">--</div></div>
+                <div class="inv-card" style="padding: 16px;"><div class="inv-card-label">Extra Gain vs Savings</div><div class="inv-card-value" id="grSumExtra" style="font-size: 1.2rem; color: #fbbf24;">--</div></div>
+            </div>
+            <p id="grSummaryExp" style="margin-top: 12px; font-size: 0.9rem; color: var(--fg-secondary);">--</p>
+        </section>
+
+        <section class="glass-card section-card" id="grPotentialBlock" style="display: none; margin-bottom: 20px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3);">
+            <h3 style="color: #60a5fa; margin-bottom: 8px;">Future Potential</h3>
+            <p id="grPotentialMsg" style="font-size: 1rem; line-height: 1.5;">--</p>
+        </section>
+        <section class="glass-card section-card">
+            <div class="section-header">
+                <div><h3>Savings vs Investment Growth</h3><p class="muted-copy">Projected returns over 1 and 5 years</p></div>
+            </div>
+            <div class="table-responsive">
+                <table class="growth-table" id="grTable">
+                    <thead><tr><th>Type</th><th>Rate</th><th>1Y Value</th><th>1Y Profit</th><th>5Y Value</th><th>5Y Profit</th><th>5Y vs Savings</th></tr></thead>
+                    <tbody id="grBody"></tbody>
+                </table>
+            </div>
+            <div class="risk-warning">
+                <strong>⚠ Risk Disclaimer:</strong> All projections are estimates based on historical averages. Actual returns may vary. Past performance does not guarantee future results. Never invest money you cannot afford to lose.
+            </div>
+        </section>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        loadInvestmentPage();
+document.addEventListener('DOMContentLoaded', () => {
+    initTabs();
+    loadInvestmentData();
+});
+
+/* ── Tab Switching ── */
+function initTabs() {
+    const tabs = document.querySelectorAll('.inv-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            tabs.forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.inv-panel').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+        });
     });
+}
 
-    function safeNumber(value) {
-        const num = Number(value);
-        return Number.isFinite(num) ? num : 0;
+/* ── Helpers ── */
+function fmt(n) { return '₹' + Number(n || 0).toLocaleString('en-IN', {maximumFractionDigits: 2}); }
+function esc(v) { const d = document.createElement('div'); d.textContent = v ?? ''; return d.innerHTML; }
+function badgeClass(tone) { return 'inv-badge inv-badge--' + (tone || 'yellow'); }
+function progressColor(tone) { return {green:'#4ade80',yellow:'#fbbf24',orange:'#fb923c',red:'#f87171'}[tone]||'#fbbf24'; }
+
+function populateInsights(d, tabPrefix, tabName) {
+    const i = (d.insights && d.insights[tabName]) || {};
+    const summaryEl = document.getElementById(tabPrefix + 'Summary');
+    if (summaryEl) {
+        summaryEl.textContent = i.summary || '--';
+        document.getElementById(tabPrefix + 'Insight').textContent = i.insight || '--';
+        document.getElementById(tabPrefix + 'Action').textContent = i.action || '--';
     }
+}
 
-    function escapeHtml(value) {
-        return String(value ?? '')
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#39;');
+/* ── Main Data Loader ── */
+async function loadInvestmentData() {
+    try {
+        const data = await API.getOverview();
+        renderOverview(data);
+        renderReadiness(data);
+        renderStrategy(data);
+        renderPortfolio(data);
+        renderStocks(data);
+        renderGrowth(data);
+    } catch (e) {
+        document.getElementById('invStatusBadge').textContent = 'Error loading data';
+        console.error('Investment load error:', e);
     }
+}
 
-    async function loadInvestmentPage() {
-        try {
-            const overview = await API.getOverview();
+/* ── Tab 1: Overview ── */
+function renderOverview(d) {
+    populateInsights(d, 'ov', 'overview');
+    const snap = d.snapshot || {};
+    const dec = d.decision_engine || {};
+    const sip = d.sip_engine || {};
 
-            const financialStatus = overview?.financial_status || 'Unavailable';
-            const riskLevel = overview?.risk_level || 'Low';
-            const suggestion = overview?.investment_suggestion || 'Investment guidance unavailable.';
-            const recommendedStocks = Array.isArray(overview?.recommended_stocks) ? overview.recommended_stocks : [];
-            const advice = Array.isArray(overview?.advice) ? overview.advice : [];
+    document.getElementById('ovAvgSavings').textContent = fmt(snap.avg_savings);
+    document.getElementById('ovStability').textContent = snap.stable ? '✓ Stable' : '✗ Unstable';
+    document.getElementById('ovVolNote').textContent = 'Volatility: ' + ((snap.volatility || 0) * 100).toFixed(1) + '%';
+    document.getElementById('ovInvest').textContent = fmt(sip.sip_amount);
+    document.getElementById('ovRisk').textContent = sip.risk_level || '--';
+    document.getElementById('ovFinStatus').textContent = d.financial_status || '--';
+    document.getElementById('ovSuggestion').textContent = d.investment_suggestion || '--';
+    document.getElementById('ovNextStep').textContent = dec.next_step || '--';
+    
+    document.getElementById('invStatusBadge').textContent = dec.decision === 'READY' ? '✓ Investment Ready' : (dec.decision === 'PARTIAL' ? '⚡ Partial Invest' : '⏳ Not Ready');
+    document.getElementById('invStatusBadge').className = dec.decision === 'READY' ? 'summary-badge' : (dec.decision === 'PARTIAL' ? 'summary-badge inv-badge--green' : 'summary-badge inv-badge--yellow');
+    
+    // Fill Decision Block
+    document.getElementById('decisionBlock').style.display = 'block';
+    document.getElementById('decisionTitle').textContent = 'Decision: ' + (dec.decision || 'UNKNOWN');
+    document.getElementById('decisionConfidence').textContent = 'Confidence: ' + (dec.confidence || 0) + '%';
+    document.getElementById('decisionConfidence').className = dec.confidence >= 80 ? 'inv-badge inv-badge--green' : 'inv-badge inv-badge--orange';
+    document.getElementById('decisionImpact').textContent = dec.impact || '';
+    
+    const rList = dec.reasons || [];
+    document.getElementById('decisionReasons').innerHTML = rList.length ? rList.map(r => `<li>${esc(r)}</li>`).join('') : '<li>None</li>';
+    
+    const aList = dec.actions || [];
+    document.getElementById('decisionActions').innerHTML = aList.length ? aList.map(a => `<li>${esc(a)}</li>`).join('') : '<li>None</li>';
+    
+    // Alerts
+    const alerts = d.alerts || [];
+    const alertsHtml = alerts.map(al => `
+        <div class="risk-warning" style="margin-top:8px; padding:8px 12px; ${al.severity === 'critical' ? 'background:rgba(239,68,68,0.15);border-color:#ef4444;color:#fca5a5' : 'background:rgba(245,158,11,0.15);border-color:#f59e0b;color:#fcd34d'}">
+            <strong>${al.severity.toUpperCase()}:</strong> ${esc(al.message)}
+        </div>
+    `).join('');
+    document.getElementById('alertsContainer').innerHTML = alertsHtml;
+}
 
-            document.getElementById('investmentFinancialStatus').innerText = financialStatus;
-            document.getElementById('investmentSuggestion').innerText = suggestion;
-            document.getElementById('investmentRiskLevel').innerText = `Risk: ${riskLevel}`;
-            document.getElementById('investmentRiskLevelCard').innerText = riskLevel;
-            document.getElementById('investmentStockSummary').innerText = `${recommendedStocks.length} recommendations`;
+/* ── Tab 2: Readiness ── */
+function renderReadiness(d) {
+    populateInsights(d, 'rd', 'readiness');
+    const ef = d.emergency || {};
+    const dec = d.decision_engine || {};
+    
+    document.getElementById('rdTarget').textContent = fmt(ef.target);
+    document.getElementById('rdCurrent').textContent = fmt(ef.current);
+    document.getElementById('rdRemaining').textContent = fmt(ef.remaining);
+    document.getElementById('rdTime').textContent = dec.time_to_ready || '--';
+    
+    const pct = ef.target > 0 ? Math.min(100, (ef.current / ef.target) * 100) : 0;
+    document.getElementById('rdPercent').textContent = pct.toFixed(0) + '%';
+    document.getElementById('rdProgressBar').style.width = pct + '%';
+    document.getElementById('rdProgressBar').style.background = progressColor(ef.tone);
+    const badge = document.getElementById('rdStatusBadge');
+    badge.textContent = ef.status || '--';
+    badge.className = badgeClass(ef.tone);
+    
+    // Explanation
+    let exp = "Your emergency fund is fully funded.";
+    if (ef.coverage_months < 1) {
+        exp = `Your emergency fund covers less than 1 month of expenses. It is critical to reach a minimum of 1 month before making any investments.`;
+    } else if (ef.coverage_months < 2) {
+        exp = `Your emergency fund covers ${ef.coverage_months.toFixed(1)} months. You have a basic safety net, but should continue to fund it towards the 2+ month target.`;
+    }
+    document.getElementById('rdExplanation').textContent = exp;
 
-            document.getElementById('investmentAdviceList').innerHTML = advice.length > 0
-                ? advice.map((item) => `
-                    <div class="glass-card insight-card">
-                        <p style="margin: 0; line-height: 1.8;">${escapeHtml(item)}</p>
-                    </div>
-                `).join('')
-                : `
-                    <div class="glass-card insight-card">
-                        <p class="muted-copy">No advice available for the current profile.</p>
-                    </div>
-                `;
-
-            document.getElementById('investmentRecommendationList').innerHTML = recommendedStocks.length > 0
-                ? recommendedStocks.map((stock) => `
-                    <div class="glass-card insight-card">
-                        <p class="metric-label">${escapeHtml(stock.name)}</p>
-                        <p style="margin: 8px 0 0;">
-                            <strong>Status:</strong> ${escapeHtml(stock.status)}
-                            <br>
-                            <strong>Change:</strong> ${safeNumber(stock.change).toFixed(2)}
-                        </p>
-                    </div>
-                `).join('')
-                : `
-                    <div class="glass-card insight-card">
-                        <p class="muted-copy">No recommended stocks match the current profile.</p>
-                    </div>
-                `;
-        } catch (error) {
-            document.getElementById('investmentFinancialStatus').innerText = 'Unavailable';
-            document.getElementById('investmentSuggestion').innerText = 'Unable to load investment guidance right now.';
-            document.getElementById('investmentRiskLevel').innerText = 'Risk: --';
-            document.getElementById('investmentRiskLevelCard').innerText = '--';
-            document.getElementById('investmentAdviceList').innerHTML = `
-                <div class="glass-card insight-card">
-                    <p class="muted-copy">Unable to load advice.</p>
-                </div>
-            `;
-            document.getElementById('investmentRecommendationList').innerHTML = `
-                <div class="glass-card insight-card">
-                    <p class="muted-copy">Unable to load recommended stocks.</p>
-                </div>
-            `;
+    // Save the EF override in the backend so the dashboard stays in sync.
+    document.getElementById('efRecalcBtn').onclick = async () => {
+        const months = parseInt(document.getElementById('efManualInput').value, 10);
+        const msg = document.getElementById('efRecalcMsg');
+        if (!months || months <= 0) {
+            msg.textContent = 'Please enter a valid number of months.';
+            return;
         }
+        msg.textContent = 'Saving...';
+        try {
+            await API.updateEmergencyFundTarget(months);
+            msg.textContent = 'Saved!';
+            await loadInvestmentData();
+        } catch (error) {
+            msg.textContent = error.message || 'Save failed.';
+        }
+    };
+}
+
+/* ── Tab 3: Strategy ── */
+function renderStrategy(d) {
+    populateInsights(d, 'st', 'strategy');
+    const sip = d.sip_engine || {};
+    const whatIf = d.what_if || {};
+    
+    document.getElementById('stRisk').textContent = sip.risk_level || '--';
+    document.getElementById('stInvest').textContent = fmt(sip.sip_amount);
+    document.getElementById('stFullSip').textContent = fmt(sip.full_sip || 0);
+    
+    document.getElementById('stExplanation').textContent = sip.explanation || sip.message || '--';
+    document.getElementById('stWhatIfMsg').textContent = whatIf.message || '--';
+}
+
+/* ── Tab 4: Portfolio ── */
+function renderPortfolio(d) {
+    populateInsights(d, 'pf', 'portfolio');
+    const sip = d.sip_engine || {};
+    const alloc = sip.allocation || {};
+    const pct = alloc.allocation_percent || {};
+    const amt = alloc.allocation_amount || {};
+    
+    document.getElementById('pfInvest').textContent = fmt(sip.sip_amount);
+    
+    document.getElementById('pfNifty50').textContent = fmt(amt['Nifty 50']);
+    document.getElementById('pfNifty100').textContent = fmt(amt['Nifty 100']);
+    document.getElementById('pfMidcap').textContent = fmt(amt['Midcap']);
+    
+    document.getElementById('pfAllocNifty50').style.width = (pct['Nifty 50'] || 0) + '%';
+    document.getElementById('pfAllocNifty100').style.width = (pct['Nifty 100'] || 0) + '%';
+    document.getElementById('pfAllocMidcap').style.width = (pct['Midcap'] || 0) + '%';
+    
+    document.getElementById('pfReasoning').textContent = alloc.reasoning || '';
+}
+
+/* ── Tab 5: Stocks ── */
+function renderStocks(d) {
+    populateInsights(d, 'sk', 'stocks');
+    const stocks = d.recommended_stocks || [];
+    const sip = d.sip_engine || {};
+    document.getElementById('skCount').textContent = stocks.length + ' stocks';
+    
+    document.getElementById('skExplanation').textContent = `These direct equity options are filtered to match your ${sip.risk_level || 'Low'} risk profile. We only recommend allocating a small satellite portion of your portfolio to direct stocks.`;
+    
+    if (!stocks.length) {
+        document.getElementById('skGrid').innerHTML = '<div class="inv-card"><p class="muted-copy">No stocks match your risk profile.</p></div>';
+        return;
     }
+    document.getElementById('skGrid').innerHTML = stocks.map(s => `
+        <div class="glass-card stock-card">
+            <div class="stock-header">
+                <span class="stock-name">${esc(s.name)}</span>
+                <span class="${badgeClass(s.risk_fit === 'Match' ? 'green' : 'yellow')}">${esc(s.risk_fit)}</span>
+            </div>
+            <div class="stock-row"><span>Trend</span><span>${esc(s.trend)}</span></div>
+            <div class="stock-row"><span>Change</span><span>${Number(s.change).toFixed(2)}</span></div>
+            <div class="stock-row"><span>Confidence</span><span>${s.confidence}%</span></div>
+            <p style="margin-top:10px;font-size:.82rem;color:var(--fg-secondary)">${esc(s.reason)}</p>
+        </div>
+    `).join('');
+}
+
+/* ── Tab 6: Growth ── */
+function renderGrowth(d) {
+    populateInsights(d, 'gr', 'growth');
+    const g = d.growth || {};
+    const labels = {savings:'Savings Account', safe:'Safe (Debt/FD)', moderate:'Moderate (Index)', high:'High (Equity)'};
+    const body = document.getElementById('grBody');
+    let html = '';
+    
+    if (g.is_potential) {
+        document.getElementById('grPotentialBlock').style.display = 'block';
+        document.getElementById('grSummaryBlock').style.display = 'none';
+        document.getElementById('grPotentialMsg').innerHTML = g.explanation || `You can start with <strong>${fmt(g.potential_sip)}</strong>/month after <strong>${g.time_to_ready}</strong> and reach significant wealth.`;
+    } else {
+        document.getElementById('grPotentialBlock').style.display = 'none';
+        document.getElementById('grSummaryBlock').style.display = 'block';
+        document.getElementById('grSummaryTitle').textContent = `If you invest ${fmt(g.sip_amount)}/month:`;
+        document.getElementById('grSumInvested').textContent = fmt(g.total_invested_5y);
+        document.getElementById('grSumValue').textContent = fmt(g.data?.moderate?.year_5?.final_value);
+        document.getElementById('grSumExtra').textContent = '+' + fmt(g.data?.moderate?.year_5?.diff_vs_savings);
+        document.getElementById('grSummaryExp').textContent = g.explanation || '--';
+    }
+
+    const dataObj = g.data || {};
+    for (const [key, label] of Object.entries(labels)) {
+        const row = dataObj[key];
+        if (!row) continue;
+        html += `<tr>
+            <td style="font-weight:600">${label}</td>
+            <td>${row.rate}%</td>
+            <td>${fmt(row.year_1?.final_value)}</td>
+            <td class="growth-profit">+${fmt(row.year_1?.profit)}</td>
+            <td>${fmt(row.year_5?.final_value)}</td>
+            <td class="growth-profit">+${fmt(row.year_5?.profit)}</td>
+            <td class="growth-diff">${key === 'savings' ? '—' : '+' + fmt(row.year_5?.diff_vs_savings)}</td>
+        </tr>`;
+    }
+    body.innerHTML = html || '<tr><td colspan="7" class="muted-copy">No growth data available.</td></tr>';
+}
 </script>
 {% endblock %}
