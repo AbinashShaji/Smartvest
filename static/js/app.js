@@ -51,13 +51,13 @@ function initFormInteractions() {
 }
 
 /**
- * Utility: Format currency
+ * Utility: Format numeric amounts without currency symbols.
  */
 function formatCurrency(amount) {
     return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-    }).format(amount);
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(Number(amount) || 0);
 }
 
 /**

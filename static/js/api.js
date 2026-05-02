@@ -56,6 +56,7 @@ const API = {
 
     // Expense Modules (/api/expense/)
     getExpenses: () => API.request('/api/expense/all'),
+    getRecentExpenses: () => API.request('/api/expense/recent'),
     addExpense: (data) => API.request('/api/expense/add', { method: 'POST', body: JSON.stringify(data) }),
     updateIncome: (data) => API.request('/api/expense/income/update', { method: 'POST', body: JSON.stringify(data) }),
     setIncome: (data) => API.updateIncome(data), // Compatibility alias for older template code

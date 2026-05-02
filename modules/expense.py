@@ -9,6 +9,45 @@ from modules.goals import enrich_goal_rows, enrich_goal_row, build_goal_analysis
 expense_bp = Blueprint('expense', __name__)
 
 
+def _expense_order_clause(cursor, preferred_columns=("created_at", "date", "id")):
+    """
+    Choose the safest ordering column that actually exists in the table.
+    This keeps the query working even if the schema changes over time.
+    """
+    cursor.execute("PRAGMA table_info(expenses)")
+    available = {row["name"] for row in cursor.fetchall()}
+
+    for column in preferred_columns:
+        if column in available:
+            return column
+
+    return "id"
+
+
+def _fetch_user_expenses(user_id, limit=None):
+    """
+    Read expenses for one user.
+    limit=None returns the full list.
+    limit=5 returns only the latest five rows for dashboard recent activity.
+    """
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    order_column = _expense_order_clause(cursor)
+    order_sql = f"{order_column} DESC, id DESC"
+    sql = f"SELECT * FROM expenses WHERE user_id = ? ORDER BY {order_sql}"
+    params = [user_id]
+
+    if limit is not None:
+        sql += " LIMIT ?"
+        params.append(limit)
+
+    cursor.execute(sql, params)
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows
+
+
 # --- UI PAGE ROUTES (HTML) ---
 
 @expense_bp.route("/expenses")
@@ -98,14 +137,26 @@ def api_expenses():
 
     try:
         user_id = config.get_current_user()["user_id"]
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM expenses WHERE user_id = ? ORDER BY date DESC", (user_id,))
-        user_data = [dict(row) for row in cursor.fetchall()]
-        conn.close()
+        user_data = _fetch_user_expenses(user_id)
 
         return jsonify({"status": "success", "data": user_data})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@expense_bp.route("/api/expense/recent")
+def api_recent_expenses():
+    """
+    Purpose: Fetch the latest five individual expenses for dashboard recent activity.
+    """
+    if not config.is_logged_in():
+        return jsonify({"status": "error", "message": "Login required"}), 401
+
+    try:
+        user_id = config.get_current_user()["user_id"]
+        # Debug helper: keep this endpoint limited so the dashboard never renders the full history.
+        recent_rows = _fetch_user_expenses(user_id, limit=5)
+        return jsonify({"status": "success", "data": recent_rows})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
@@ -488,6 +539,7 @@ def api_upload_csv():
         cursor = conn.cursor()
 
         success_count = 0
+        # Debug note: import one CSV row at a time so each line becomes one Expense record.
         for _, row in df.iterrows():
             amount = row.get("amount")
             category = row.get("category")

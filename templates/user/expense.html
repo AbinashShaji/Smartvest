@@ -154,7 +154,7 @@
                         <span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${escapeHtml(exp.category)}</span>
                     </td>
                     <td style="padding: 16px; color: var(--fg-secondary); font-size: 0.85rem;">${escapeHtml(exp.date)}</td>
-                    <td style="padding: 16px; text-align: right; font-weight: 600;">-$${safeNumber(exp.amount).toFixed(2)}</td>
+                    <td style="padding: 16px; text-align: right; font-weight: 600;">-${safeNumber(exp.amount).toFixed(2)}</td>
                     <td style="padding: 16px; text-align: right;">
                         <div class="expense-actions">
                             <button

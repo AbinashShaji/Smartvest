@@ -25,7 +25,7 @@
         return new Intl.NumberFormat('en-US', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
-        }).format(value);
+        }).format(safeNumber(value));
     }
 
     function setText(id, value) {
@@ -245,7 +245,7 @@
         try {
             const [dashboardResult, expensesResult] = await Promise.allSettled([
                 API.getDashboard(),
-                API.getExpenses(),
+                API.getRecentExpenses ? API.getRecentExpenses() : API.getExpenses(),
             ]);
 
             const data = dashboardResult.status === 'fulfilled' ? dashboardResult.value : {};

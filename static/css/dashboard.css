@@ -83,7 +83,7 @@
 
 .dashboard-search-input:focus,
 .dashboard-input:focus {
-    border-color: rgba(96, 165, 250, 0.70);
+    border-color: rgba(225, 174, 31, 0.7);
     box-shadow: var(--focus-ring);
     transform: translateY(-1px);
 }
