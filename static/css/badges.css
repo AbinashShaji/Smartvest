@@ -1,0 +1,88 @@
+/* ==========================================================================
+   SmartVest Badges
+   Shared chips and status pills used across user pages.
+   ========================================================================== */
+
+/* === Badge Base === */
+.badge,
+.summary-badge,
+.inv-badge,
+.analysis-badge,
+.goals-badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    gap: 8px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    border: 1px solid transparent;
+    transition:
+        background-color var(--duration-base) var(--easing),
+        border-color var(--duration-base) var(--easing),
+        color var(--duration-base) var(--easing),
+        box-shadow var(--duration-base) var(--easing);
+}
+
+.badge {
+    text-transform: uppercase;
+}
+
+.badge--lg {
+    padding: 6px 16px;
+    font-size: 0.875rem;
+}
+
+/* === Semantic Variants === */
+.badge--success,
+.summary-badge--success,
+.inv-badge--green,
+.analysis-badge--green,
+.goals-badge--green {
+    background: rgba(74, 222, 128, 0.15);
+    color: #bbf7d0;
+    border-color: rgba(74, 222, 128, 0.24);
+}
+
+.badge--warning,
+.summary-badge--warning,
+.inv-badge--yellow,
+.analysis-badge--yellow,
+.goals-badge--yellow {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fde68a;
+    border-color: rgba(251, 191, 36, 0.24);
+}
+
+.badge--danger,
+.summary-badge--danger,
+.inv-badge--red,
+.analysis-badge--red,
+.goals-badge--red {
+    background: rgba(248, 113, 113, 0.15);
+    color: #fecaca;
+    border-color: rgba(248, 113, 113, 0.24);
+}
+
+.badge--info,
+.summary-badge--info,
+.inv-badge--orange,
+.analysis-badge--neutral,
+.goals-badge--neutral {
+    background: rgba(96, 165, 250, 0.15);
+    color: #dbeafe;
+    border-color: rgba(96, 165, 250, 0.24);
+}
+
+.badge--neutral,
+.summary-badge,
+.inv-badge,
+.analysis-badge,
+.goals-badge {
+    background: rgba(255, 255, 255, 0.04);
+    color: #f8fafc;
+    border-color: var(--border-default);
+}
+

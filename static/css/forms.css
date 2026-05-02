@@ -1,0 +1,56 @@
+/* ==========================================================================
+   SmartVest Forms
+   Shared input styling for glass inputs, selects, and textareas.
+   ========================================================================== */
+
+/* === Glass Inputs === */
+.glass-input-field {
+    width: 100%;
+    background: var(--surface-base);
+    border: 1px solid var(--border-default);
+    border-radius: 14px;
+    color: var(--fg-primary);
+    padding: 12px 14px;
+    outline: none;
+    transition:
+        border-color var(--duration-base) var(--easing),
+        box-shadow var(--duration-base) var(--easing),
+        background-color var(--duration-base) var(--easing),
+        transform var(--duration-base) var(--easing);
+}
+
+.glass-input-field::placeholder {
+    color: rgba(161, 161, 170, 0.85);
+}
+
+.glass-input-field:hover {
+    background: var(--surface-raised);
+}
+
+.glass-input-field:focus-visible {
+    border-color: rgba(96, 165, 250, 0.70);
+    box-shadow: var(--focus-ring);
+    transform: translateY(-1px);
+}
+
+.glass-input-field:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.glass-input-field textarea,
+textarea.glass-input-field {
+    min-height: 100px;
+    resize: vertical;
+}
+
+select.glass-input-field {
+    cursor: pointer;
+}
+
+/* === Stronger Select Tuning === */
+select.glass-input-field option {
+    background: #111827;
+    color: var(--fg-primary);
+}
+

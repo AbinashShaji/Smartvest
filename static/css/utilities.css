@@ -1,0 +1,66 @@
+/* ==========================================================================
+   SmartVest Utilities
+   Small reusable helpers for spacing, layout, grids, and text treatment.
+   ========================================================================== */
+
+/* === Spacing === */
+.u-mb-xs { margin-bottom: var(--space-xs) !important; }
+.u-mb-sm { margin-bottom: var(--space-sm) !important; }
+.u-mb-md { margin-bottom: var(--space-md) !important; }
+.u-mb-lg { margin-bottom: var(--space-lg) !important; }
+.u-mb-xl { margin-bottom: var(--space-xl) !important; }
+.u-mt-lg { margin-top: var(--space-lg) !important; }
+.u-mt-xl { margin-top: var(--space-xl) !important; }
+.u-p-md { padding: var(--space-md) !important; }
+.u-p-lg { padding: var(--space-lg) !important; }
+.u-p-xl { padding: var(--space-xl) !important; }
+
+/* === Layout === */
+.u-flex { display: flex !important; }
+.u-flex-center { display: flex !important; align-items: center !important; justify-content: center !important; }
+.u-flex-between { display: flex !important; align-items: center !important; justify-content: space-between !important; }
+.u-gap-sm { gap: var(--space-sm) !important; }
+.u-gap-md { gap: var(--space-md) !important; }
+.u-gap-lg { gap: var(--space-lg) !important; }
+
+/* === Grid === */
+.u-grid-2,
+.u-grid-3 {
+    display: grid !important;
+    gap: var(--space-md) !important;
+    min-width: 0;
+}
+
+.u-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.u-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+/* === Text === */
+.u-text-muted { color: var(--fg-secondary) !important; }
+.u-text-small { font-size: 0.875rem !important; line-height: 1.55 !important; }
+.u-text-xs { font-size: 0.75rem !important; line-height: 1.45 !important; }
+
+/* === Focus === */
+.u-focus-ring:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* === Responsive Grid Collapse === */
+@media (max-width: 980px) {
+    .u-grid-3 {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 640px) {
+    .u-grid-2,
+    .u-grid-3 {
+        grid-template-columns: 1fr !important;
+    }
+}
+
