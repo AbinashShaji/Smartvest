@@ -801,6 +801,40 @@ nav.glass-nav {
     display: block;
 }
 
+/* Expense List Modes */
+.edit-mode-cell {
+    display: none;
+}
+
+.edit-mode .edit-mode-cell {
+    display: table-cell !important;
+}
+
+.mode-btn-active {
+    background: #ffffff !important;
+    color: #000000 !important;
+}
+
+.filter-panel-wrapper {
+    display: none;
+}
+
+.filter-panel-wrapper.active {
+    display: block;
+    animation: slideDownFadeIn 0.3s ease forwards;
+}
+
+@keyframes slideDownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 .inline-editor-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));

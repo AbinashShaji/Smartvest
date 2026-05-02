@@ -20,60 +20,70 @@
         <a class="expense-tab-link {% if expense_page == 'export' %}active{% endif %}" href="/expenses/export">Export Expense</a>
     </nav>
 
+    <!-- Top Toolbar for Modes -->
+    <div class="expense-toolbar" style="margin-bottom: 24px; display: flex; gap: 12px; border-bottom: 1px solid var(--glass-border); padding-bottom: 16px; justify-content: flex-start;">
+        <button id="modeFilterBtn" type="button" class="expense-button-secondary">Filter</button>
+        <button id="modeEditBtn" type="button" class="expense-button-secondary">Edit</button>
+    </div>
+
+    <!-- Filter Panel -->
+    <div id="filterPanel" class="filter-panel-wrapper">
+        <section class="expense-card" style="margin-bottom: 24px;">
+            <div class="expense-card-header">
+                <div>
+                    <h3>Filters</h3>
+                    <p class="expense-card-copy">Switch between a single day, a date range, a month, or a year.</p>
+                </div>
+            </div>
+
+            <form id="expenseFilterForm" class="expense-filter-grid">
+                <div class="expense-field">
+                    <label class="expense-label" for="expenseFilterMode">Filter Type</label>
+                    <select id="expenseFilterMode" class="expense-select" name="filter_mode">
+                        <option value="single_day">Single Day</option>
+                        <option value="date_range">Date Range</option>
+                        <option value="month">Month</option>
+                        <option value="year">Year</option>
+                    </select>
+                </div>
+
+                <div class="expense-field expense-filter-group" data-filter-group="single_day">
+                    <label class="expense-label" for="expenseSingleDay">Date</label>
+                    <input id="expenseSingleDay" class="expense-input" type="date" name="single_day">
+                </div>
+
+                <div class="expense-field expense-filter-group" data-filter-group="date_range" hidden>
+                    <label class="expense-label" for="expenseDateFrom">From</label>
+                    <input id="expenseDateFrom" class="expense-input" type="date" name="date_from">
+                </div>
+
+                <div class="expense-field expense-filter-group" data-filter-group="date_range" hidden>
+                    <label class="expense-label" for="expenseDateTo">To</label>
+                    <input id="expenseDateTo" class="expense-input" type="date" name="date_to">
+                </div>
+
+                <div class="expense-field expense-filter-group" data-filter-group="month" hidden>
+                    <label class="expense-label" for="expenseMonth">Month</label>
+                    <input id="expenseMonth" class="expense-input" type="month" name="month">
+                </div>
+
+                <div class="expense-field expense-filter-group" data-filter-group="year" hidden>
+                    <label class="expense-label" for="expenseYear">Year</label>
+                    <input id="expenseYear" class="expense-input" type="number" name="year" min="2000" max="2100" placeholder="2026">
+                </div>
+
+                <div class="expense-actions-row" style="grid-column: 1 / -1;">
+                    <button type="submit" class="btn-premium">Apply Filters</button>
+                    <button id="expenseFilterReset" type="button" class="expense-button-secondary">Reset</button>
+                    <p id="expenseListStatus" class="expense-status"></p>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <!-- Table Section -->
     <section class="expense-card">
-        <div class="expense-card-header">
-            <div>
-                <h3>Filters</h3>
-                <p class="expense-card-copy">Switch between a single day, a date range, a month, or a year.</p>
-            </div>
-        </div>
-
-        <form id="expenseFilterForm" class="expense-filter-grid">
-            <div class="expense-field">
-                <label class="expense-label" for="expenseFilterMode">Filter Type</label>
-                <select id="expenseFilterMode" class="expense-select" name="filter_mode">
-                    <option value="single_day">Single Day</option>
-                    <option value="date_range">Date Range</option>
-                    <option value="month">Month</option>
-                    <option value="year">Year</option>
-                </select>
-            </div>
-
-            <div class="expense-field expense-filter-group" data-filter-group="single_day">
-                <label class="expense-label" for="expenseSingleDay">Date</label>
-                <input id="expenseSingleDay" class="expense-input" type="date" name="single_day">
-            </div>
-
-            <div class="expense-field expense-filter-group" data-filter-group="date_range" hidden>
-                <label class="expense-label" for="expenseDateFrom">From</label>
-                <input id="expenseDateFrom" class="expense-input" type="date" name="date_from">
-            </div>
-
-            <div class="expense-field expense-filter-group" data-filter-group="date_range" hidden>
-                <label class="expense-label" for="expenseDateTo">To</label>
-                <input id="expenseDateTo" class="expense-input" type="date" name="date_to">
-            </div>
-
-            <div class="expense-field expense-filter-group" data-filter-group="month" hidden>
-                <label class="expense-label" for="expenseMonth">Month</label>
-                <input id="expenseMonth" class="expense-input" type="month" name="month">
-            </div>
-
-            <div class="expense-field expense-filter-group" data-filter-group="year" hidden>
-                <label class="expense-label" for="expenseYear">Year</label>
-                <input id="expenseYear" class="expense-input" type="number" name="year" min="2000" max="2100" placeholder="2026">
-            </div>
-
-            <div class="expense-actions-row" style="grid-column: 1 / -1;">
-                <button type="submit" class="btn-premium">Apply Filters</button>
-                <button id="expenseFilterReset" type="button" class="expense-button-secondary">Reset</button>
-                <p id="expenseListStatus" class="expense-status"></p>
-            </div>
-        </form>
-    </section>
-
-    <section class="expense-card">
-        <div class="expense-toolbar">
+        <div id="editToolbar" class="expense-toolbar" style="display: none; border-bottom: 1px solid var(--glass-border); padding-bottom: 16px; margin-bottom: 16px;">
             <div class="expense-actions-row">
                 <label class="expense-inline-note" style="display: inline-flex; align-items: center; gap: 10px;">
                     <input id="expenseSelectAll" class="expense-checkbox" type="checkbox">
@@ -88,11 +98,11 @@
             <table class="expense-table">
                 <thead>
                     <tr>
-                        <th style="width: 56px;"><input id="expenseSelectAllHeader" class="expense-checkbox" type="checkbox" aria-label="Select all visible expenses"></th>
+                        <th class="edit-mode-cell" style="width: 56px;"><input id="expenseSelectAllHeader" class="expense-checkbox" type="checkbox" aria-label="Select all visible expenses"></th>
                         <th>Amount</th>
                         <th>Category</th>
                         <th>Date</th>
-                        <th style="text-align: right;">Actions</th>
+                        <th class="edit-mode-cell" style="text-align: right;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="expenseTableBody">

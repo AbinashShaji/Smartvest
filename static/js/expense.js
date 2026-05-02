@@ -16,6 +16,8 @@
         visibleExpenses: [],
         selectedIds: new Set(),
         deleteTargetIds: [],
+        isEditMode: false,
+        isFilterMode: false,
     };
 
     document.addEventListener('DOMContentLoaded', initExpenseModule);
@@ -76,6 +78,57 @@
         const editForm = document.getElementById('expenseEditForm');
         const editModal = document.getElementById('expenseEditModal');
         const deleteModal = document.getElementById('expenseDeleteModal');
+
+        const modeFilterBtn = document.getElementById('modeFilterBtn');
+        const modeEditBtn = document.getElementById('modeEditBtn');
+        const filterPanel = document.getElementById('filterPanel');
+        const editToolbar = document.getElementById('editToolbar');
+        const listModuleShell = document.querySelector('[data-expense-page="list"]');
+
+        if (modeFilterBtn && modeEditBtn) {
+            modeFilterBtn.addEventListener('click', () => {
+                if (state.isFilterMode) {
+                    state.isFilterMode = false;
+                    listModuleShell.classList.remove('filter-mode');
+                    filterPanel.classList.remove('active');
+                    modeFilterBtn.classList.remove('mode-btn-active');
+                } else {
+                    state.isFilterMode = true;
+                    state.isEditMode = false;
+                    
+                    listModuleShell.classList.add('filter-mode');
+                    listModuleShell.classList.remove('edit-mode');
+                    
+                    filterPanel.classList.add('active');
+                    editToolbar.style.display = 'none';
+                    
+                    modeFilterBtn.classList.add('mode-btn-active');
+                    modeEditBtn.classList.remove('mode-btn-active');
+                }
+            });
+
+            modeEditBtn.addEventListener('click', () => {
+                if (state.isEditMode) {
+                    state.isEditMode = false;
+                    listModuleShell.classList.remove('edit-mode');
+                    editToolbar.style.display = 'none';
+                    modeEditBtn.classList.remove('mode-btn-active');
+                    clearSelectedExpenses();
+                } else {
+                    state.isEditMode = true;
+                    state.isFilterMode = false;
+                    
+                    listModuleShell.classList.add('edit-mode');
+                    listModuleShell.classList.remove('filter-mode');
+                    
+                    editToolbar.style.display = 'flex';
+                    filterPanel.classList.remove('active');
+                    
+                    modeEditBtn.classList.add('mode-btn-active');
+                    modeFilterBtn.classList.remove('mode-btn-active');
+                }
+            });
+        }
 
         syncFilterGroupVisibility(filterMode?.value || 'single_day', true);
 
@@ -477,13 +530,13 @@
 
             return `
                 <tr data-expense-id="${escapeHtml(id)}">
-                    <td>
+                    <td class="edit-mode-cell">
                         <input class="expense-checkbox expense-row-checkbox" type="checkbox" data-expense-id="${escapeHtml(id)}" ${checked} aria-label="Select expense ${escapeHtml(id)}">
                     </td>
                     <td>${formatCurrency(expense.amount)}</td>
                     <td><span class="expense-badge">${escapeHtml(expense.category)}</span></td>
                     <td>${escapeHtml(expense.date)}</td>
-                    <td>
+                    <td class="edit-mode-cell">
                         <div class="expense-row-actions">
                             <button type="button" class="expense-button-secondary" data-action="edit" data-id="${escapeHtml(id)}">Edit</button>
                             <button type="button" class="expense-button-danger" data-action="delete" data-id="${escapeHtml(id)}">Delete</button>
