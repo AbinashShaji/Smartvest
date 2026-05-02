@@ -397,6 +397,7 @@ def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any]) 
     category_bar_chart = "static/current_category_bar.png"
     trend_chart = "static/current_trend.png"
     yearly_trend_chart = "static/yearly_trend.png"
+    yearly_bar_chart = "static/yearly_expense_bar.png"
 
     category_breakdown = current.get("category_breakdown") or []
     sorted_category_breakdown = sorted(
@@ -434,14 +435,25 @@ def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any]) 
         "No yearly trend yet",
     )
 
+    yearly_trend_data = yearly.get("trend_data") or []
+    _save_bar_chart(
+        yearly_bar_chart,
+        [str(item.get("label") or item.get("month") or "Month") for item in yearly_trend_data],
+        [_coerce_float(item.get("expense")) for item in yearly_trend_data],
+        "Monthly Expense Comparison",
+        "No yearly trend yet",
+    )
+
     return {
         "current_pie": "/static/current_pie.png",
         "current_category_bar": "/static/current_category_bar.png",
         "current_trend": "/static/current_trend.png",
         "yearly_trend_chart": "/static/yearly_trend.png",
+        "yearly_expense_bar": "/static/yearly_expense_bar.png",
         "category_chart": "/static/current_pie.png",
         "category_bar_chart": "/static/current_category_bar.png",
         "trend_chart": "/static/current_trend.png",
+        "yearly_bar_chart": "/static/yearly_expense_bar.png",
     }
 
 
@@ -483,6 +495,41 @@ def _coefficient_of_variation(values: list[float]) -> float:
 def _safe_label_month(item: Dict[str, Any]) -> str:
     """Return a display label from a monthly point."""
     return item.get("label") or item.get("month") or "--"
+
+
+def _build_pattern_analysis(current_values: list[float], current_expense: float, current_category_map: Dict[str, float], prev_category_map: Dict[str, float]) -> Dict[str, Any]:
+    """
+    Build a safe monthly spending pattern snapshot.
+    This keeps the UI populated even when the dataset is small or empty.
+    """
+    direction = _trend_direction(current_values)
+    volatility = _coefficient_of_variation(current_values) * 100
+
+    recurring_spend = 0.0
+    for category in set(current_category_map) & set(prev_category_map):
+        recurring_spend += min(current_category_map.get(category, 0.0), prev_category_map.get(category, 0.0))
+
+    fixed_ratio = round((recurring_spend / current_expense) * 100, 2) if current_expense > 0 else 0.0
+    variable_ratio = round(100.0 - fixed_ratio, 2) if current_expense > 0 else 0.0
+
+    if not current_values or current_expense <= 0:
+        observation = "No spending data yet. Add a few expenses to reveal trend direction, fixed spend, and volatility."
+        direction = "stable"
+        volatility = 0.0
+        fixed_ratio = 0.0
+        variable_ratio = 0.0
+    else:
+        observation = (
+            f"Spending is {direction} with {fixed_ratio:.1f}% fixed-like spend and {variable_ratio:.1f}% variable spend."
+        )
+
+    return {
+        "direction": direction,
+        "fixed_ratio": fixed_ratio,
+        "variable_ratio": variable_ratio,
+        "volatility": round(volatility, 2),
+        "observation": observation,
+    }
 
 
 def calculate_avg_savings(monthly_income: float, expense_history: list[float]) -> float:
@@ -770,11 +817,7 @@ def get_analysis_data(user_id=None):
     volatility = _coefficient_of_variation(current_values)
     yearly_volatility = _coefficient_of_variation(yearly_values)
 
-    recurring_spend = 0.0
-    for category in set(current_category_map) & set(prev_category_map):
-        recurring_spend += min(current_category_map.get(category, 0.0), prev_category_map.get(category, 0.0))
-    fixed_ratio = round((recurring_spend / current_expense) * 100, 2) if current_expense > 0 else 0.0
-    variable_ratio = round(100.0 - fixed_ratio, 2) if current_expense > 0 else 0.0
+    pattern_analysis = _build_pattern_analysis(current_values, current_expense, current_category_map, prev_category_map)
 
     if monthly_income <= 0:
         savings_condition = "Income is missing, so savings analysis is limited."
@@ -864,15 +907,7 @@ def get_analysis_data(user_id=None):
     current_detailed = {
         "category_breakdown": category_breakdown,
         "category_change": category_change[:5],
-        "pattern_analysis": {
-            "direction": current_direction,
-            "fixed_ratio": fixed_ratio,
-            "variable_ratio": variable_ratio,
-            "volatility": round(volatility * 100, 2),
-            "observation": (
-                f"Spending is {current_direction} with {fixed_ratio:.1f}% fixed-like spend and {variable_ratio:.1f}% variable spend."
-            ),
-        },
+        "pattern_analysis": pattern_analysis,
         "cost_cutting": cost_cutting,
         "savings_efficiency": {
             "current_rate": round(savings_rate, 2),
