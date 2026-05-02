@@ -167,7 +167,7 @@
                 <button class="ef-btn" id="efRecalcBtn">Recalculate</button>
             </div>
             <p id="efRecalcMsg" class="inv-card-note" style="margin-top:8px"></p>
-            <p class="inv-card-note">Optional: enter how many months of expenses you want to cover, then save the override.</p>
+            <p class="inv-card-note">Optional: enter how many months of salary you want this emergency fund target to cover, then save the override.</p>
         </section>
         <div class="glass-card section-card" style="margin-top: 20px; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.2);">
             <h4 style="color: #60a5fa; margin-bottom: 8px;">Insights</h4>
@@ -390,31 +390,32 @@ function renderReadiness(d) {
     populateInsights(d, 'rd', 'readiness');
     const ef = d.emergency || {};
     const dec = d.decision_engine || {};
+    const pct = Number.isFinite(Number(ef.progress_percent)) ? Number(ef.progress_percent) : (ef.target > 0 ? (ef.current / ef.target) * 100 : 0);
+    const safePct = Math.max(0, Math.min(100, pct));
     
     document.getElementById('rdTarget').textContent = fmt(ef.target);
     document.getElementById('rdCurrent').textContent = fmt(ef.current);
     document.getElementById('rdRemaining').textContent = fmt(ef.remaining);
     document.getElementById('rdTime').textContent = dec.time_to_ready || '--';
     
-    const pct = ef.target > 0 ? Math.min(100, (ef.current / ef.target) * 100) : 0;
-    document.getElementById('rdPercent').textContent = pct.toFixed(0) + '%';
-    document.getElementById('rdProgressBar').style.width = pct + '%';
+    document.getElementById('rdPercent').textContent = safePct.toFixed(0) + '%';
+    document.getElementById('rdProgressBar').style.width = safePct + '%';
     document.getElementById('rdProgressBar').style.background = progressColor(ef.tone);
     const badge = document.getElementById('rdStatusBadge');
     badge.textContent = ef.status || '--';
     badge.className = badgeClass(ef.tone);
     
     // Explanation
-    let exp = "Your emergency fund is fully funded.";
-    if (ef.coverage_months < 1) {
-        exp = `Your emergency fund covers less than 1 month of expenses. It is critical to reach a minimum of 1 month before making any investments.`;
-    } else if (ef.coverage_months < 2) {
-        exp = `Your emergency fund covers ${ef.coverage_months.toFixed(1)} months. You have a basic safety net, but should continue to fund it towards the 2+ month target.`;
+    let exp = `Your emergency fund is at ${safePct.toFixed(0)}% of the target amount.`;
+    if (safePct < 25) {
+        exp = `Your emergency fund is only ${safePct.toFixed(0)}% of the target amount. Focus on reaching at least 25% before investing.`;
+    } else if (safePct <= 75) {
+        exp = `Your emergency fund is ${safePct.toFixed(0)}% funded. Keep building towards the full target amount.`;
     }
     document.getElementById('rdExplanation').textContent = exp;
 
     // Save the EF override in the backend so the dashboard stays in sync.
-    document.getElementById('efRecalcBtn').onclick = async () => {
+    const saveEfTarget = async () => {
         const months = parseInt(document.getElementById('efManualInput').value, 10);
         const msg = document.getElementById('efRecalcMsg');
         if (!months || months <= 0) {
@@ -429,6 +430,12 @@ function renderReadiness(d) {
         } catch (error) {
             msg.textContent = error.message || 'Save failed.';
         }
+    };
+
+    document.getElementById('efRecalcBtn').onclick = saveEfTarget;
+    document.getElementById('efManualInput').oninput = () => {
+        clearTimeout(window.efRecalcTimer);
+        window.efRecalcTimer = setTimeout(saveEfTarget, 400);
     };
 }
 

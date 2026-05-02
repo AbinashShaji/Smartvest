@@ -310,6 +310,101 @@
         `);
     }
 
+    function renderYearlyTrendInsights(yearly) {
+        const detailed = yearly.detailed || {};
+        const trend = detailed.trend_analysis || {};
+        const breakdown = detailed.monthly_breakdown || yearly.trend_data || [];
+        const monthlyValues = breakdown.map((item) => safeNumber(item.expense));
+
+        const spikeMonth = trend.spike_month || breakdown.reduce((best, item) => (safeNumber(item.expense) > safeNumber(best.expense) ? item : best), breakdown[0] || {});
+        const lowestMonth = trend.lowest_month || breakdown.reduce((best, item) => (safeNumber(item.expense) < safeNumber(best.expense) ? item : best), breakdown[0] || {});
+        const monthlyChange = safeNumber(trend.month_over_month_change);
+        const direction = trend.direction || 'stable';
+        const observation = trend.observation || 'No yearly trend data available yet.';
+        const averageSpend = safeNumber(trend.average_monthly_spend);
+        const volatility = safeNumber(trend.volatility);
+
+        const recentChanges = Array.isArray(trend.monthly_changes) && trend.monthly_changes.length
+            ? trend.monthly_changes
+            : [];
+
+        const leftColumn = `
+            <div class="analysis-pattern-column">
+                <div class="analysis-pattern-metrics">
+                    <div class="analysis-pattern-metric">
+                        <span class="analysis-pattern-label">Trend Direction</span>
+                        <span class="analysis-pattern-value">${escapeHtml(direction)}</span>
+                        <span class="analysis-pattern-subvalue">${escapeHtml(observation)}</span>
+                    </div>
+                    <div class="analysis-pattern-metric">
+                        <span class="analysis-pattern-label">Month-over-Month</span>
+                        <span class="analysis-pattern-value">${monthlyChange > 0 ? '+' : monthlyChange < 0 ? '-' : ''}${formatPercent(Math.abs(monthlyChange))}</span>
+                        <span class="analysis-pattern-subvalue">Last monthly change in the year</span>
+                    </div>
+                    <div class="analysis-pattern-metric">
+                        <span class="analysis-pattern-label">Spike Month</span>
+                        <span class="analysis-pattern-value">${escapeHtml(spikeMonth.label || spikeMonth.month || '--')}</span>
+                        <span class="analysis-pattern-subvalue">${formatMoney(spikeMonth.expense || 0)}</span>
+                    </div>
+                    <div class="analysis-pattern-metric">
+                        <span class="analysis-pattern-label">Lowest Month</span>
+                        <span class="analysis-pattern-value">${escapeHtml(lowestMonth.label || lowestMonth.month || '--')}</span>
+                        <span class="analysis-pattern-subvalue">${formatMoney(lowestMonth.expense || 0)}</span>
+                    </div>
+                </div>
+
+                <div class="analysis-pattern-metrics">
+                    <div class="analysis-pattern-metric">
+                        <span class="analysis-pattern-label">Avg Monthly Spend</span>
+                        <span class="analysis-pattern-value">${formatMoney(averageSpend)}</span>
+                        <span class="analysis-pattern-subvalue">Across all yearly months</span>
+                    </div>
+                    <div class="analysis-pattern-metric">
+                        <span class="analysis-pattern-label">Volatility</span>
+                        <span class="analysis-pattern-value">${formatPercent(volatility)}</span>
+                        <span class="analysis-pattern-subvalue">Variation across months</span>
+                    </div>
+                </div>
+
+                <div class="analysis-yearly-trend-list">
+                    ${recentChanges.length ? recentChanges.map((item) => `
+                        <div class="analysis-pattern-metric">
+                            <span class="analysis-pattern-label">${escapeHtml(item.label || 'Month')}</span>
+                            <span class="analysis-pattern-value">${item.change_percent > 0 ? '+' : item.change_percent < 0 ? '-' : ''}${formatPercent(Math.abs(item.change_percent))}</span>
+                            <span class="analysis-pattern-subvalue">MoM change</span>
+                        </div>
+                    `).join('') : `
+                        <div class="analysis-pattern-metric">
+                            <span class="analysis-pattern-label">MoM Change</span>
+                            <span class="analysis-pattern-value">0.0%</span>
+                            <span class="analysis-pattern-subvalue">Not enough data yet</span>
+                        </div>
+                    `}
+                </div>
+            </div>
+        `;
+
+        const rightColumn = `
+            <div class="analysis-pattern-column analysis-pattern-visuals">
+                <div class="analysis-pattern-visual-card">
+                    <h4>Monthly Expense Bars</h4>
+                    <div>${renderBarMiniChart(breakdown.map((item) => ({ label: item.label || item.month || 'Month', amount: item.expense })))}</div>
+                </div>
+                <div class="analysis-pattern-visual-card">
+                    <h4>Yearly Trend Sparkline</h4>
+                    <div>${renderSparkline(monthlyValues)}</div>
+                </div>
+            </div>
+        `;
+
+        setHtml('yearlyTrendAnalysis', `
+            <div class="analysis-yearly-trend-board">
+                ${leftColumn}
+                ${rightColumn}
+            </div>
+        `);
+    }
+
     function renderList(id, items, renderer, emptyText) {
         const el = document.getElementById(id);
         if (!el) {
@@ -447,17 +542,7 @@
             'No monthly breakdown yet.'
         );
 
-        renderList(
-            'yearlyTrendAnalysis',
-            detailed.trend_analysis ? [detailed.trend_analysis] : [],
-            (item) => `
-                <div class="analysis-item">
-                    <p class="analysis-item-title">Trend direction: ${escapeHtml(item.direction || 'stable')}</p>
-                    <p class="analysis-item-text">Spike month: ${escapeHtml(item.spike_month?.label || '--')} | Volatility: ${formatPercent(item.volatility)}</p>
-                </div>
-            `,
-            'No trend analysis available yet.'
-        );
+        renderYearlyTrendInsights(yearly);
 
         const bestWorst = [];
         if (detailed.best_month) {

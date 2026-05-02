@@ -532,6 +532,82 @@ def _build_pattern_analysis(current_values: list[float], current_expense: float,
     }
 
 
+def _build_yearly_trend_analysis(monthly_breakdown: list[dict]) -> Dict[str, Any]:
+    """
+    Build a yearly trend snapshot from monthly totals only.
+    This stays separate from the monthly pattern analysis helper.
+    """
+    if not monthly_breakdown:
+        return {
+            "direction": "stable",
+            "spike_month": None,
+            "lowest_month": None,
+            "average_monthly_spend": 0.0,
+            "volatility": 0.0,
+            "month_over_month_change": 0.0,
+            "monthly_changes": [],
+            "observation": "No yearly data yet. Add expenses across the year to reveal a trend.",
+        }
+
+    monthly_expenses = [float(item.get("expense", 0.0) or 0.0) for item in monthly_breakdown]
+    first_value = monthly_expenses[0] if monthly_expenses else 0.0
+    last_value = monthly_expenses[-1] if monthly_expenses else 0.0
+
+    if first_value <= 0 and last_value > 0:
+        direction = "increasing"
+    elif first_value > 0 and last_value <= 0:
+        direction = "decreasing"
+    elif first_value == last_value:
+        direction = "stable"
+    else:
+        change = ((last_value - first_value) / first_value) * 100 if first_value > 0 else 0.0
+        if change > 5:
+            direction = "increasing"
+        elif change < -5:
+            direction = "decreasing"
+        else:
+            direction = "stable"
+
+    spike_month = max(monthly_breakdown, key=lambda item: float(item.get("expense", 0.0) or 0.0))
+    lowest_month = min(monthly_breakdown, key=lambda item: float(item.get("expense", 0.0) or 0.0))
+    average_monthly_spend = sum(monthly_expenses) / len(monthly_expenses) if monthly_expenses else 0.0
+    volatility = _coefficient_of_variation(monthly_expenses) * 100
+
+    monthly_changes = []
+    for index in range(1, len(monthly_breakdown)):
+        previous_value = float(monthly_breakdown[index - 1].get("expense", 0.0) or 0.0)
+        current_value = float(monthly_breakdown[index].get("expense", 0.0) or 0.0)
+        if previous_value > 0:
+            change_percent = round(((current_value - previous_value) / previous_value) * 100, 2)
+        elif current_value > 0:
+            change_percent = 100.0
+        else:
+            change_percent = 0.0
+        monthly_changes.append({
+            "label": monthly_breakdown[index].get("label") or monthly_breakdown[index].get("month") or "--",
+            "change_percent": change_percent,
+            "direction": "up" if change_percent > 0 else "down" if change_percent < 0 else "flat",
+        })
+
+    latest_change = monthly_changes[-1]["change_percent"] if monthly_changes else 0.0
+    observation = (
+        f"Yearly trend is {direction} with volatility at {volatility:.1f}%."
+        f" Spike month: {(spike_month or {}).get('label') or '--'}."
+        f" Lowest month: {(lowest_month or {}).get('label') or '--'}."
+    )
+
+    return {
+        "direction": direction,
+        "spike_month": spike_month,
+        "lowest_month": lowest_month,
+        "average_monthly_spend": round(average_monthly_spend, 2),
+        "volatility": round(volatility, 2),
+        "month_over_month_change": round(latest_change, 2),
+        "monthly_changes": monthly_changes[-5:],
+        "observation": observation,
+    }
+
+
 def calculate_avg_savings(monthly_income: float, expense_history: list[float]) -> float:
     """
     Purpose : Calculate average savings over the last N months.
@@ -580,37 +656,37 @@ def calculate_emergency_fund(
     """
     Purpose : Evaluate the user's emergency-fund readiness.
     Input   : monthly_income, avg_monthly_expense, current_savings, optional manual_target.
-    Output  : Dictionary with target, current, remaining, coverage months, and status.
+    Output  : Dictionary with target, current, remaining, progress percent, and status.
     """
-    # Target = max(2 × income, 1.5 × avg_expense), or manual override if provided
-    auto_target = max(2.0 * monthly_income, 1.5 * avg_monthly_expense)
+    # Target = monthly salary x selected months, or the default 2-month target.
+    monthly_salary = max(0.0, monthly_income)
+    auto_target = monthly_salary * 2.0
     target = manual_target if manual_target > 0 else auto_target
 
     # Remaining amount needed
     remaining = max(0.0, target - current_savings)
 
-    # Coverage = how many months of expenses the savings can cover
-    coverage = (current_savings / avg_monthly_expense) if avg_monthly_expense > 0 else 0.0
+    # Progress is based on the target amount, not coverage months.
+    progress = (current_savings / target) * 100 if target > 0 else 0.0
+    progress = max(0.0, min(100.0, progress))
 
-    # Status classification based on coverage months
-    if coverage < 1:
-        status = "Critical"
+    # Status classification based on progress percentage.
+    if progress < 25:
+        status = "CRITICAL"
         tone = "red"
-    elif coverage < 2:
-        status = "Low"
+    elif progress <= 75:
+        status = "MODERATE"
         tone = "orange"
-    elif coverage < 4:
-        status = "Moderate"
-        tone = "yellow"
     else:
-        status = "Strong"
+        status = "GOOD"
         tone = "green"
 
     return {
         "target": round(target, 2),
         "current": round(current_savings, 2),
         "remaining": round(remaining, 2),
-        "coverage_months": round(coverage, 2),
+        "progress_percent": round(progress, 2),
+        "monthly_salary": round(monthly_salary, 2),
         "status": status,
         "tone": tone,
     }
@@ -783,17 +859,33 @@ def get_analysis_data(user_id=None):
     savings_vol = calculate_savings_volatility(monthly_income, last_3_expenses)
     avg_monthly_expense = sum(last_3_expenses) / len(last_3_expenses) if last_3_expenses else 0.0
 
-    # Check for a backend EF override stored in session
+    # Check for a backend EF override stored in session.
+    ef_manual_months = 0.0
+    try:
+        ef_manual_months = float(session.get("ef_manual_months", 0.0))
+    except (TypeError, ValueError):
+        ef_manual_months = 0.0
+
+    # Backward compatibility for older sessions that stored a raw target amount.
     ef_manual_target = 0.0
     try:
         ef_manual_target = float(session.get("ef_manual_target", 0.0))
     except (TypeError, ValueError):
         ef_manual_target = 0.0
 
+    if ef_manual_months > 0 and monthly_income > 0:
+        ef_manual_target = monthly_income * ef_manual_months
+
     emergency = calculate_emergency_fund(
         monthly_income, avg_monthly_expense, savings,
         manual_target=ef_manual_target,
     )
+    if ef_manual_months > 0:
+        emergency["selected_months"] = round(ef_manual_months, 2)
+    elif monthly_income > 0 and emergency.get("target", 0) > 0:
+        emergency["selected_months"] = round(emergency["target"] / monthly_income, 2)
+    else:
+        emergency["selected_months"] = 0.0
 
     best_month = None
     worst_month = None
@@ -942,20 +1034,16 @@ def get_analysis_data(user_id=None):
                 "amount": round(float(yearly_category_totals.max()), 2),
                 "share": round((float(yearly_category_totals.max()) / total_expense) * 100, 2) if total_expense > 0 else 0.0,
             }
-        yearly_variance = _coefficient_of_variation(yearly_values)
-        yearly_direction_text = yearly_direction
-        spike_month = max(yearly_monthly_breakdown, key=lambda item: item["expense"])
+        yearly_trend_analysis = _build_yearly_trend_analysis(yearly_monthly_breakdown)
     else:
         yearly_monthly_breakdown = []
         top_yearly_category = None
-        yearly_variance = 0.0
-        yearly_direction_text = "stable"
-        spike_month = None
+        yearly_trend_analysis = _build_yearly_trend_analysis([])
 
     yearly_savings_rate = (total_savings / total_income) * 100 if total_income > 0 else 0.0
     yearly_score = 100
     yearly_score -= min(35, max(0, (1 - max(yearly_savings_rate, 0) / 40) * 35))
-    yearly_score -= min(20, yearly_volatility * 40)
+    yearly_score -= min(20, yearly_trend_analysis["volatility"] * 0.4)
     yearly_score -= 8 if yearly_direction == "increasing" else 0
     yearly_score = round(max(0, min(100, yearly_score)))
 
@@ -984,26 +1072,22 @@ def get_analysis_data(user_id=None):
             })
 
     yearly_insight = (
-        f"Yearly trend: {yearly_direction_text} with volatility at {yearly_variance * 100:.1f}%.\n"
+        f"Yearly trend: {yearly_trend_analysis['direction']} with volatility at {yearly_trend_analysis['volatility']:.1f}%.\n"
         f"Performance summary: total savings are {round(total_savings, 2):.2f} across {months_count} months.\n"
         f"Best month: {(best_month or {}).get('label') or '--'} | Worst month: {(worst_month or {}).get('label') or '--'}."
     )
 
     yearly_detailed = {
         "monthly_breakdown": yearly_monthly_breakdown,
-        "trend_analysis": {
-            "direction": yearly_direction_text,
-            "spike_month": spike_month,
-            "volatility": round(yearly_variance * 100, 2),
-        },
+        "trend_analysis": yearly_trend_analysis,
         "best_month": best_month,
         "worst_month": worst_month,
         "category_dominance": top_yearly_category,
         "consistency": {
-            "label": "stable" if yearly_variance < 0.25 else "unstable",
-            "tone": "green" if yearly_variance < 0.25 else "yellow",
-            "variance": round(yearly_variance * 100, 2),
-            "text": "Monthly expenses are relatively steady." if yearly_variance < 0.25 else "Monthly expenses fluctuate significantly.",
+            "label": "stable" if yearly_trend_analysis["volatility"] < 25 else "unstable",
+            "tone": "green" if yearly_trend_analysis["volatility"] < 25 else "yellow",
+            "variance": yearly_trend_analysis["volatility"],
+            "text": "Monthly expenses are relatively steady." if yearly_trend_analysis["volatility"] < 25 else "Monthly expenses fluctuate significantly.",
         },
         "optimization": optimization,
         "score": yearly_score,
@@ -1398,17 +1482,14 @@ def api_ef_override():
 
         user_id = config.get_current_user()["user_id"]
         analysis_data = get_analysis_data(user_id)
-        history = analysis_data.get("savings_behavior", {}).get("history", [])
-        if history:
-            avg_monthly_expense = sum(_coerce_float(item.get("expense", 0.0)) for item in history) / len(history)
-        else:
-            avg_monthly_expense = _coerce_float(analysis_data.get("current", {}).get("expense", 0.0))
+        monthly_salary = _coerce_float(analysis_data.get("current", {}).get("income", 0.0))
 
-        if avg_monthly_expense <= 0:
+        if monthly_salary <= 0:
             return jsonify({"status": "error", "message": "Emergency fund target cannot be updated yet"}), 400
 
-        target = round(months * avg_monthly_expense, 2)
-        session["ef_manual_target"] = target
+        target = round(months * monthly_salary, 2)
+        session["ef_manual_months"] = months
+        session.pop("ef_manual_target", None)
 
         updated_data = get_analysis_data(user_id)
         return jsonify({

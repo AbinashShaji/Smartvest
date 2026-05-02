@@ -32,7 +32,7 @@ def get_decision_engine(analysis: dict) -> dict:
     emergency = analysis.get("emergency") or {}
     
     avg_savings = behavior.get("avg_savings", 0.0)
-    ef_coverage = emergency.get("coverage_months", 0.0)
+    ef_progress = emergency.get("progress_percent", 0.0)
     ef_remaining = emergency.get("remaining", 0.0)
     stable = behavior.get("stable", False)
     
@@ -47,22 +47,22 @@ def get_decision_engine(analysis: dict) -> dict:
     else:
         time_to_ready = "Unknown (No Savings)"
     
-    if ef_coverage < 1:
+    if ef_progress < 25:
         decision = "NOT_READY"
         impact = "Your emergency fund is critically low. Investing now could force you to sell at a loss in an emergency."
         confidence = 90
-        next_step = "Focus 100% of savings on building a 1-month emergency buffer."
-        reasons.append(f"Emergency fund covers only {ef_coverage:.1f} months (minimum 1 month required).")
+        next_step = "Focus 100% of savings on building at least 25% of your emergency-fund target."
+        reasons.append(f"Emergency fund is only {ef_progress:.1f}% complete (minimum 25% required).")
         if not stable:
             reasons.append("Savings pattern is highly volatile.")
         actions.append("Halt all investments immediately.")
-        actions.append(f"Redirect all available funds to reach ₹{emergency.get('target', 0) / (2 if emergency.get('target', 0) else 1):.0f} minimum buffer.")
-    elif ef_coverage < 2:
+        actions.append(f"Redirect all available funds to reach the {emergency.get('target', 0):,.0f} emergency-fund target.")
+    elif ef_progress <= 75:
         decision = "PARTIAL"
         impact = "You have a basic safety net. You can start investing a small portion while continuing to build your emergency fund."
         confidence = 85
         next_step = "Start a small SIP while directing the rest to your emergency fund."
-        reasons.append(f"Emergency fund covers {ef_coverage:.1f} months (target is 2+ months).")
+        reasons.append(f"Emergency fund is {ef_progress:.1f}% complete (target range is 25% to 75%).")
         actions.append("Allocate 30% of savings to investments.")
         actions.append("Direct the remaining 70% to complete your emergency fund.")
     else:
@@ -71,7 +71,7 @@ def get_decision_engine(analysis: dict) -> dict:
         confidence = 95
         next_step = "Maximize your SIP contributions and explore growth opportunities."
         time_to_ready = "Ready Now"
-        reasons.append("Emergency fund is well-funded.")
+        reasons.append(f"Emergency fund is {ef_progress:.1f}% complete and above the readiness threshold.")
         if stable:
             reasons.append("Savings are stable.")
         actions.append("Allocate 60% of savings to your portfolio.")
@@ -418,9 +418,11 @@ def get_insights(analysis: dict, decision_engine: dict, sip_engine: dict, growth
         st_insight = "Your emergency fund is secure, allowing for aggressive long-term wealth growth."
         st_action = "Execute your recommended full SIP plan."
 
-    rd_summary = f"Your emergency fund is at {emergency.get('coverage_months', 0):.1f} months coverage."
-    rd_insight = f"It will take ~{decision_engine.get('time_to_ready', 'Unknown')} to reach your target." if emergency.get("remaining", 0) > 0 else "Your emergency fund is complete."
-    rd_action = f"You need ₹{emergency.get('remaining', 0):,.0f} more to complete your emergency buffer." if emergency.get("remaining", 0) > 0 else "Maintain this buffer."
+    rd_progress = emergency.get("progress_percent", 0.0)
+    rd_target = emergency.get("target", 0.0)
+    rd_summary = f"Your emergency fund is at {rd_progress:.0f}% of Rs.{rd_target:,.0f} target."
+    rd_insight = f"It will take ~{decision_engine.get('time_to_ready', 'Unknown')} to reach your target." if emergency.get("remaining", 0) > 0 else "Your emergency fund target is complete."
+    rd_action = f"You need Rs.{emergency.get('remaining', 0):,.0f} more to complete your emergency buffer." if emergency.get("remaining", 0) > 0 else "Maintain this buffer."
 
     pf_summary = "Your allocation is designed for your specific risk level."
     pf_insight = "Nifty 50 provides stability, Nifty 100 offers balance, and Midcap drives aggressive growth."
