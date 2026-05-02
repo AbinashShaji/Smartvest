@@ -1,0 +1,70 @@
+/* ==========================================================================
+   SmartVest Accessibility Layer
+   Keyboard focus, reduced motion, contrast boosts, and screen-reader helper.
+   ========================================================================== */
+
+/* === Keyboard Focus === */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+/* === Screen Reader Only === */
+.sr-only {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+/* === Reduced Motion === */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
+        transition-delay: 0ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* === High Contrast === */
+@media (prefers-contrast: high) {
+    .glass-card,
+    .section-card,
+    .dashboard-topbar,
+    .dashboard-kpi-card,
+    .dashboard-chart-panel,
+    .dashboard-side-card,
+    .dashboard-activity-panel,
+    .dashboard-modal-panel,
+    .goals-create-panel,
+    .goals-cards-panel,
+    .goals-modal-panel,
+    .expense-module-shell,
+    .expense-card,
+    .expense-modal,
+    .analysis-card,
+    .analysis-summary-card,
+    .analysis-mini-card,
+    .analysis-panel-card,
+    .inv-card,
+    .inv-tabs,
+    .badge,
+    .summary-badge,
+    .glass-input-field {
+        border-width: 2px !important;
+    }
+}
+
