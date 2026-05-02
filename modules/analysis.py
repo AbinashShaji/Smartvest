@@ -15,6 +15,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 
 plt.style.use("dark_background")
 
@@ -22,6 +23,68 @@ plt.style.use("dark_background")
 analysis_bp = Blueprint('analysis', __name__)
 
 STOCK_DAY_COLUMNS = [f"day{i}" for i in range(1, 11)]
+CHART_FIGURE_FACE = "#000000"
+CHART_AXES_FACE = (1, 1, 1, 0.03)
+CHART_GRID_COLOR = (1, 1, 1, 0.08)
+CHART_SPINE_COLOR = (1, 1, 1, 0.15)
+CHART_TEXT_PRIMARY = "#ffffff"
+CHART_TEXT_MUTED = "#a1a1aa"
+CHART_TEAL = "#14b8a6"
+CHART_SUCCESS = "#4ade80"
+CHART_WARNING = "#fbbf24"
+CHART_DANGER = "#f87171"
+CHART_SECONDARY = "#60a5fa"
+CHART_PALETTE = [
+    CHART_TEAL,
+    CHART_SUCCESS,
+    CHART_WARNING,
+    CHART_DANGER,
+    CHART_SECONDARY,
+    "#a78bfa",
+]
+
+
+def _new_chart_figure(figsize=(10, 6)):
+    """Create a web-friendly figure that matches the dashboard dark theme."""
+    fig, ax = plt.subplots(figsize=figsize, dpi=100, facecolor=CHART_FIGURE_FACE)
+    ax.set_facecolor(CHART_AXES_FACE)
+    return fig, ax
+
+
+def _style_chart_axes(ax, title, xlabel="", ylabel=""):
+    """Apply the shared dark-dashboard chart styling to an axes object."""
+    ax.set_title(title, fontsize=16, color=CHART_TEXT_PRIMARY, fontweight="bold", pad=12)
+    ax.set_xlabel(xlabel, fontsize=12, color=CHART_TEXT_MUTED, labelpad=8)
+    ax.set_ylabel(ylabel, fontsize=12, color=CHART_TEXT_MUTED, labelpad=8)
+    ax.tick_params(axis="both", colors=CHART_TEXT_PRIMARY, labelsize=10)
+    ax.tick_params(axis="x", labelrotation=0)
+    ax.grid(True, axis="both", color=CHART_GRID_COLOR, linestyle="--", linewidth=0.5, alpha=0.15, zorder=0)
+    ax.set_axisbelow(True)
+
+    for spine in ax.spines.values():
+        spine.set_color(CHART_SPINE_COLOR)
+        spine.set_linewidth(0.5)
+
+
+def _finish_chart(fig, file_path):
+    """Save a chart with layout padding that works well in the web UI."""
+    fig.tight_layout(pad=1.5)
+    fig.savefig(file_path, facecolor=CHART_FIGURE_FACE)
+    plt.close(fig)
+
+
+def _style_legend(legend):
+    """Apply a dark, high-contrast style to any chart legend."""
+    if legend is None:
+        return
+
+    legend.get_frame().set_facecolor((0, 0, 0, 0.35))
+    legend.get_frame().set_edgecolor(CHART_SPINE_COLOR)
+    legend.get_frame().set_linewidth(0.5)
+    legend.set_frame_on(True)
+    for text in legend.get_texts():
+        text.set_color(CHART_TEXT_PRIMARY)
+        text.set_fontsize(11)
 
 
 def _coerce_float(value, default=0.0):
@@ -105,17 +168,17 @@ def analyze_stock_rows(stocks, generate_charts=True):
             file_path = os.path.join("static", file_name)
 
             days = [f"Day {i}" for i in range(1, len(prices) + 1)]
-            plt.figure(figsize=(6, 3.5))
-            plt.plot(days, prices, marker="o", linewidth=2, color="#00c2ff")
-            plt.title(f"{stock_name} Stock Trend", color="white")
-            plt.xlabel("Day", color="white")
-            plt.ylabel("Price", color="white")
-            plt.xticks(rotation=25, color="white")
-            plt.yticks(color="white")
-            plt.grid(alpha=0.2)
-            plt.tight_layout()
-            plt.savefig(file_path, facecolor="black")
-            plt.close()
+            fig, ax = _new_chart_figure(figsize=(6, 3.5))
+            ax.plot(days, prices, marker="o", linewidth=2.5, markersize=8, color=CHART_TEAL, label="Price")
+            _style_chart_axes(ax, f"{stock_name} Stock Trend", "Day", "Price")
+            legend = ax.legend(
+                loc="best",
+                frameon=True,
+                framealpha=0.95,
+                shadow=False,
+            )
+            _style_legend(legend)
+            _finish_chart(fig, file_path)
             chart_path = "/static/" + file_name
 
         analyzed_stocks.append({
@@ -164,13 +227,14 @@ def classify_market_stock(percent_change):
 
 def _save_empty_chart(file_path, title, message):
     """Create a simple placeholder chart when no stock data is available."""
-    plt.figure(figsize=(8, 4))
-    plt.title(title, color="white")
-    plt.text(0.5, 0.5, message, ha="center", va="center", color="white", fontsize=14)
-    plt.axis("off")
-    plt.tight_layout()
-    plt.savefig(file_path, facecolor="black")
-    plt.close()
+    fig, ax = _new_chart_figure(figsize=(10, 6))
+    _style_chart_axes(ax, title)
+    ax.text(0.5, 0.5, message, ha="center", va="center", color=CHART_TEXT_PRIMARY, fontsize=14, transform=ax.transAxes)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    _finish_chart(fig, file_path)
 
 
 def _month_key_from_timestamp(value: pd.Timestamp) -> str:
@@ -220,13 +284,86 @@ def _save_pie_chart(file_path, labels, values, title, empty_message):
         _save_empty_chart(file_path, title, empty_message)
         return
 
-    plt.figure(figsize=(7, 7))
-    colors = ["#00c2ff", "#22c55e", "#f59e0b", "#f97316", "#a78bfa", "#ef4444"]
-    plt.pie(values, labels=labels, autopct="%1.1f%%", colors=colors[: len(values)], textprops={"color": "white"})
-    plt.title(title, color="white")
-    plt.tight_layout()
-    plt.savefig(file_path, facecolor="black")
-    plt.close()
+    fig, ax = _new_chart_figure(figsize=(10, 6))
+    colors = CHART_PALETTE[: len(values)]
+
+    wedges, _, autotexts = ax.pie(
+        values,
+        labels=labels,
+        autopct="%1.1f%%",
+        startangle=90,
+        counterclock=False,
+        colors=colors,
+        labeldistance=1.08,
+        pctdistance=0.72,
+        wedgeprops={"linewidth": 0.8, "edgecolor": CHART_FIGURE_FACE},
+        textprops={"color": CHART_TEXT_PRIMARY, "fontsize": 12},
+    )
+
+    for autotext in autotexts:
+        autotext.set_color(CHART_TEXT_PRIMARY)
+        autotext.set_fontsize(12)
+
+    if len(labels) > 3:
+        legend_labels = [f"{label} ({value:,.0f})" for label, value in zip(labels, values)]
+        legend = ax.legend(
+            wedges,
+            legend_labels,
+            loc="upper left",
+            bbox_to_anchor=(1.05, 1),
+            frameon=True,
+            framealpha=0.95,
+            shadow=False,
+        )
+    else:
+        legend = ax.legend(
+            wedges,
+            labels,
+            loc="best",
+            frameon=True,
+            framealpha=0.95,
+            shadow=False,
+        )
+    _style_legend(legend)
+
+    ax.set_title(title, fontsize=16, color=CHART_TEXT_PRIMARY, fontweight="bold", pad=12)
+    if len(labels) > 3:
+        fig.tight_layout(pad=1.5, rect=(0, 0, 0.82, 1))
+    else:
+        fig.tight_layout(pad=1.5)
+    fig.savefig(file_path, facecolor=CHART_FIGURE_FACE)
+    plt.close(fig)
+
+
+def _save_bar_chart(file_path, labels, values, title, empty_message):
+    """Write a bar chart, falling back to a placeholder when there is no data."""
+    if not labels or not values or sum(values) <= 0:
+        _save_empty_chart(file_path, title, empty_message)
+        return
+
+    fig, ax = _new_chart_figure(figsize=(10, 6))
+    y_positions = list(range(len(labels)))
+    bars = ax.barh(y_positions, values, color=CHART_TEAL, edgecolor=CHART_SPINE_COLOR, linewidth=0.5, label="Expense")
+    ax.set_yticks(y_positions)
+    ax.set_yticklabels(labels, color=CHART_TEXT_PRIMARY, fontsize=10)
+    ax.invert_yaxis()
+    _style_chart_axes(ax, title, "Amount", "Category")
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=6))
+
+    for bar, value in zip(bars, values):
+        ax.text(
+            bar.get_width(),
+            bar.get_y() + bar.get_height() / 2,
+            f" {value:,.0f}",
+            va="center",
+            ha="left",
+            color=CHART_TEXT_PRIMARY,
+            fontsize=10,
+        )
+
+    legend = ax.legend(loc="best", frameon=True, framealpha=0.95, shadow=False)
+    _style_legend(legend)
+    _finish_chart(fig, file_path)
 
 
 def _save_line_chart(file_path, trend_data, title, empty_message):
@@ -235,19 +372,21 @@ def _save_line_chart(file_path, trend_data, title, empty_message):
         _save_empty_chart(file_path, title, empty_message)
         return
 
-    plt.figure(figsize=(8, 4))
+    fig, ax = _new_chart_figure(figsize=(10, 6))
     labels = [item.get("label") or item.get("month") or "" for item in trend_data]
     values = [_coerce_float(item.get("expense")) for item in trend_data]
-    plt.plot(labels, values, marker="o", linewidth=2, color="#00c2ff")
-    plt.title(title, color="white")
-    plt.xlabel("Month", color="white")
-    plt.ylabel("Amount", color="white")
-    plt.xticks(rotation=25, color="white")
-    plt.yticks(color="white")
-    plt.grid(alpha=0.2)
-    plt.tight_layout()
-    plt.savefig(file_path, facecolor="black")
-    plt.close()
+    ax.plot(labels, values, marker="o", linewidth=2.5, markersize=8, color=CHART_TEAL, label="Expense")
+    _style_chart_axes(ax, title, "Month", "Amount")
+    ax.xaxis.set_tick_params(labelrotation=0)
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
+    legend = ax.legend(
+        loc="best",
+        frameon=True,
+        framealpha=0.95,
+        shadow=False,
+    )
+    _style_legend(legend)
+    _finish_chart(fig, file_path)
 
 
 def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any]) -> Dict[str, str]:
@@ -255,15 +394,29 @@ def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any]) 
     os.makedirs("static", exist_ok=True)
 
     category_chart = "static/current_pie.png"
+    category_bar_chart = "static/current_category_bar.png"
     trend_chart = "static/current_trend.png"
     yearly_trend_chart = "static/yearly_trend.png"
 
     category_breakdown = current.get("category_breakdown") or []
+    sorted_category_breakdown = sorted(
+        category_breakdown,
+        key=lambda item: _coerce_float(item.get("amount")),
+        reverse=True,
+    )
     _save_pie_chart(
         category_chart,
-        [str(item.get("category") or "Other") for item in category_breakdown],
-        [_coerce_float(item.get("amount")) for item in category_breakdown],
+        [str(item.get("category") or "Other") for item in sorted_category_breakdown],
+        [_coerce_float(item.get("amount")) for item in sorted_category_breakdown],
         "Category Breakdown",
+        "No category data yet",
+    )
+
+    _save_bar_chart(
+        category_bar_chart,
+        [str(item.get("category") or "Other") for item in sorted_category_breakdown[:8]],
+        [_coerce_float(item.get("amount")) for item in sorted_category_breakdown[:8]],
+        "Category vs Expense",
         "No category data yet",
     )
 
@@ -283,9 +436,11 @@ def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any]) 
 
     return {
         "current_pie": "/static/current_pie.png",
+        "current_category_bar": "/static/current_category_bar.png",
         "current_trend": "/static/current_trend.png",
         "yearly_trend_chart": "/static/yearly_trend.png",
         "category_chart": "/static/current_pie.png",
+        "category_bar_chart": "/static/current_category_bar.png",
         "trend_chart": "/static/current_trend.png",
     }
 
@@ -958,31 +1113,42 @@ def build_market_metrics():
         daily_average = stock_frame[day_columns].apply(pd.to_numeric, errors="coerce").fillna(0).mean(axis=0)
         x_values = list(range(1, 11))
 
-        plt.figure(figsize=(9, 4.5))
-        plt.plot(x_values, daily_average.values, marker="o", linewidth=2, color="#00c2ff")
-        plt.title("Market Trend", color="white")
-        plt.xlabel("Day", color="white")
-        plt.ylabel("Average Price", color="white")
-        plt.xticks(x_values, [f"Day {i}" for i in x_values], rotation=20, color="white")
-        plt.yticks(color="white")
-        plt.grid(alpha=0.2)
-        plt.tight_layout()
-        plt.savefig(trend_chart_path, facecolor="black")
-        plt.close()
+        fig, ax = _new_chart_figure(figsize=(10, 6))
+        ax.plot(x_values, daily_average.values, marker="o", linewidth=2.5, markersize=8, color=CHART_TEAL, label="Average Price")
+        _style_chart_axes(ax, "Market Trend", "Day", "Average Price")
+        ax.set_xticks(x_values)
+        ax.set_xticklabels([f"Day {i}" for i in x_values], rotation=0)
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
+        legend = ax.legend(
+            loc="best",
+            frameon=True,
+            framealpha=0.95,
+            shadow=False,
+        )
+        _style_legend(legend)
+        _finish_chart(fig, trend_chart_path)
     else:
         _save_empty_chart(trend_chart_path, "Market Trend", "No stock data available")
 
-    plt.figure(figsize=(7, 4.5))
-    plt.bar(["Good", "Bad", "Stable"], [good_count, bad_count, stable_count], color=["#4ade80", "#f87171", "#a1a1aa"])
-    plt.title("Market Summary", color="white")
-    plt.xlabel("Classification", color="white")
-    plt.ylabel("Count", color="white")
-    plt.xticks(color="white")
-    plt.yticks(color="white")
-    plt.grid(axis="y", alpha=0.2)
-    plt.tight_layout()
-    plt.savefig(summary_chart_path, facecolor="black")
-    plt.close()
+    fig, ax = _new_chart_figure(figsize=(10, 6))
+    categories = ["Good", "Bad", "Stable"]
+    counts = [good_count, bad_count, stable_count]
+    colors = [CHART_SUCCESS, CHART_DANGER, CHART_TEXT_MUTED]
+    bars = ax.bar(categories, counts, color=colors, edgecolor=CHART_SPINE_COLOR, linewidth=0.5, zorder=2)
+    _style_chart_axes(ax, "Market Summary", "Classification", "Count")
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
+    for bar in bars:
+        height = bar.get_height()
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            height,
+            f"{height:.0f}",
+            ha="center",
+            va="bottom",
+            color=CHART_TEXT_PRIMARY,
+            fontsize=10,
+        )
+    _finish_chart(fig, summary_chart_path)
 
     summary = (
         f"Analysed {total_count} stocks from data/stock.csv. "

@@ -101,6 +101,34 @@
         image.src = `${src || ''}?v=${Date.now()}`;
     }
 
+    function renderTopCategories(id, items) {
+        const el = document.getElementById(id);
+        if (!el) {
+            return;
+        }
+
+        const topItems = (Array.isArray(items) ? items : [])
+            .map((item) => ({
+                category: item?.category || 'Other',
+                amount: safeNumber(item?.amount),
+                percent: safeNumber(item?.percent),
+            }))
+            .sort((left, right) => right.amount - left.amount)
+            .slice(0, 3);
+
+        if (!topItems.length) {
+            el.innerHTML = '<div class="analysis-item"><p class="analysis-item-text">No category data yet.</p></div>';
+            return;
+        }
+
+        el.innerHTML = topItems.map((item, index) => `
+            <div class="analysis-item ${index === 0 ? 'analysis-item--highlight' : ''}">
+                <p class="analysis-item-title">${index + 1}. ${escapeHtml(item.category)}</p>
+                <p class="analysis-item-text">${formatMoney(item.amount)} | ${formatPercent(item.percent)} of total spend</p>
+            </div>
+        `).join('');
+    }
+
     function renderList(id, items, renderer, emptyText) {
         const el = document.getElementById(id);
         if (!el) {
@@ -116,6 +144,7 @@
     }
 
     function renderCurrentOverview(current) {
+        const breakdown = current.detailed?.category_breakdown || current.category_breakdown || [];
         setText('currentMonthLabel', new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }));
         setText('currentIncome', formatMoney(current.income));
         setText('currentExpense', formatMoney(current.expense));
@@ -125,6 +154,9 @@
         setText('currentOverviewTip', current.tip || 'No tip available yet.');
 
         renderChartImage('currentOverviewChart', 'currentOverviewEmpty', state.data?.charts?.current_pie || state.data?.charts?.category_chart || '/static/current_pie.png');
+        renderChartImage('currentOverviewBarChart', 'currentOverviewBarEmpty', state.data?.charts?.current_category_bar || state.data?.charts?.category_bar_chart || '/static/current_category_bar.png');
+        renderChartImage('currentOverviewTrendChart', 'currentOverviewTrendEmpty', state.data?.charts?.current_trend || state.data?.charts?.trend_chart || '/static/current_trend.png');
+        renderTopCategories('currentTopCategories', breakdown);
     }
 
     function renderCurrentDetailed(current) {
