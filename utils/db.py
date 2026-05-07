@@ -3,6 +3,7 @@ Purpose: SmartVest SQLite Database Handler
 Handles connection, initialization, and default data setup.
 """
 import sqlite3
+from datetime import datetime
 from werkzeug.security import generate_password_hash
 
 def get_db_connection():
@@ -31,9 +32,15 @@ def init_db():
         username TEXT,
         email TEXT,
         password TEXT,
-        role TEXT
+        role TEXT,
+        created_at TEXT
     )
     """)
+
+    cursor.execute("PRAGMA table_info(users)")
+    user_columns = [column[1] for column in cursor.fetchall()]
+    if "created_at" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN created_at TEXT")
 
     # EXPENSES TABLE
     cursor.execute("""
@@ -78,9 +85,22 @@ def init_db():
         user_id INTEGER,
         subject TEXT DEFAULT 'General Inquiry',
         message TEXT,
-        date    TEXT
+        date    TEXT,
+        status TEXT DEFAULT 'pending',
+        accepted_at TEXT,
+        resolved INTEGER DEFAULT 0
     )
     """)
+
+    # Keep feedback workflow columns compatible with older databases.
+    cursor.execute("PRAGMA table_info(feedback)")
+    feedback_columns = [column[1] for column in cursor.fetchall()]
+    if "status" not in feedback_columns:
+        cursor.execute("ALTER TABLE feedback ADD COLUMN status TEXT DEFAULT 'pending'")
+    if "accepted_at" not in feedback_columns:
+        cursor.execute("ALTER TABLE feedback ADD COLUMN accepted_at TEXT")
+    if "resolved" not in feedback_columns:
+        cursor.execute("ALTER TABLE feedback ADD COLUMN resolved INTEGER DEFAULT 0")
 
     # REVIEWS TABLE
     # Stores user reviews; status is PENDING until admin approves/rejects
@@ -90,10 +110,22 @@ def init_db():
         user_id INTEGER,
         rating  INTEGER,
         comment TEXT,
-        status  TEXT DEFAULT 'PENDING',
-        date    TEXT
+        status  TEXT DEFAULT 'pending',
+        date    TEXT,
+        show_public INTEGER DEFAULT 0,
+        approved_at TEXT
     )
     """)
+
+    # Keep review workflow columns compatible with older databases.
+    cursor.execute("PRAGMA table_info(reviews)")
+    review_columns = [column[1] for column in cursor.fetchall()]
+    if "status" not in review_columns:
+        cursor.execute("ALTER TABLE reviews ADD COLUMN status TEXT DEFAULT 'pending'")
+    if "show_public" not in review_columns:
+        cursor.execute("ALTER TABLE reviews ADD COLUMN show_public INTEGER DEFAULT 0")
+    if "approved_at" not in review_columns:
+        cursor.execute("ALTER TABLE reviews ADD COLUMN approved_at TEXT")
 
     conn.commit()
     conn.close()
@@ -112,9 +144,15 @@ def create_admin():
 
     if not admin:
         cursor.execute("""
-        INSERT INTO users (username, email, password, role)
-        VALUES (?, ?, ?, ?)
-        """, ("admin", "admin@local", generate_password_hash("admin@7790"), "admin"))
+        INSERT INTO users (username, email, password, role, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """, (
+            "admin",
+            "admin@local",
+            generate_password_hash("admin@7790"),
+            "admin",
+            datetime.now().strftime("%Y-%m-%d"),
+        ))
     else:
         # Keep the seeded admin account on a hashed password even if an older DB stored plaintext.
         password = admin["password"] if "password" in admin.keys() else None

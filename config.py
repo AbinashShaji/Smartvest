@@ -6,16 +6,19 @@ Shared configuration and session helpers for SmartVest.
 import os
 from flask import session
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # App still works when environment variables are injected another way.
+    pass
+
 # --- SECURITY CONFIGURATION ---
 
 # What is SECRET_KEY?
 # This is a random string used by Flask to encrypt our session cookies.
 # It is needed so that users cannot tamper with their session data (like changing their user_id).
 SECRET_KEY = os.getenv("SECRET_KEY", "smartvest-dev-key")
-
-
-# Current global market condition
-MARKET_STATE = {"state": "stable"}
 
 
 # --- AUTH HELPER FUNCTIONS ---

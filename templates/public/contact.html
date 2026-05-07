@@ -30,7 +30,7 @@
                     <textarea name="message" required rows="5" placeholder="Describe your request..." class="premium-input-field" style="resize: none;"></textarea>
                 </div>
 
-                <button type="submit" class="btn-premium btn-glow" style="width: 100%; height: 60px; font-weight: 800; font-size: 0.9rem; letter-spacing: 2px;">
+                <button id="contactSubmitBtn" type="submit" class="btn-premium btn-glow" style="width: 100%; height: 60px; font-weight: 800; font-size: 0.9rem; letter-spacing: 2px;">
                     SEND MESSAGE
                 </button>
                 
@@ -76,35 +76,56 @@
 
 {% block scripts %}
 <script>
+    function setContactStatus(message, tone) {
+        const status = document.getElementById('formStatus');
+        status.innerText = message;
+        status.style.color = tone;
+    }
+
+    function setContactLoading(isLoading) {
+        const button = document.getElementById('contactSubmitBtn');
+        button.disabled = isLoading;
+        button.style.opacity = isLoading ? '0.7' : '1';
+        button.style.cursor = isLoading ? 'not-allowed' : 'pointer';
+        button.innerText = isLoading ? 'SENDING...' : 'SEND MESSAGE';
+    }
+
     document.getElementById('contactForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target;
-        const status = document.getElementById('formStatus');
-        const formData = {
-            name: form.name.value,
-            email: form.email.value,
-            message: form.message.value
+        const payload = {
+            name: String(form.name.value || '').trim(),
+            email: String(form.email.value || '').trim(),
+            message: String(form.message.value || '').trim()
         };
 
-        status.innerText = 'Transmitting...';
-        status.style.color = 'rgba(255,255,255,0.5)';
+        if (!payload.name || !payload.email || !payload.message) {
+            setContactStatus('Please complete all fields.', '#f87171');
+            return;
+        }
+
+        setContactLoading(true);
+        setContactStatus('Sending...', 'rgba(255,255,255,0.5)');
 
         try {
-            const resp = await fetch('/api/feedback/add', {
+            const resp = await fetch('/api/contact/send', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(payload)
             });
-            if (resp.ok) {
-                status.innerText = 'Transmission Successful.';
-                status.style.color = '#4ade80';
-                form.reset();
-            } else {
-                throw new Error('System error');
+
+            const result = await resp.json().catch(() => ({}));
+
+            if (!resp.ok || result.status === 'error') {
+                throw new Error(result.message || 'Unable to send message.');
             }
+
+            setContactStatus(result?.data?.message || 'Transmission Successful.', '#4ade80');
+            form.reset();
         } catch (error) {
-            status.innerText = 'System Error: ' + error.message;
-            status.style.color = '#f87171';
+            setContactStatus('System Error: ' + error.message, '#f87171');
+        } finally {
+            setContactLoading(false);
         }
     });
 </script>

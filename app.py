@@ -5,17 +5,22 @@ This is the heart of our Flask application.
 During refactoring, we have moved all the messy code into 'Modules'.
 This file now stays clean and only handles connecting everything together.
 """
+from dotenv import load_dotenv
+load_dotenv()
+
 import config
 from flask import Flask, jsonify
 
 # 1. Initialize the Flask Application
 from utils.db import init_db, create_admin
+from utils.mail import init_mail
 init_db()
 create_admin()
 
 app = Flask(__name__)
 # SECRET_KEY is managed in config.py for better organization.
 app.secret_key = config.SECRET_KEY
+init_mail(app)
 
 # 2. Import our Blueprints from the 'modules' folder
 # Each blueprint handles a specific part of the app (e.g., Auth, Expenses)

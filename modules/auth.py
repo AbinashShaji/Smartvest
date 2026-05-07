@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 import config
 from utils.db import get_db_connection
+from utils.mail import send_contact_email
 
 # Create the Auth Blueprint
 auth_bp = Blueprint('auth', __name__)
@@ -27,6 +29,57 @@ def reviews_page():
 def contact():
     """Purpose: Renders Contact page."""
     return render_template("public/contact.html")
+
+
+@auth_bp.route("/api/contact/send", methods=["POST"])
+def api_send_contact_message():
+    """
+    Purpose: Sends public contact form messages to the SmartVest inbox.
+    Input: JSON body with name, email, and message.
+    Output: Success or validation/error message.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        name = (data.get("name") or "").strip()
+        email = (data.get("email") or "").strip()
+        message = (data.get("message") or "").strip()
+
+        if not name or not email or not message:
+            return jsonify({
+                "status": "error",
+                "message": "Name, email, and message are required."
+            }), 400
+
+        if len(name) > 120 or len(email) > 254 or len(message) > 4000:
+            return jsonify({
+                "status": "error",
+                "message": "One or more fields are too long."
+            }), 400
+
+        if "@" not in email or "." not in email.split("@")[-1]:
+            return jsonify({
+                "status": "error",
+                "message": "Please enter a valid email address."
+            }), 400
+
+        result = send_contact_email(name=name, email=email, message=message)
+        return jsonify({
+            "status": "success",
+            "data": {
+                "message": "Your message was sent successfully.",
+                "recipient": result["recipient"]
+            }
+        }), 200
+    except ValueError as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 400
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": f"Unable to send message: {str(e)}"
+        }), 500
 
 @auth_bp.route("/login")
 def login():
@@ -125,10 +178,10 @@ def api_signup():
         hashed_password = generate_password_hash(password)
         cursor.execute(
             """
-            INSERT INTO users (username, email, password, role)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO users (username, email, password, role, created_at)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (username, email, hashed_password, "user")
+            (username, email, hashed_password, "user", datetime.now().strftime("%Y-%m-%d"))
         )
         conn.commit()
 

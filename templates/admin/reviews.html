@@ -1,72 +1,199 @@
 {% extends "admin/base_admin.html" %}
 
-{% block title %}Review Control - SmartVest Admin{% endblock %}
-{% block page_title %}Public Review Management{% endblock %}
+{% block title %}Review Moderation - SmartVest Admin{% endblock %}
+{% block page_title %}Review Moderation Workflow{% endblock %}
 
 {% block content %}
-<div class="glass-card" style="padding: 32px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
-        <h3>Moderate Testimonials</h3>
-        <p style="color: var(--fg-secondary); font-size: 0.85rem;">Approved reviews appear on the Home and Reviews pages.</p>
+<div class="glass-card review-workflow-panel">
+    <div class="review-workflow-header">
+        <h3>Review Moderation Workflow</h3>
+        <div class="review-tab-row">
+            <button class="review-tab-btn is-active" id="reviewIncomingTabBtn" type="button">Incoming Reviews</button>
+            <button class="review-tab-btn" id="reviewAcceptedTabBtn" type="button">Accepted Reviews</button>
+        </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr; gap: 20px;" id="adminReviewsContainer">
-        <div class="glass-card" style="padding: 24px; text-align: center; color: var(--fg-secondary);">Loading reviews from the database...</div>
+    <div class="review-toolbar">
+        <span class="review-count-badge review-count-badge--pending" id="reviewIncomingCount">0 Pending</span>
+        <span class="review-count-badge review-count-badge--accepted" id="reviewAcceptedCount">0 Accepted</span>
+        <span class="review-count-badge review-count-badge--public" id="reviewPublicCount">0 Public / 6</span>
+    </div>
+
+    <div id="reviewIncomingPane" class="review-pane is-active">
+        <div id="reviewIncomingContainer" class="review-list">
+            <div class="glass-card review-empty-card">Loading incoming reviews...</div>
+        </div>
+    </div>
+
+    <div id="reviewAcceptedPane" class="review-pane">
+        <div id="reviewAcceptedContainer" class="review-list">
+            <div class="glass-card review-empty-card">Loading accepted reviews...</div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    async function deleteReview(reviewId) {
-        if (!confirm('Delete this review?')) return;
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    }
 
+    function safeText(value, fallback) {
+        const text = String(value || '').trim();
+        return text || fallback;
+    }
+
+    function renderStars(ratingValue) {
+        const rating = Math.max(1, Math.min(5, Number(ratingValue || 0)));
+        return `${'★'.repeat(rating)}${'☆'.repeat(Math.max(0, 5 - rating))}`;
+    }
+
+    function statusBadge(label, kind) {
+        return `<span class="review-badge review-badge--${kind}">${escapeHtml(label)}</span>`;
+    }
+
+    function setCounts(incomingList, acceptedList) {
+        const publicCount = acceptedList.filter((item) => Number(item.show_public) === 1).length;
+        document.getElementById('reviewIncomingCount').innerText = `${incomingList.length} Pending`;
+        document.getElementById('reviewAcceptedCount').innerText = `${acceptedList.length} Accepted`;
+        document.getElementById('reviewPublicCount').innerText = `${publicCount} Public / 6`;
+    }
+
+    function incomingActions(item) {
+        return `
+            <div class="review-action-row">
+                ${statusBadge('Pending', 'pending')}
+                <div class="review-action-buttons">
+                    <button class="btn-premium btn-secondary review-btn-accept" onclick="acceptReview(${Number(item.id)})">Accept Review</button>
+                    <button class="btn-premium btn-secondary review-btn-danger" onclick="deleteReview(${Number(item.id)})">Delete Review</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function acceptedActions(item) {
+        const isPublic = Number(item.show_public) === 1;
+        return `
+            <div class="review-action-row">
+                <div class="review-badge-row">
+                    ${statusBadge('Accepted', 'accepted')}
+                    ${statusBadge(isPublic ? 'Public' : 'Hidden', isPublic ? 'public' : 'hidden')}
+                </div>
+                <div class="review-action-buttons">
+                    <button class="btn-premium btn-secondary review-btn-accept" onclick="setPublic(${Number(item.id)}, 1)">Show On Public Page</button>
+                    <button class="btn-premium btn-secondary review-btn-warning" onclick="setPublic(${Number(item.id)}, 0)">Remove From Public Page</button>
+                    <button class="btn-premium btn-secondary review-btn-danger" onclick="deleteReview(${Number(item.id)})">Delete Review</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function reviewCard(item, actionHtml, metaLine) {
+        return `
+            <article class="glass-card review-entry-card">
+                <div class="review-card-head">
+                    <span class="review-stars">${escapeHtml(renderStars(item.rating))}</span>
+                    <strong>${escapeHtml(safeText(item.username, 'SmartVest User'))}</strong>
+                </div>
+                <p class="review-text-body">${escapeHtml(safeText(item.comment, 'No review text provided.'))}</p>
+                <div class="review-meta-row">${metaLine}</div>
+                ${actionHtml}
+            </article>
+        `;
+    }
+
+    function renderIncoming(list) {
+        const container = document.getElementById('reviewIncomingContainer');
+        if (!list.length) {
+            container.innerHTML = '<div class="glass-card review-empty-card">No incoming reviews.</div>';
+            return;
+        }
+        container.innerHTML = list.map((item) => reviewCard(
+            item,
+            incomingActions(item),
+            `${escapeHtml(safeText(item.date, '-'))} · Rating ${escapeHtml(String(item.rating || 0))}/5`
+        )).join('');
+    }
+
+    function renderAccepted(list) {
+        const container = document.getElementById('reviewAcceptedContainer');
+        if (!list.length) {
+            container.innerHTML = '<div class="glass-card review-empty-card">No accepted reviews yet.</div>';
+            return;
+        }
+        container.innerHTML = list.map((item) => reviewCard(
+            item,
+            acceptedActions(item),
+            `Approved: ${escapeHtml(safeText(item.approved_at, '-'))} · ${escapeHtml(safeText(item.date, '-'))}`
+        )).join('');
+    }
+
+    async function loadReviewWorkflow() {
+        try {
+            const [incoming, accepted] = await Promise.all([
+                API.getIncomingReviews(),
+                API.getAcceptedReviews()
+            ]);
+            const incomingList = Array.isArray(incoming) ? incoming : [];
+            const acceptedList = Array.isArray(accepted) ? accepted : [];
+            setCounts(incomingList, acceptedList);
+            renderIncoming(incomingList);
+            renderAccepted(acceptedList);
+        } catch (error) {
+            document.getElementById('reviewIncomingContainer').innerHTML = '<div class="glass-card review-empty-card review-empty-card--error">Unable to load incoming reviews.</div>';
+            document.getElementById('reviewAcceptedContainer').innerHTML = '<div class="glass-card review-empty-card review-empty-card--error">Unable to load accepted reviews.</div>';
+        }
+    }
+
+    function activateReviewTab(tabName) {
+        const isIncoming = tabName === 'incoming';
+        document.getElementById('reviewIncomingPane').classList.toggle('is-active', isIncoming);
+        document.getElementById('reviewAcceptedPane').classList.toggle('is-active', !isIncoming);
+        document.getElementById('reviewIncomingTabBtn').classList.toggle('is-active', isIncoming);
+        document.getElementById('reviewAcceptedTabBtn').classList.toggle('is-active', !isIncoming);
+    }
+
+    async function acceptReview(reviewId) {
+        try {
+            await API.acceptReview(reviewId);
+            await loadReviewWorkflow();
+            activateReviewTab('accepted');
+        } catch (error) {
+            alert('Unable to accept review: ' + error.message);
+        }
+    }
+
+    async function deleteReview(reviewId) {
+        if (!confirm('Delete this review permanently?')) return;
         try {
             await API.deleteReview(reviewId);
-            loadReviews();
+            await loadReviewWorkflow();
         } catch (error) {
-            alert('Error deleting review: ' + error.message);
+            alert('Unable to delete review: ' + error.message);
         }
     }
 
-    async function loadReviews() {
+    async function setPublic(reviewId, showPublic) {
         try {
-            const reviews = await API.getReviews();
-            const container = document.getElementById('adminReviewsContainer');
-            if (!container) return;
-
-            if (!reviews || reviews.length === 0) {
-                container.innerHTML = '<div class="glass-card" style="padding: 24px; text-align: center; color: var(--fg-secondary);">No reviews have been submitted yet.</div>';
-                return;
-            }
-
-            container.innerHTML = reviews.map(item => {
-                const rating = Number(item.rating || 0);
-                return `
-                    <div class="glass-card" style="padding: 24px; display: flex; justify-content: space-between; align-items: center; gap: 20px;">
-                        <div style="flex: 1;">
-                            <div style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center; flex-wrap: wrap;">
-                                <span style="color: #fff;">${'★'.repeat(rating)}${'☆'.repeat(Math.max(0, 5 - rating))}</span>
-                                <span style="font-size: 0.8rem; font-weight: 700;">${item.username || 'SmartVest User'}</span>
-                                <span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${item.status || 'PENDING'}</span>
-                            </div>
-                            <p style="color: var(--fg-secondary); font-size: 0.9rem;">${item.comment || ''}</p>
-                            <p style="font-size: 0.75rem; color: var(--fg-secondary); margin-top: 10px;">${item.date || ''}</p>
-                        </div>
-                        <div style="display: flex; gap: 12px; margin-left: 20px;">
-                            <button class="btn-premium btn-secondary" style="padding: 6px 12px; font-size: 0.75rem; color: #f87171;" onclick="deleteReview(${item.id})">Delete</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            await API.setReviewPublicVisibility(reviewId, showPublic);
+            await loadReviewWorkflow();
+            activateReviewTab('accepted');
         } catch (error) {
-            const container = document.getElementById('adminReviewsContainer');
-            if (container) {
-                container.innerHTML = '<div class="glass-card" style="padding: 24px; text-align: center; color: #f87171;">Unable to load reviews.</div>';
-            }
+            alert('Unable to update public visibility: ' + error.message);
         }
     }
 
-    document.addEventListener('DOMContentLoaded', loadReviews);
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('reviewIncomingTabBtn').addEventListener('click', () => activateReviewTab('incoming'));
+        document.getElementById('reviewAcceptedTabBtn').addEventListener('click', () => activateReviewTab('accepted'));
+        loadReviewWorkflow();
+    });
 </script>
 {% endblock %}

@@ -49,7 +49,7 @@ else:
 result, code = get("/api/admin/stats")
 if result.get("status") == "success":
     d = result["data"]
-    print(f"STEP 2  Admin Stats API:      PASS | users={d['users']}  feedback={d['feedback_count']}  reviews={d['reviews_count']}  market={d['market_state']}")
+    print(f"STEP 2  Admin Stats API:      PASS | users={d['users']}  feedback={d['feedback_count']}  reviews={d['reviews_count']}")
 else:
     print(f"STEP 2  Admin Stats API:      FAIL — {result}")
 

@@ -1,57 +1,212 @@
 {% extends "admin/base_admin.html" %}
 
-{% block title %}Feedback Log - SmartVest Admin{% endblock %}
-{% block page_title %}User Inquiries & Feedback{% endblock %}
+{% block title %}Feedback Moderation - SmartVest Admin{% endblock %}
+{% block page_title %}Feedback Moderation Workflow{% endblock %}
 
 {% block content %}
-<div class="glass-card" style="padding: 32px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
-        <h3>Incoming Messages</h3>
-        <span class="glass-card" id="feedbackCountBadge" style="padding: 4px 12px; font-size: 0.8rem; background: rgba(248, 113, 113, 0.1); color: #f87171;">0 Messages</span>
+<div class="glass-card feedback-workflow-panel">
+    <div class="feedback-workflow-header">
+        <h3>Feedback Moderation Workflow</h3>
+        <div class="feedback-tab-row">
+            <button class="feedback-tab-btn is-active" id="incomingTabBtn" type="button">Incoming Feedback</button>
+            <button class="feedback-tab-btn" id="acceptedTabBtn" type="button">Accepted Feedback</button>
+        </div>
     </div>
 
-    <div id="feedbackContainer" style="display: flex; flex-direction: column; gap: 16px;">
-        <div class="glass-card" style="padding: 24px; text-align: center; color: var(--fg-secondary);">Loading feedback from the database...</div>
+    <div class="feedback-toolbar">
+        <span class="feedback-count-badge feedback-count-badge--pending" id="incomingCountBadge">0 Pending</span>
+        <span class="feedback-count-badge feedback-count-badge--accepted" id="acceptedCountBadge">0 Accepted</span>
+    </div>
+
+    <div id="incomingPane" class="feedback-pane is-active">
+        <div id="incomingContainer" class="feedback-list">
+            <div class="glass-card feedback-empty-card">Loading incoming feedback...</div>
+        </div>
+    </div>
+
+    <div id="acceptedPane" class="feedback-pane">
+        <div id="acceptedContainer" class="feedback-list">
+            <div class="glass-card feedback-empty-card">Loading accepted feedback...</div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    async function loadFeedback() {
-        try {
-            const feedback = await API.getFeedback();
-            const container = document.getElementById('feedbackContainer');
-            const badge = document.getElementById('feedbackCountBadge');
-            if (!container) return;
+    function escapeHtml(value) {
+        return String(value || '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    }
 
-            badge.innerText = `${feedback.length || 0} Messages`;
+    function safeText(value, fallback) {
+        const text = String(value || '').trim();
+        return text || fallback;
+    }
 
-            if (!feedback || feedback.length === 0) {
-                container.innerHTML = '<div class="glass-card" style="padding: 24px; text-align: center; color: var(--fg-secondary);">No feedback has been submitted yet.</div>';
-                return;
-            }
+    function statusBadge(label, kind) {
+        return `<span class="feedback-badge feedback-badge--${kind}">${escapeHtml(label)}</span>`;
+    }
 
-            container.innerHTML = feedback.map(item => `
-                <div class="glass-card" style="padding: 24px; border-left: 4px solid #fff;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px; gap: 16px;">
-                        <h4 style="font-size: 1.1rem;">${item.subject || 'General Inquiry'}</h4>
-                        <span style="font-size: 0.8rem; color: var(--fg-secondary);">${item.date || ''}</span>
-                    </div>
-                    <p style="color: var(--fg-secondary); font-size: 0.95rem; margin-bottom: 20px;">${item.message || ''}</p>
-                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
-                        <span style="font-size: 0.85rem; font-weight: 500;">${item.username || 'Deleted User'}</span>
-                        <span style="font-size: 0.8rem; color: var(--fg-secondary);">User ID: ${item.user_id || ''}</span>
-                    </div>
+    function setBadgeCounts(incomingCount, acceptedCount) {
+        document.getElementById('incomingCountBadge').innerText = `${incomingCount} Pending`;
+        document.getElementById('acceptedCountBadge').innerText = `${acceptedCount} Accepted`;
+    }
+
+    function rowMeta(item) {
+        return `
+            <div class="feedback-meta-row">
+                <span>${escapeHtml(safeText(item.username, 'Deleted User'))}</span>
+                <span>User ID: ${escapeHtml(safeText(item.user_id, '-'))}</span>
+                <span>${escapeHtml(safeText(item.date, '-'))}</span>
+            </div>
+        `;
+    }
+
+    function incomingActions(item) {
+        return `
+            <div class="feedback-action-row">
+                ${statusBadge('Pending', 'pending')}
+                <div class="feedback-action-buttons">
+                    <button class="btn-premium btn-secondary feedback-btn-accept" onclick="acceptFeedback(${Number(item.id)})">Accept</button>
+                    <button class="btn-premium btn-secondary feedback-btn-danger" onclick="deleteFeedback(${Number(item.id)})">Delete</button>
                 </div>
-            `).join('');
+            </div>
+        `;
+    }
+
+    function acceptedActions(item) {
+        const resolved = Number(item.resolved) === 1;
+        return `
+            <div class="feedback-action-row">
+                <div class="feedback-badge-row">
+                    ${statusBadge('Accepted', 'accepted')}
+                    ${statusBadge(resolved ? 'Resolved' : 'Not Resolved', resolved ? 'resolved' : 'unresolved')}
+                </div>
+                <div class="feedback-action-buttons">
+                    <button class="btn-premium btn-secondary feedback-btn-accept" onclick="markResolved(${Number(item.id)})">Mark Resolved</button>
+                    <button class="btn-premium btn-secondary feedback-btn-warning" onclick="markUnresolved(${Number(item.id)})">Mark Not Resolved</button>
+                    <button class="btn-premium btn-secondary feedback-btn-danger" onclick="deleteFeedback(${Number(item.id)})">Delete</button>
+                </div>
+            </div>
+        `;
+    }
+
+    function acceptedMeta(item) {
+        return `
+            <div class="feedback-meta-row">
+                <span>${escapeHtml(safeText(item.username, 'Deleted User'))}</span>
+                <span>User ID: ${escapeHtml(safeText(item.user_id, '-'))}</span>
+                <span>Accepted: ${escapeHtml(safeText(item.accepted_at, '-'))}</span>
+            </div>
+        `;
+    }
+
+    function feedbackCard(item, actionHtml, metaHtml) {
+        return `
+            <article class="glass-card feedback-entry-card">
+                <div class="feedback-card-header">
+                    <h4>${escapeHtml(safeText(item.subject, 'General Inquiry'))}</h4>
+                </div>
+                <p class="feedback-message">${escapeHtml(safeText(item.message, 'No message provided.'))}</p>
+                ${metaHtml}
+                ${actionHtml}
+            </article>
+        `;
+    }
+
+    function renderIncoming(list) {
+        const container = document.getElementById('incomingContainer');
+        if (!list.length) {
+            container.innerHTML = '<div class="glass-card feedback-empty-card">No incoming feedback.</div>';
+            return;
+        }
+        container.innerHTML = list.map((item) => feedbackCard(item, incomingActions(item), rowMeta(item))).join('');
+    }
+
+    function renderAccepted(list) {
+        const container = document.getElementById('acceptedContainer');
+        if (!list.length) {
+            container.innerHTML = '<div class="glass-card feedback-empty-card">No accepted feedback yet.</div>';
+            return;
+        }
+        container.innerHTML = list.map((item) => feedbackCard(item, acceptedActions(item), acceptedMeta(item))).join('');
+    }
+
+    async function loadWorkflow() {
+        try {
+            const [incoming, accepted] = await Promise.all([
+                API.getIncomingFeedback(),
+                API.getAcceptedFeedback()
+            ]);
+            const incomingList = Array.isArray(incoming) ? incoming : [];
+            const acceptedList = Array.isArray(accepted) ? accepted : [];
+            setBadgeCounts(incomingList.length, acceptedList.length);
+            renderIncoming(incomingList);
+            renderAccepted(acceptedList);
         } catch (error) {
-            const container = document.getElementById('feedbackContainer');
-            if (container) {
-                container.innerHTML = '<div class="glass-card" style="padding: 24px; text-align: center; color: #f87171;">Unable to load feedback.</div>';
-            }
+            document.getElementById('incomingContainer').innerHTML = '<div class="glass-card feedback-empty-card feedback-empty-card--error">Unable to load incoming feedback.</div>';
+            document.getElementById('acceptedContainer').innerHTML = '<div class="glass-card feedback-empty-card feedback-empty-card--error">Unable to load accepted feedback.</div>';
         }
     }
-    document.addEventListener('DOMContentLoaded', loadFeedback);
+
+    function activateTab(tabName) {
+        const isIncoming = tabName === 'incoming';
+        document.getElementById('incomingPane').classList.toggle('is-active', isIncoming);
+        document.getElementById('acceptedPane').classList.toggle('is-active', !isIncoming);
+        document.getElementById('incomingTabBtn').classList.toggle('is-active', isIncoming);
+        document.getElementById('acceptedTabBtn').classList.toggle('is-active', !isIncoming);
+    }
+
+    async function acceptFeedback(feedbackId) {
+        try {
+            await API.acceptFeedback(feedbackId);
+            await loadWorkflow();
+            activateTab('accepted');
+        } catch (error) {
+            alert('Unable to accept feedback: ' + error.message);
+        }
+    }
+
+    async function deleteFeedback(feedbackId) {
+        if (!confirm('Delete this feedback permanently?')) return;
+        try {
+            await API.deleteFeedback(feedbackId);
+            await loadWorkflow();
+        } catch (error) {
+            alert('Unable to delete feedback: ' + error.message);
+        }
+    }
+
+    async function markResolved(feedbackId) {
+        try {
+            await API.markFeedbackResolved(feedbackId);
+            await loadWorkflow();
+            activateTab('accepted');
+        } catch (error) {
+            alert('Unable to mark feedback as resolved: ' + error.message);
+        }
+    }
+
+    async function markUnresolved(feedbackId) {
+        try {
+            await API.markFeedbackUnresolved(feedbackId);
+            await loadWorkflow();
+            activateTab('accepted');
+        } catch (error) {
+            alert('Unable to mark feedback as not resolved: ' + error.message);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('incomingTabBtn').addEventListener('click', () => activateTab('incoming'));
+        document.getElementById('acceptedTabBtn').addEventListener('click', () => activateTab('accepted'));
+        loadWorkflow();
+    });
 </script>
 {% endblock %}
