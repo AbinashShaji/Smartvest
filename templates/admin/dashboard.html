@@ -10,33 +10,60 @@
         <h1>Platform Monitoring & Activity Dashboard</h1>
         <p>Track usage, engagement, reminders, and moderation signals from one compact console.</p>
     </div>
-    <div class="admin-health-pill">SYSTEM STATUS: ONLINE</div>
+    <div class="admin-health-pill">
+        <span class="status-dot status-dot--live"></span>
+        <span>LIVE SYSTEM</span>
+    </div>
 </section>
 
 <section class="admin-kpi-grid" aria-label="Platform stats">
     <div class="glass-card stat-card">
         <p class="label">Total Users</p>
         <p class="value" id="statTotalUsers">0</p>
+        <div class="metric-meta-row">
+            <span class="trend-chip trend-chip--info" id="trendTotalUsers">&#9679; Stable usage</span>
+            <span class="metric-subtle" id="trendTotalUsersWeek">0% this week</span>
+        </div>
     </div>
     <div class="glass-card stat-card">
         <p class="label">Active Users</p>
         <p class="value" id="statActiveUsers">0</p>
+        <div class="metric-meta-row">
+            <span class="trend-chip trend-chip--up" id="trendActiveUsers">&#9650; +0% this week</span>
+            <span class="metric-subtle" id="trendActiveUsersHint">Live engagement</span>
+        </div>
     </div>
     <div class="glass-card stat-card">
         <p class="label">Inactive Users</p>
         <p class="value" id="statInactiveUsers">0</p>
+        <div class="metric-meta-row">
+            <span class="trend-chip trend-chip--stable" id="trendInactiveUsers">&#9679; Stable</span>
+            <span class="metric-subtle" id="trendInactiveUsersHint">Watch for rise</span>
+        </div>
     </div>
     <div class="glass-card stat-card">
         <p class="label">New Users This Week</p>
         <p class="value" id="statNewUsers">0</p>
+        <div class="metric-meta-row">
+            <span class="trend-chip trend-chip--up" id="trendNewUsers">&#9650; +0 this week</span>
+            <span class="metric-subtle">Weekly momentum</span>
+        </div>
     </div>
     <div class="glass-card stat-card">
         <p class="label">Feedback Count</p>
         <p class="value" id="statFeedback">0</p>
+        <div class="metric-meta-row">
+            <span class="trend-chip trend-chip--info" id="trendFeedback">&#9679; Stable inflow</span>
+            <span class="metric-subtle" id="trendFeedbackHint">User signal stream</span>
+        </div>
     </div>
     <div class="glass-card stat-card">
         <p class="label">Review Count</p>
         <p class="value" id="statReviews">0</p>
+        <div class="metric-meta-row">
+            <span class="trend-chip trend-chip--info" id="trendReviews">&#9679; Normal volume</span>
+            <span class="metric-subtle" id="trendReviewsHint">Moderation load</span>
+        </div>
     </div>
 </section>
 
@@ -47,7 +74,10 @@
                 <p class="admin-eyebrow">User Analytics</p>
                 <h3>Weekly Activity Trend</h3>
             </div>
-            <strong id="engagementPercent">0% engaged</strong>
+            <div class="chart-header-meta">
+                <strong id="engagementPercent">0% engaged</strong>
+                <span class="trend-chip trend-chip--up" id="engagementTrendChip">&#9650; Growth</span>
+            </div>
         </div>
         <canvas id="weeklyActivityChart" class="admin-chart" height="210"></canvas>
     </div>
@@ -61,6 +91,10 @@
         </div>
         <canvas id="activeSplitChart" class="admin-donut" height="210"></canvas>
         <p class="admin-muted" id="activeSplitText">Loading user split...</p>
+        <div class="status-cluster">
+            <span class="status-pill status-pill--live"><span class="status-dot status-dot--live"></span>LIVE</span>
+            <span class="status-pill status-pill--info" id="activeSplitSignal">&#9679; Stable</span>
+        </div>
     </div>
 </section>
 
@@ -85,15 +119,15 @@
             </div>
         </div>
         <div class="admin-reminder-list">
-            <div>
+            <div class="severity-row severity-row--amber">
                 <span>Pending Reviews</span>
                 <strong id="reminderPendingReviews">0</strong>
             </div>
-            <div>
+            <div class="severity-row severity-row--blue">
                 <span>New Feedback</span>
                 <strong id="reminderNewFeedback">0</strong>
             </div>
-            <div>
+            <div class="severity-row severity-row--red">
                 <span>Unresolved Admin Actions</span>
                 <strong id="reminderActions">0</strong>
             </div>

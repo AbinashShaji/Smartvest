@@ -21,6 +21,42 @@
         return Number.isFinite(number) ? number : 0;
     }
 
+    function safePercentChange(current, previous) {
+        const now = safeNumber(current);
+        const before = safeNumber(previous);
+        if (before <= 0) return now > 0 ? 100 : 0;
+        return ((now - before) / before) * 100;
+    }
+
+    function classifyTrend(value, inverse = false) {
+        const adjusted = inverse ? -value : value;
+        if (adjusted > 2) return 'up';
+        if (adjusted < -2) return 'down';
+        return 'stable';
+    }
+
+    function trendText(value, inverse = false) {
+        const trend = classifyTrend(value, inverse);
+        const abs = Math.abs(value).toFixed(1);
+        if (trend === 'up') return `\u25B2 +${abs}% this week`;
+        if (trend === 'down') return `\u25BC -${abs}% this week`;
+        return '\u25CF Stable usage';
+    }
+
+    function trendClass(trend) {
+        if (trend === 'up') return 'trend-chip trend-chip--up';
+        if (trend === 'down') return 'trend-chip trend-chip--down';
+        return 'trend-chip trend-chip--stable';
+    }
+
+    function setTrend(id, changeValue, inverse = false) {
+        const element = document.getElementById(id);
+        if (!element) return;
+        const trend = classifyTrend(changeValue, inverse);
+        element.className = trendClass(trend);
+        element.textContent = trendText(changeValue, inverse);
+    }
+
     function escapeHtml(value) {
         return String(value ?? '').replace(/[&<>"']/g, (char) => ({
             '&': '&amp;',
@@ -46,7 +82,7 @@
     function drawLineChart(canvas, labels = [], values = []) {
         if (!canvas) return;
         const { ctx, width, height } = clearCanvas(canvas);
-        const padding = 36;
+        const padding = 40;
         const chartWidth = width - padding * 2;
         const chartHeight = height - padding * 2;
         const maxValue = Math.max(...values.map(safeNumber), 1);
@@ -87,29 +123,49 @@
             ctx.fill();
         }
 
+        ctx.shadowColor = 'rgba(125,211,252,0.55)';
+        ctx.shadowBlur = 12;
         ctx.strokeStyle = chartColors.line;
-        ctx.lineWidth = 2.8;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        points.forEach((point, index) => {
-            if (index === 0) ctx.moveTo(point.x, point.y);
-            else ctx.lineTo(point.x, point.y);
+        points.forEach((point, index, allPoints) => {
+            if (index === 0) {
+                ctx.moveTo(point.x, point.y);
+            } else {
+                const prev = allPoints[index - 1];
+                const midX = (prev.x + point.x) / 2;
+                const midY = (prev.y + point.y) / 2;
+                ctx.quadraticCurveTo(prev.x, prev.y, midX, midY);
+                ctx.quadraticCurveTo(midX, midY, point.x, point.y);
+            }
         });
         ctx.stroke();
+        ctx.shadowBlur = 0;
 
-        ctx.fillStyle = chartColors.line;
-        points.forEach((point) => {
+        points.forEach((point, index, allPoints) => {
+            const previous = allPoints[index - 1];
+            const positiveMove = !previous || point.y <= previous.y;
             ctx.beginPath();
-            ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = positiveMove ? '#4ade80' : '#fb7185';
+            ctx.arc(point.x, point.y, 4.2, 0, Math.PI * 2);
             ctx.fill();
         });
 
         ctx.fillStyle = chartColors.muted;
-        ctx.font = '600 12px Inter, sans-serif';
+        ctx.font = '700 12px Inter, sans-serif';
         labels.forEach((label, index) => {
             const x = padding + (chartWidth / Math.max(labels.length - 1, 1)) * index;
             const shortLabel = String(label).slice(5);
             ctx.fillText(shortLabel, x - Math.min(20, shortLabel.length * 3), height - 10);
         });
+
+        ctx.fillStyle = 'rgba(255,255,255,0.66)';
+        ctx.font = '600 11px Inter, sans-serif';
+        for (let i = 0; i <= 4; i += 1) {
+            const y = padding + (chartHeight / 4) * i;
+            const tickValue = Math.round(maxValue - (range / 4) * i);
+            ctx.fillText(String(tickValue), 8, y + 3);
+        }
     }
 
     function drawDonutChart(canvas, values = []) {
@@ -134,22 +190,54 @@
         });
 
         ctx.fillStyle = '#ffffff';
-        ctx.font = '700 26px Inter, sans-serif';
+        ctx.font = '700 28px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(`${Math.round((active / total) * 100)}%`, centerX, centerY + 4);
         ctx.fillStyle = chartColors.muted;
-        ctx.font = '600 12px Inter, sans-serif';
+        ctx.font = '600 13px Inter, sans-serif';
         ctx.fillText('active users', centerX, centerY + 26);
         ctx.textAlign = 'start';
     }
 
-    function renderStats(stats) {
-        setText('statTotalUsers', safeNumber(stats.total_users));
-        setText('statActiveUsers', safeNumber(stats.active_users));
-        setText('statInactiveUsers', safeNumber(stats.inactive_users));
-        setText('statNewUsers', safeNumber(stats.new_users_week));
-        setText('statFeedback', safeNumber(stats.feedback_count));
-        setText('statReviews', safeNumber(stats.review_count));
+    function renderStats(stats, metrics, reminders) {
+        const totalUsers = safeNumber(stats.total_users);
+        const activeUsers = safeNumber(stats.active_users);
+        const inactiveUsers = safeNumber(stats.inactive_users);
+        const newUsers = safeNumber(stats.new_users_week);
+        const feedback = safeNumber(stats.feedback_count);
+        const reviews = safeNumber(stats.review_count);
+
+        setText('statTotalUsers', totalUsers);
+        setText('statActiveUsers', activeUsers);
+        setText('statInactiveUsers', inactiveUsers);
+        setText('statNewUsers', newUsers);
+        setText('statFeedback', feedback);
+        setText('statReviews', reviews);
+
+        const weekValues = metrics.weekly_trend?.values || [];
+        const previousWeek = safeNumber(weekValues[weekValues.length - 2]);
+        const currentWeek = safeNumber(weekValues[weekValues.length - 1]);
+        const weeklyChange = safePercentChange(currentWeek, previousWeek);
+        setTrend('trendTotalUsers', weeklyChange);
+        setText('trendTotalUsersWeek', `${Math.abs(weeklyChange).toFixed(1)}% weekly movement`);
+
+        const activePercent = totalUsers > 0 ? (activeUsers / totalUsers) * 100 : 0;
+        const inactivePercent = totalUsers > 0 ? (inactiveUsers / totalUsers) * 100 : 0;
+        setTrend('trendActiveUsers', activePercent - 50);
+        setTrend('trendInactiveUsers', inactivePercent - 50, true);
+
+        const newUserBase = totalUsers > 0 ? (newUsers / totalUsers) * 100 : 0;
+        setTrend('trendNewUsers', newUserBase);
+        setText('trendInactiveUsersHint', inactiveUsers > activeUsers ? 'Decline risk rising' : 'Within healthy range');
+
+        const feedbackLoad = safePercentChange(feedback, reviews || 1);
+        setTrend('trendFeedback', feedbackLoad, true);
+        setTrend('trendReviews', -feedbackLoad);
+        setText('trendFeedbackHint', feedback > reviews ? 'Higher issue reports' : 'Steady sentiment');
+        setText('trendReviewsHint', reviews > 0 ? 'Review coverage active' : 'No recent review intake');
+
+        const unresolved = safeNumber(reminders.unresolved_admin_actions);
+        setText('trendActiveUsersHint', unresolved > 0 ? 'Monitor unresolved actions' : 'Healthy activity quality');
     }
 
     function renderEngagement(metrics) {
@@ -166,7 +254,39 @@
         const insights = document.getElementById('adminInsights');
         if (!insights) return;
         const items = Array.isArray(metrics.insights) && metrics.insights.length ? metrics.insights : ['No platform activity yet.'];
-        insights.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+        insights.innerHTML = items.map((item) => {
+            const text = escapeHtml(item);
+            const lower = text.toLowerCase();
+            let tone = 'info';
+            let icon = '\u25CF';
+            if (lower.includes('increase') || lower.includes('growth') || lower.includes('up')) {
+                tone = 'up';
+                icon = '\u25B2';
+            } else if (lower.includes('drop') || lower.includes('decrease') || lower.includes('inactive') || lower.includes('fall')) {
+                tone = 'down';
+                icon = '\u25BC';
+            } else if (lower.includes('stable')) {
+                tone = 'stable';
+            }
+            return `<li class="insight-card insight-card--${tone}"><span class="insight-icon">${icon}</span><span>${text}</span></li>`;
+        }).join('');
+
+        const trendChip = document.getElementById('engagementTrendChip');
+        if (trendChip) {
+            const engagement = safeNumber(metrics.engagement_percent);
+            const chipTrend = classifyTrend(engagement - 50);
+            trendChip.className = trendClass(chipTrend);
+            trendChip.textContent = chipTrend === 'up' ? '\u25B2 Growth' : chipTrend === 'down' ? '\u25BC Drop' : '\u25CF Stable';
+        }
+
+        const splitSignal = document.getElementById('activeSplitSignal');
+        if (splitSignal) {
+            const active = safeNumber(metrics.active_users);
+            const inactive = safeNumber(metrics.inactive_users);
+            const chipTrend = active >= inactive ? 'up' : 'down';
+            splitSignal.className = chipTrend === 'up' ? 'status-pill status-pill--up' : 'status-pill status-pill--down';
+            splitSignal.textContent = chipTrend === 'up' ? '\u25B2 Active lead' : '\u25BC Inactive rising';
+        }
     }
 
     function redrawEngagementCharts() {
@@ -183,9 +303,20 @@
     }
 
     function renderReminders(reminders) {
-        setText('reminderPendingReviews', safeNumber(reminders.pending_reviews));
-        setText('reminderNewFeedback', safeNumber(reminders.new_feedback));
-        setText('reminderActions', safeNumber(reminders.unresolved_admin_actions));
+        const pending = safeNumber(reminders.pending_reviews);
+        const feedback = safeNumber(reminders.new_feedback);
+        const actions = safeNumber(reminders.unresolved_admin_actions);
+
+        setText('reminderPendingReviews', pending);
+        setText('reminderNewFeedback', feedback);
+        setText('reminderActions', actions);
+
+        const rows = document.querySelectorAll('.severity-row');
+        if (rows.length === 3) {
+            rows[0].className = `severity-row ${pending > 5 ? 'severity-row--red' : pending > 0 ? 'severity-row--amber' : 'severity-row--green'}`;
+            rows[1].className = `severity-row ${feedback > 10 ? 'severity-row--amber' : 'severity-row--blue'}`;
+            rows[2].className = `severity-row ${actions > 0 ? 'severity-row--red' : 'severity-row--green'}`;
+        }
     }
 
     function renderList(id, rows, emptyText, formatter) {
@@ -210,14 +341,14 @@
             <article>
                 <strong>${escapeHtml(item.username || 'User')} rated ${safeNumber(item.rating)}/5</strong>
                 <span>${escapeHtml(item.comment || 'No review text')}</span>
-                <small>${escapeHtml(item.status || 'PENDING')} · ${escapeHtml(item.date || '')}</small>
+                <small>${escapeHtml(item.status || 'PENDING')} \u00B7 ${escapeHtml(item.date || '')}</small>
             </article>
         `);
         renderList('recentFeedback', activity.feedback, 'No feedback yet.', (item) => `
             <article>
                 <strong>${escapeHtml(item.subject || 'Feedback')}</strong>
                 <span>${escapeHtml(item.message || 'No message')}</span>
-                <small>${escapeHtml(item.username || 'User')} · ${escapeHtml(item.date || '')}</small>
+                <small>${escapeHtml(item.username || 'User')} \u00B7 ${escapeHtml(item.date || '')}</small>
             </article>
         `);
     }
@@ -230,12 +361,15 @@
                 API.getAdminReminders(),
                 API.getAdminRecentActivity(),
             ]);
-            renderStats(stats);
+            renderStats(stats, engagement, reminders);
             renderEngagement(engagement);
             renderReminders(reminders);
             renderRecent(recent);
         } catch (error) {
-            setText('adminInsights', 'Unable to load dashboard data.');
+            const insights = document.getElementById('adminInsights');
+            if (insights) {
+                insights.innerHTML = '<li class="insight-card insight-card--down"><span class="insight-icon">\u25BC</span><span>Unable to load dashboard data.</span></li>';
+            }
             console.error('Admin dashboard load failed:', error);
         }
     }

@@ -1239,12 +1239,38 @@ def build_market_metrics():
         daily_average = stock_frame[day_columns].apply(pd.to_numeric, errors="coerce").fillna(0).mean(axis=0)
         x_values = list(range(1, 11))
 
-        fig, ax = _new_chart_figure(figsize=(10.5, 6.4))
-        ax.plot(x_values, daily_average.values, marker="o", linewidth=2.8, markersize=8, color=CHART_TEAL, label="Average Price")
-        _style_chart_axes(ax, "Market Trend", "Day", "Average Price")
+        fig, ax = _new_chart_figure(figsize=(11.6, 6.8))
+        ax.plot(
+            x_values,
+            daily_average.values,
+            marker="o",
+            linewidth=3.2,
+            markersize=8.5,
+            color=CHART_TEAL,
+            label="Average Price",
+            zorder=3,
+        )
+        ax.fill_between(
+            x_values,
+            daily_average.values,
+            color=CHART_TEAL,
+            alpha=0.16,
+            zorder=2,
+        )
+        _style_chart_axes(ax, "Market Trend Intelligence", "Day", "Average Price")
         ax.set_xticks(x_values)
         ax.set_xticklabels([f"Day {i}" for i in x_values], rotation=0)
         ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
+        latest_value = float(daily_average.values[-1]) if len(daily_average.values) else 0.0
+        ax.annotate(
+            f"{latest_value:.2f}",
+            xy=(x_values[-1], latest_value),
+            xytext=(12, 10),
+            textcoords="offset points",
+            color=CHART_TEXT_PRIMARY,
+            fontsize=CHART_TICK_SIZE,
+            bbox=dict(boxstyle="round,pad=0.22", facecolor=(0, 0, 0, 0.45), edgecolor=CHART_SPINE_COLOR, linewidth=0.7),
+        )
         legend = ax.legend(
             loc="best",
             frameon=True,
@@ -1256,13 +1282,15 @@ def build_market_metrics():
     else:
         _save_empty_chart(trend_chart_path, "Market Trend", "No stock data available")
 
-    fig, ax = _new_chart_figure(figsize=(10.5, 6.4))
+    fig, ax = _new_chart_figure(figsize=(11.6, 6.8))
     categories = ["Good", "Bad", "Stable"]
     counts = [good_count, bad_count, stable_count]
-    colors = [CHART_SUCCESS, CHART_DANGER, CHART_TEXT_MUTED]
-    bars = ax.bar(categories, counts, color=colors, edgecolor=CHART_SPINE_COLOR, linewidth=0.8, zorder=2)
-    _style_chart_axes(ax, "Market Summary", "Classification", "Count")
+    colors = [CHART_SUCCESS, CHART_DANGER, CHART_SECONDARY]
+    bars = ax.bar(categories, counts, color=colors, edgecolor=CHART_SPINE_COLOR, linewidth=1.0, zorder=2)
+    _style_chart_axes(ax, "Market Sentiment Distribution", "Classification", "Count")
     ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
+    max_count = max(counts) if counts else 0
+    ax.set_ylim(0, max_count * 1.22 + 1)
     for bar in bars:
         height = bar.get_height()
         ax.text(
@@ -1272,7 +1300,8 @@ def build_market_metrics():
             ha="center",
             va="bottom",
             color=CHART_TEXT_PRIMARY,
-            fontsize=CHART_TICK_SIZE,
+            fontsize=CHART_TICK_SIZE + 1,
+            fontweight="bold",
         )
     _finish_chart(fig, summary_chart_path)
 
@@ -1303,23 +1332,43 @@ def build_market_metrics():
             movement_difference = round(average_movement - previous_average_movement, 2)
             volatility_difference = round(volatility - previous_volatility, 2)
             direction_text = "improved" if movement_difference >= 0 else "declined"
+            movement_arrow = "▲" if movement_difference > 0 else "▼" if movement_difference < 0 else "●"
+            volatility_arrow = "▼" if volatility_difference < 0 else "▲" if volatility_difference > 0 else "●"
             comparison = {
                 "has_previous": True,
-                "improvement": f"Market {direction_text} vs previous dataset.",
+                "improvement": (
+                    f"{movement_arrow} Market {direction_text} vs previous dataset. "
+                    f"Average movement: {movement_difference:+.2f}%. "
+                    f"Volatility shift: {volatility_arrow} {volatility_difference:+.2f}%."
+                ),
                 "movement_difference": movement_difference,
                 "volatility_difference": volatility_difference,
             }
 
-    fig, ax = _new_chart_figure(figsize=(10.5, 6.4))
+    fig, ax = _new_chart_figure(figsize=(11.6, 6.8))
     compare_labels = ["Avg Move %", "Volatility %"]
     current_values = [average_movement, volatility]
     previous_values = [previous_average_movement, previous_volatility]
     x_axis = list(range(len(compare_labels)))
-    ax.bar([x - 0.18 for x in x_axis], current_values, width=0.34, color=CHART_SUCCESS, label="Current Dataset")
-    ax.bar([x + 0.18 for x in x_axis], previous_values, width=0.34, color=CHART_TEXT_MUTED, label="Previous Dataset")
-    _style_chart_axes(ax, "Latest vs Previous Dataset", "Metric", "Value")
+    current_bars = ax.bar([x - 0.18 for x in x_axis], current_values, width=0.34, color=CHART_SUCCESS, label="Current Dataset", zorder=3)
+    previous_bars = ax.bar([x + 0.18 for x in x_axis], previous_values, width=0.34, color=CHART_SECONDARY, label="Previous Dataset", zorder=3)
+    _style_chart_axes(ax, "Latest vs Previous Intelligence", "Metric", "Value")
     ax.set_xticks(x_axis)
     ax.set_xticklabels(compare_labels)
+    ax.axhline(0, color=CHART_SPINE_COLOR, linewidth=1.0, alpha=0.6, zorder=1)
+    for bars in (current_bars, previous_bars):
+        for bar in bars:
+            height = bar.get_height()
+            offset = 0.3 if height >= 0 else -0.6
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                height + offset,
+                f"{height:+.2f}",
+                ha="center",
+                va="bottom" if height >= 0 else "top",
+                color=CHART_TEXT_PRIMARY,
+                fontsize=CHART_TICK_SIZE,
+            )
     legend = ax.legend(loc="best", frameon=True, framealpha=0.95, shadow=False)
     _style_legend(legend)
     _finish_chart(fig, comparison_chart_path)

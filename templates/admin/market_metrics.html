@@ -4,60 +4,90 @@
 {% block page_title %}Market Metrics{% endblock %}
 
 {% block content %}
-<div class="page-stack">
-    <section class="glass-card section-card">
+<div class="page-stack market-live-shell">
+    <section class="glass-card section-card market-hero-card">
         <div class="section-header">
             <div>
-                <span class="section-eyebrow">Uploaded Dataset Analysis</span>
+                <span class="section-eyebrow">Live Market Intelligence</span>
                 <h1 style="margin-top: 10px; font-size: clamp(2rem, 4vw, 3rem);">Market Metrics</h1>
                 <p class="muted-copy" style="max-width: 760px;">
-                    This admin page analyzes the latest active uploaded market dataset and updates insights automatically.
+                    Premium market intelligence view for the latest active dataset with live trend, sentiment, and risk cues.
                 </p>
+                <div class="market-live-meta">
+                    <span class="status-pill status-pill--live"><span class="status-dot status-dot--live"></span>ACTIVE DATASET</span>
+                    <span class="status-pill status-pill--info" id="datasetFreshnessChip">&#9679; Freshness loading</span>
+                </div>
             </div>
-            <div class="summary-badge" id="marketStatusBadge">Loading...</div>
+            <div class="summary-badge market-status-badge" id="marketStatusBadge">Loading...</div>
         </div>
     </section>
 
     <div class="stats-grid metrics-grid">
-        <div class="glass-card metric-card">
+        <div class="glass-card metric-card market-metric-card market-metric-card--good">
             <div>
-                <p class="metric-label">Good</p>
+                <p class="metric-label">Good Stocks</p>
                 <p class="metric-value" id="countGood">0</p>
+            </div>
+            <div class="market-metric-meta">
+                <span class="trend-chip trend-chip--up" id="trendGoodChip">&#9650; +0% gainers</span>
+                <span class="market-growth-badge">Bullish</span>
             </div>
             <p class="metric-note">Stocks above +5% from day1 to day10.</p>
         </div>
-        <div class="glass-card metric-card">
+
+        <div class="glass-card metric-card market-metric-card market-metric-card--bad">
             <div>
-                <p class="metric-label">Bad</p>
+                <p class="metric-label">Bad Stocks</p>
                 <p class="metric-value" id="countBad">0</p>
+            </div>
+            <div class="market-metric-meta">
+                <span class="trend-chip trend-chip--down" id="trendBadChip">&#9660; -0% losers</span>
+                <span class="market-growth-badge market-growth-badge--danger">Bearish</span>
             </div>
             <p class="metric-note">Stocks below -5% from day1 to day10.</p>
         </div>
-        <div class="glass-card metric-card">
+
+        <div class="glass-card metric-card market-metric-card market-metric-card--stable">
             <div>
-                <p class="metric-label">Stable</p>
+                <p class="metric-label">Stable Stocks</p>
                 <p class="metric-value" id="countStable">0</p>
+            </div>
+            <div class="market-metric-meta">
+                <span class="trend-chip trend-chip--info" id="trendStableChip">&#9679; Stable volatility</span>
+                <span class="market-growth-badge market-growth-badge--stable">Defensive</span>
             </div>
             <p class="metric-note">Stocks staying in the middle range.</p>
         </div>
-        <div class="glass-card metric-card">
+
+        <div class="glass-card metric-card market-metric-card">
             <div>
                 <p class="metric-label">Total Stocks</p>
                 <p class="metric-value" id="countTotal">0</p>
             </div>
+            <div class="market-metric-meta">
+                <span class="trend-chip trend-chip--info" id="trendTotalChip">&#9679; Universe loaded</span>
+            </div>
             <p class="metric-note">Loaded from the active dataset.</p>
         </div>
-        <div class="glass-card metric-card">
+
+        <div class="glass-card metric-card market-metric-card">
             <div>
                 <p class="metric-label">Average Movement</p>
                 <p class="metric-value" id="avgMovement">0%</p>
             </div>
+            <div class="market-metric-meta">
+                <span class="trend-chip trend-chip--stable" id="trendMovementChip">&#9679; Movement loading</span>
+            </div>
             <p class="metric-note">Average day1 to day10 percentage change.</p>
         </div>
-        <div class="glass-card metric-card">
+
+        <div class="glass-card metric-card market-metric-card">
             <div>
                 <p class="metric-label">Bullish/Bearish Ratio</p>
                 <p class="metric-value" id="bullBearRatio">0</p>
+            </div>
+            <div class="market-metric-meta">
+                <span class="trend-chip trend-chip--stable" id="trendRatioChip">&#9679; Sentiment loading</span>
             </div>
             <p class="metric-note">Gainers to losers performance ratio.</p>
         </div>
@@ -66,22 +96,55 @@
     <section class="glass-card section-card">
         <div class="section-header">
             <div>
-                <h3 style="margin-bottom: 6px;">Market Summary</h3>
-                <p class="muted-copy">The summary chart is overwritten every time the API runs.</p>
+                <h3 style="margin-bottom: 6px;">Market Signals</h3>
+                <p class="muted-copy">Status, narrative summary, and dataset-to-dataset intelligence.</p>
+            </div>
+            <div class="market-signal-cluster">
+                <span id="marketSentimentChip" class="status-pill status-pill--info">&#9679; Sentiment</span>
+                <span id="marketConfidenceChip" class="status-pill status-pill--stable">&#9679; Confidence</span>
             </div>
         </div>
-        <div class="analysis-summary-grid">
-            <div class="glass-card insight-card">
-                <p class="metric-label">Summary</p>
-                <p id="marketSummaryText" style="font-size: 1rem; line-height: 1.8;">Loading market summary...</p>
+        <div class="analysis-summary-grid market-signal-grid">
+            <div class="glass-card insight-card market-insight-card market-signal-card market-insight-card--info">
+                <div class="market-signal-card__header">
+                    <p class="metric-label market-signal-label">Summary</p>
+                    <span class="market-metric-pill market-metric-pill--info">Narrative</span>
+                </div>
+                <p id="marketSummaryText" class="market-signal-copy market-signal-copy--summary">Loading market summary...</p>
             </div>
-            <div class="glass-card insight-card">
-                <p class="metric-label">Status</p>
-                <p id="marketStatusText" style="font-size: 1rem; line-height: 1.8;">Loading status...</p>
+            <div class="glass-card insight-card market-insight-card market-signal-card market-insight-card--stable">
+                <div class="market-signal-card__header">
+                    <p class="metric-label market-signal-label">Status</p>
+                    <span id="marketStatusBadgeInline" class="market-sentiment-badge">Loading...</span>
+                </div>
+                <div class="market-status-layout" id="marketStatusLayout">
+                    <div class="market-status-stack">
+                        <div class="market-status-heading-row">
+                            <p id="marketStatusText" class="market-signal-copy market-signal-copy--status">Loading</p>
+                        </div>
+                        <p id="marketStatusSubtext" class="market-status-subtext">Status details loading...</p>
+                    </div>
+                    <div class="market-status-visual" aria-hidden="true">
+                        <img
+                            id="marketStatusIllustration"
+                            class="market-status-illustration"
+                            src="{{ url_for('static', filename='images/stable_market_vector.png') }}"
+                            alt=""
+                            loading="lazy"
+                        >
+                    </div>
+                </div>
             </div>
-            <div class="glass-card insight-card">
-                <p class="metric-label">Dataset Comparison</p>
-                <p id="datasetComparisonText" style="font-size: 1rem; line-height: 1.8;">Loading comparison...</p>
+            <div class="glass-card insight-card market-insight-card market-signal-card market-insight-card--info">
+                <div class="market-signal-card__header">
+                    <p class="metric-label market-signal-label">Dataset Comparison</p>
+                    <span class="market-metric-pill market-metric-pill--info">Cross dataset</span>
+                </div>
+                <p id="datasetComparisonText" class="market-signal-copy market-signal-copy--comparison">Loading comparison...</p>
+                <div class="market-comparison-chips">
+                    <span id="comparisonMovementChip" class="trend-chip trend-chip--info">&#9679; Movement</span>
+                    <span id="comparisonVolatilityChip" class="trend-chip trend-chip--stable">&#9679; Volatility</span>
+                </div>
             </div>
         </div>
     </section>
@@ -90,43 +153,44 @@
         <div class="section-header">
             <div>
                 <h3 style="margin-bottom: 6px;">Charts</h3>
-                <p class="muted-copy">A live trend line and a Good/Bad/Stable summary bar chart.</p>
+                <p class="muted-copy">Live trend line, market summary, and latest-vs-previous comparison.</p>
             </div>
+            <span class="status-pill status-pill--live"><span class="status-dot status-dot--live"></span>LIVE MARKET FEED</span>
         </div>
         <div class="chart-grid">
-            <figure class="glass-card chart-card">
+            <figure class="glass-card chart-card market-chart-card">
                 <div>
                     <h4>Market Trend</h4>
                     <p class="muted-copy">Average day1 to day10 movement across all stocks.</p>
                 </div>
-                <div class="chart-frame">
+                <div class="chart-frame market-chart-frame">
                     <img id="trendChartImg" alt="Market trend chart">
                 </div>
             </figure>
 
-            <figure class="glass-card chart-card">
+            <figure class="glass-card chart-card market-chart-card">
                 <div>
                     <h4>Market Summary</h4>
                     <p class="muted-copy">Classification counts for the active dataset.</p>
                 </div>
-                <div class="chart-frame">
+                <div class="chart-frame market-chart-frame">
                     <img id="summaryChartImg" alt="Market summary chart">
                 </div>
             </figure>
 
-            <figure class="glass-card chart-card">
+            <figure class="glass-card chart-card market-chart-card">
                 <div>
                     <h4>Latest vs Previous</h4>
                     <p class="muted-copy">Movement and volatility comparison across recent datasets.</p>
                 </div>
-                <div class="chart-frame">
+                <div class="chart-frame market-chart-frame">
                     <img id="comparisonChartImg" alt="Latest and previous dataset comparison chart">
                 </div>
             </figure>
         </div>
     </section>
 
-    <section class="analysis-summary-grid">
+    <section class="analysis-summary-grid market-movers-grid">
         <article class="glass-card section-card">
             <div class="section-header">
                 <div>
@@ -134,7 +198,7 @@
                     <p class="muted-copy">Highest percentage growth from day1 to day10.</p>
                 </div>
             </div>
-            <div id="topGainersList" class="insight-list">
+            <div id="topGainersList" class="insight-list market-movers-list">
                 <div class="insight-item">
                     <span class="insight-dot"></span>
                     <p class="muted-copy">Loading top gainers...</p>
@@ -149,7 +213,7 @@
                     <p class="muted-copy">Lowest percentage performance from day1 to day10.</p>
                 </div>
             </div>
-            <div id="topLosersList" class="insight-list">
+            <div id="topLosersList" class="insight-list market-movers-list">
                 <div class="insight-item">
                     <span class="insight-dot"></span>
                     <p class="muted-copy">Loading top losers...</p>
@@ -186,28 +250,131 @@
         return `${prefix}${num.toFixed(2)}%`;
     }
 
-    function renderStockList(items, emptyMessage) {
+    function formatSignalHtml(value) {
+        const escaped = escapeHtml(value);
+        return escaped.replace(/([+-]?\d+(?:\.\d+)?)%/g, '<span class="market-percent-highlight">$1%</span>');
+    }
+
+    function setSignalHtml(id, value) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = formatSignalHtml(value);
+    }
+
+    function chipTone(value, inverse = false) {
+        const normalized = inverse ? -safeNumber(value) : safeNumber(value);
+        if (normalized > 2) return 'up';
+        if (normalized < -2) return 'down';
+        return 'stable';
+    }
+
+    function setChip(id, tone, text) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const classMap = {
+            up: 'trend-chip trend-chip--up',
+            down: 'trend-chip trend-chip--down',
+            stable: 'trend-chip trend-chip--stable',
+            info: 'trend-chip trend-chip--info',
+        };
+        el.className = classMap[tone] || classMap.info;
+        el.textContent = text;
+    }
+
+    function renderStockList(items, emptyMessage, direction) {
         if (!Array.isArray(items) || items.length === 0) {
             return `
-                <div class="insight-item">
+                <div class="insight-item market-mover-item market-mover-item--neutral">
                     <span class="insight-dot"></span>
                     <p class="muted-copy">${escapeHtml(emptyMessage)}</p>
                 </div>
             `;
         }
 
-        return items.map((stock) => `
-            <div class="insight-item">
-                <span class="insight-dot"></span>
-                <p>
-                    <strong>${escapeHtml(stock.name)}</strong>
-                    <br>
-                    Status: ${escapeHtml(stock.status)}
-                    <br>
-                    Change: ${formatPercent(stock.percent_change)}
-                </p>
-            </div>
-        `).join('');
+        return items.map((stock, index) => {
+            const pct = safeNumber(stock.percent_change);
+            const pctClass = pct >= 0 ? 'market-mover-change--up' : 'market-mover-change--down';
+            const itemClass = direction === 'up' ? 'market-mover-item--up' : 'market-mover-item--down';
+            const arrowClass = pct >= 0 ? 'market-trend-arrow--up' : 'market-trend-arrow--down';
+            const arrow = pct >= 0 ? '\u25B2' : '\u25BC';
+            return `
+                <div class="insight-item market-mover-item ${itemClass}">
+                    <span class="market-rank">#${index + 1}</span>
+                    <p>
+                        <strong>${escapeHtml(stock.name)}</strong>
+                        <br>
+                        <span class="market-mover-status market-stock-pill">${escapeHtml(stock.status)} signal</span>
+                        <br>
+                        <span class="${pctClass}">
+                            <span class="market-trend-arrow ${arrowClass}">${arrow}</span>
+                            <span class="market-trend-percent">${formatPercent(pct)}</span>
+                        </span>
+                    </p>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function getStatusPresentation(status) {
+        const key = String(status || '').toLowerCase();
+        if (key.includes('growth')) {
+            return {
+                badge: '\u25CF Bullish Momentum',
+                badgeClass: 'market-status-badge market-status-badge--bullish',
+                textClass: 'status-pill status-pill--up',
+                text: '\u25B2 Growth-led market',
+                textToneClass: 'market-signal-copy--status-up',
+                cardBadge: 'Growth Momentum',
+                cardBadgeClass: 'market-sentiment-badge market-sentiment-badge--up',
+                cardToneClass: 'status-growth',
+                cardVisual: "{{ url_for('static', filename='images/growth_market_vector.png') }}",
+                cardTitle: 'Growth',
+                cardSubtitle: 'Bullish momentum detected',
+            };
+        }
+        if (key.includes('down')) {
+            return {
+                badge: '\u25CF Bearish Pressure',
+                badgeClass: 'market-status-badge market-status-badge--bearish',
+                textClass: 'status-pill status-pill--down',
+                text: '\u25BC Defensive market',
+                textToneClass: 'market-signal-copy--status-down',
+                cardBadge: 'Bearish Pressure',
+                cardBadgeClass: 'market-sentiment-badge market-sentiment-badge--down',
+                cardToneClass: 'status-bearish',
+                cardVisual: "{{ url_for('static', filename='images/bearish_market_vector.png') }}",
+                cardTitle: 'Down',
+                cardSubtitle: 'Bearish pressure increasing',
+            };
+        }
+        if (key.includes('no market')) {
+            return {
+                badge: '\u25CF No Active Data',
+                badgeClass: 'market-status-badge',
+                textClass: 'status-pill status-pill--info',
+                text: '\u25CF Awaiting dataset',
+                textToneClass: 'market-signal-copy--status-stable',
+                cardBadge: 'No Active Data',
+                cardBadgeClass: 'market-sentiment-badge market-sentiment-badge--info',
+                cardToneClass: 'status-stable',
+                cardVisual: "{{ url_for('static', filename='images/stable_market_vector.png') }}",
+                cardTitle: 'Stable',
+                cardSubtitle: 'Sideways consolidation phase',
+            };
+        }
+        return {
+            badge: '\u25CF Volatile Market',
+            badgeClass: 'market-status-badge market-status-badge--stable',
+            textClass: 'status-pill status-pill--stable',
+            text: '\u25CF Balanced market',
+            textToneClass: 'market-signal-copy--status-stable',
+            cardBadge: 'Stable Market',
+            cardBadgeClass: 'market-sentiment-badge market-sentiment-badge--stable',
+            cardToneClass: 'status-stable',
+            cardVisual: "{{ url_for('static', filename='images/stable_market_vector.png') }}",
+            cardTitle: 'Stable',
+            cardSubtitle: 'Sideways consolidation phase',
+        };
     }
 
     async function loadMarketMetrics() {
@@ -217,16 +384,93 @@
             const charts = data?.charts || {};
             const marketStatus = data?.market_status || 'Stable';
 
-            document.getElementById('marketStatusBadge').innerText = marketStatus;
-            document.getElementById('marketStatusText').innerText = marketStatus;
-            document.getElementById('marketSummaryText').innerText = data?.summary || 'No market summary is available.';
-            document.getElementById('countGood').innerText = safeNumber(counts.good).toFixed(0);
-            document.getElementById('countBad').innerText = safeNumber(counts.bad).toFixed(0);
-            document.getElementById('countStable').innerText = safeNumber(counts.stable).toFixed(0);
-            document.getElementById('countTotal').innerText = safeNumber(counts.total).toFixed(0);
-            document.getElementById('avgMovement').innerText = `${safeNumber(data?.average_movement).toFixed(2)}%`;
-            document.getElementById('bullBearRatio').innerText = safeNumber(data?.bullish_bearish_ratio).toFixed(2);
-            document.getElementById('datasetComparisonText').innerText = data?.comparison?.improvement || 'No previous dataset available.';
+            const good = safeNumber(counts.good);
+            const bad = safeNumber(counts.bad);
+            const stable = safeNumber(counts.stable);
+            const total = safeNumber(counts.total);
+            const avgMove = safeNumber(data?.average_movement);
+            const ratio = safeNumber(data?.bullish_bearish_ratio);
+            const volatility = safeNumber(data?.volatility);
+
+            const status = getStatusPresentation(marketStatus);
+            const marketBadge = document.getElementById('marketStatusBadge');
+            marketBadge.className = status.badgeClass;
+            marketBadge.textContent = status.badge;
+            const marketStatusBadgeInline = document.getElementById('marketStatusBadgeInline');
+            marketStatusBadgeInline.className = status.cardBadgeClass;
+            marketStatusBadgeInline.textContent = status.cardBadge;
+            const marketStatusLayout = document.getElementById('marketStatusLayout');
+            marketStatusLayout.className = `market-status-layout ${status.cardToneClass || 'status-stable'}`;
+            const marketStatusIllustration = document.getElementById('marketStatusIllustration');
+            marketStatusIllustration.src = status.cardVisual;
+            marketStatusIllustration.alt = `${status.cardBadge} illustration`;
+            const marketStatusText = document.getElementById('marketStatusText');
+            marketStatusText.className = `market-signal-copy market-signal-copy--status ${status.textToneClass || ''}`.trim();
+            marketStatusText.textContent = status.cardTitle;
+            const marketStatusSubtext = document.getElementById('marketStatusSubtext');
+            marketStatusSubtext.className = `market-status-subtext ${status.cardToneClass || 'status-stable'}`;
+            marketStatusSubtext.textContent = status.cardSubtitle;
+
+            const sentimentChip = document.getElementById('marketSentimentChip');
+            sentimentChip.className = status.textClass;
+            sentimentChip.textContent = status.text;
+            setSignalHtml('marketSummaryText', data?.summary || 'No market summary is available.');
+            document.getElementById('countGood').innerText = good.toFixed(0);
+            document.getElementById('countBad').innerText = bad.toFixed(0);
+            document.getElementById('countStable').innerText = stable.toFixed(0);
+            document.getElementById('countTotal').innerText = total.toFixed(0);
+            document.getElementById('avgMovement').innerText = `${avgMove.toFixed(2)}%`;
+            document.getElementById('bullBearRatio').innerText = ratio.toFixed(2);
+            setSignalHtml('datasetComparisonText', data?.comparison?.improvement || 'No previous dataset available.');
+
+            const movementDiff = safeNumber(data?.comparison?.movement_difference);
+            const volatilityDiff = safeNumber(data?.comparison?.volatility_difference);
+
+            const goodShare = total > 0 ? (good / total) * 100 : 0;
+            const badShare = total > 0 ? (bad / total) * 100 : 0;
+            const stableShare = total > 0 ? (stable / total) * 100 : 0;
+
+            setChip('trendGoodChip', 'up', `\u25B2 +${goodShare.toFixed(1)}% gainers`);
+            setChip('trendBadChip', 'down', `\u25BC -${badShare.toFixed(1)}% losers`);
+            setChip('trendStableChip', 'info', `\u25CF ${stableShare.toFixed(1)}% stable`);
+            setChip('trendTotalChip', 'info', `\u25CF ${total.toFixed(0)} stocks active`);
+
+            const movementTone = chipTone(avgMove);
+            const movementIcon = movementTone === 'up' ? '\u25B2' : movementTone === 'down' ? '\u25BC' : '\u25CF';
+            setChip('trendMovementChip', movementTone, `${movementIcon} ${formatPercent(avgMove)} avg move`);
+
+            const ratioTone = ratio > 1 ? 'up' : ratio < 1 ? 'down' : 'stable';
+            const ratioIcon = ratioTone === 'up' ? '\u25B2' : ratioTone === 'down' ? '\u25BC' : '\u25CF';
+            setChip('trendRatioChip', ratioTone, `${ratioIcon} Ratio ${ratio.toFixed(2)}`);
+
+            const moveTone = chipTone(movementDiff);
+            const moveIcon = moveTone === 'up' ? '\u25B2' : moveTone === 'down' ? '\u25BC' : '\u25CF';
+            setChip('comparisonMovementChip', moveTone, `${moveIcon} ${formatPercent(movementDiff)} average growth`);
+
+            const volTone = chipTone(volatilityDiff, true);
+            const volIcon = volTone === 'up' ? '\u25BC' : volTone === 'down' ? '\u25B2' : '\u25CF';
+            setChip('comparisonVolatilityChip', volTone, `${volIcon} ${formatPercent(volatilityDiff)} volatility shift`);
+
+            const confidenceChip = document.getElementById('marketConfidenceChip');
+            if (volatility > 12) {
+                confidenceChip.className = 'status-pill status-pill--down';
+                confidenceChip.textContent = '\u25BC High volatility pressure';
+            } else if (volatility > 6) {
+                confidenceChip.className = 'status-pill status-pill--stable';
+                confidenceChip.textContent = '\u25CF Moderate volatility';
+            } else {
+                confidenceChip.className = 'status-pill status-pill--up';
+                confidenceChip.textContent = '\u25B2 Confident trend structure';
+            }
+
+            const freshnessChip = document.getElementById('datasetFreshnessChip');
+            if (data?.active_dataset?.uploaded_at) {
+                freshnessChip.className = 'status-pill status-pill--info';
+                freshnessChip.textContent = `\u25CF Updated ${data.active_dataset.uploaded_at}`;
+            } else {
+                freshnessChip.className = 'status-pill status-pill--stable';
+                freshnessChip.textContent = '\u25CF Freshness unavailable';
+            }
 
             const stamp = `?v=${Date.now()}`;
             const trendImg = document.getElementById('trendChartImg');
@@ -253,28 +497,45 @@
 
             document.getElementById('topGainersList').innerHTML = renderStockList(
                 Array.isArray(data?.top_gainers) ? data.top_gainers : [],
-                'No gainers found in the active dataset.'
+                'No gainers found in the active dataset.',
+                'up'
             );
             document.getElementById('topLosersList').innerHTML = renderStockList(
                 Array.isArray(data?.top_losers) ? data.top_losers : [],
-                'No losers found in the active dataset.'
+                'No losers found in the active dataset.',
+                'down'
             );
         } catch (error) {
-            document.getElementById('marketStatusBadge').innerText = 'Unavailable';
-            document.getElementById('marketSummaryText').innerText = 'Unable to load market metrics right now.';
-            document.getElementById('marketStatusText').innerText = 'Unavailable';
-            document.getElementById('datasetComparisonText').innerText = 'Comparison unavailable.';
+            const marketBadge = document.getElementById('marketStatusBadge');
+            marketBadge.className = 'market-status-badge market-status-badge--bearish';
+            marketBadge.textContent = '\u25CF Unavailable';
+            const marketStatusBadgeInline = document.getElementById('marketStatusBadgeInline');
+            marketStatusBadgeInline.className = 'market-sentiment-badge market-sentiment-badge--down';
+            marketStatusBadgeInline.textContent = 'Unavailable';
+            const marketStatusLayout = document.getElementById('marketStatusLayout');
+            marketStatusLayout.className = 'market-status-layout status-bearish';
+            const marketStatusIllustration = document.getElementById('marketStatusIllustration');
+            marketStatusIllustration.src = "{{ url_for('static', filename='images/bearish_market_vector.png') }}";
+            marketStatusIllustration.alt = 'Bearish Pressure illustration';
+            const marketStatusText = document.getElementById('marketStatusText');
+            marketStatusText.className = 'market-signal-copy market-signal-copy--status market-signal-copy--status-down';
+            marketStatusText.textContent = 'Down';
+            const marketStatusSubtext = document.getElementById('marketStatusSubtext');
+            marketStatusSubtext.className = 'market-status-subtext status-bearish';
+            marketStatusSubtext.textContent = 'Bearish pressure increasing';
+            setSignalHtml('marketSummaryText', 'Unable to load market metrics right now.');
+            setSignalHtml('datasetComparisonText', 'Comparison unavailable.');
             document.getElementById('trendChartImg').removeAttribute('src');
             document.getElementById('summaryChartImg').removeAttribute('src');
             document.getElementById('comparisonChartImg').removeAttribute('src');
             document.getElementById('topGainersList').innerHTML = `
-                <div class="insight-item">
+                <div class="insight-item market-mover-item market-mover-item--neutral">
                     <span class="insight-dot"></span>
                     <p class="muted-copy">Unable to load top gainers.</p>
                 </div>
             `;
             document.getElementById('topLosersList').innerHTML = `
-                <div class="insight-item">
+                <div class="insight-item market-mover-item market-mover-item--neutral">
                     <span class="insight-dot"></span>
                     <p class="muted-copy">Unable to load top losers.</p>
                 </div>
