@@ -71,6 +71,9 @@ const API = {
 
     // Admin & Community Modules (/api/admin/)
     getMarketMetrics: () => API.request('/api/admin/market-metrics'),
+    getMarketDatasetList: () => API.request('/api/admin/market-dataset/list'),
+    getMarketDatasetPreview: () => API.request('/api/admin/market-dataset/preview'),
+    uploadMarketDataset: (formData) => API.request('/api/admin/market-dataset/upload', { method: 'POST', body: formData }),
     submitFeedback: (data) => API.request('/api/feedback/add', { method: 'POST', body: JSON.stringify(data) }),
     submitReview: (data) => API.request('/api/review/add', { method: 'POST', body: JSON.stringify(data) }),
     getReviews: () => API.request('/api/admin/review/all'),

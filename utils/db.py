@@ -127,6 +127,19 @@ def init_db():
     if "approved_at" not in review_columns:
         cursor.execute("ALTER TABLE reviews ADD COLUMN approved_at TEXT")
 
+    # MARKET DATASETS TABLE
+    # Tracks uploaded stock CSV datasets used by market metrics and investment analysis.
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS market_datasets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        filename TEXT,
+        dataset_path TEXT,
+        uploaded_at TEXT,
+        total_records INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 0
+    )
+    """)
+
     conn.commit()
     conn.close()
 

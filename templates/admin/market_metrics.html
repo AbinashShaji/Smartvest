@@ -8,10 +8,10 @@
     <section class="glass-card section-card">
         <div class="section-header">
             <div>
-                <span class="section-eyebrow">Stock CSV Analysis</span>
+                <span class="section-eyebrow">Uploaded Dataset Analysis</span>
                 <h1 style="margin-top: 10px; font-size: clamp(2rem, 4vw, 3rem);">Market Metrics</h1>
                 <p class="muted-copy" style="max-width: 760px;">
-                    This admin page reads the live <code>data/stock.csv</code> file, classifies every stock, and shows the overall market state.
+                    This admin page analyzes the latest active uploaded market dataset and updates insights automatically.
                 </p>
             </div>
             <div class="summary-badge" id="marketStatusBadge">Loading...</div>
@@ -45,7 +45,21 @@
                 <p class="metric-label">Total Stocks</p>
                 <p class="metric-value" id="countTotal">0</p>
             </div>
-            <p class="metric-note">Loaded directly from the CSV file.</p>
+            <p class="metric-note">Loaded from the active dataset.</p>
+        </div>
+        <div class="glass-card metric-card">
+            <div>
+                <p class="metric-label">Average Movement</p>
+                <p class="metric-value" id="avgMovement">0%</p>
+            </div>
+            <p class="metric-note">Average day1 to day10 percentage change.</p>
+        </div>
+        <div class="glass-card metric-card">
+            <div>
+                <p class="metric-label">Bullish/Bearish Ratio</p>
+                <p class="metric-value" id="bullBearRatio">0</p>
+            </div>
+            <p class="metric-note">Gainers to losers performance ratio.</p>
         </div>
     </div>
 
@@ -64,6 +78,10 @@
             <div class="glass-card insight-card">
                 <p class="metric-label">Status</p>
                 <p id="marketStatusText" style="font-size: 1rem; line-height: 1.8;">Loading status...</p>
+            </div>
+            <div class="glass-card insight-card">
+                <p class="metric-label">Dataset Comparison</p>
+                <p id="datasetComparisonText" style="font-size: 1rem; line-height: 1.8;">Loading comparison...</p>
             </div>
         </div>
     </section>
@@ -89,10 +107,20 @@
             <figure class="glass-card chart-card">
                 <div>
                     <h4>Market Summary</h4>
-                    <p class="muted-copy">Classification counts for the current CSV file.</p>
+                    <p class="muted-copy">Classification counts for the active dataset.</p>
                 </div>
                 <div class="chart-frame">
                     <img id="summaryChartImg" alt="Market summary chart">
+                </div>
+            </figure>
+
+            <figure class="glass-card chart-card">
+                <div>
+                    <h4>Latest vs Previous</h4>
+                    <p class="muted-copy">Movement and volatility comparison across recent datasets.</p>
+                </div>
+                <div class="chart-frame">
+                    <img id="comparisonChartImg" alt="Latest and previous dataset comparison chart">
                 </div>
             </figure>
         </div>
@@ -196,10 +224,14 @@
             document.getElementById('countBad').innerText = safeNumber(counts.bad).toFixed(0);
             document.getElementById('countStable').innerText = safeNumber(counts.stable).toFixed(0);
             document.getElementById('countTotal').innerText = safeNumber(counts.total).toFixed(0);
+            document.getElementById('avgMovement').innerText = `${safeNumber(data?.average_movement).toFixed(2)}%`;
+            document.getElementById('bullBearRatio').innerText = safeNumber(data?.bullish_bearish_ratio).toFixed(2);
+            document.getElementById('datasetComparisonText').innerText = data?.comparison?.improvement || 'No previous dataset available.';
 
             const stamp = `?v=${Date.now()}`;
             const trendImg = document.getElementById('trendChartImg');
             const summaryImg = document.getElementById('summaryChartImg');
+            const comparisonImg = document.getElementById('comparisonChartImg');
 
             if (charts.trend) {
                 trendImg.src = `${charts.trend}${stamp}`;
@@ -213,20 +245,28 @@
                 summaryImg.removeAttribute('src');
             }
 
+            if (charts.comparison) {
+                comparisonImg.src = `${charts.comparison}${stamp}`;
+            } else {
+                comparisonImg.removeAttribute('src');
+            }
+
             document.getElementById('topGainersList').innerHTML = renderStockList(
                 Array.isArray(data?.top_gainers) ? data.top_gainers : [],
-                'No gainers found in the current CSV file.'
+                'No gainers found in the active dataset.'
             );
             document.getElementById('topLosersList').innerHTML = renderStockList(
                 Array.isArray(data?.top_losers) ? data.top_losers : [],
-                'No losers found in the current CSV file.'
+                'No losers found in the active dataset.'
             );
         } catch (error) {
             document.getElementById('marketStatusBadge').innerText = 'Unavailable';
             document.getElementById('marketSummaryText').innerText = 'Unable to load market metrics right now.';
             document.getElementById('marketStatusText').innerText = 'Unavailable';
+            document.getElementById('datasetComparisonText').innerText = 'Comparison unavailable.';
             document.getElementById('trendChartImg').removeAttribute('src');
             document.getElementById('summaryChartImg').removeAttribute('src');
+            document.getElementById('comparisonChartImg').removeAttribute('src');
             document.getElementById('topGainersList').innerHTML = `
                 <div class="insight-item">
                     <span class="insight-dot"></span>

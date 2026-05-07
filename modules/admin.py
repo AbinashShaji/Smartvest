@@ -9,6 +9,12 @@ from flask import Blueprint, jsonify, redirect, render_template, request, url_fo
 
 import config
 from utils.db import get_db_connection
+from utils.market_data import (
+    save_uploaded_market_dataset,
+    get_market_dataset_rows,
+    get_active_dataset,
+    get_dataset_preview,
+)
 
 
 admin_bp = Blueprint("admin", __name__)
@@ -58,6 +64,14 @@ def admin_market_metrics_page():
     if not config.is_admin():
         return redirect(url_for("analysis.dashboard"))
     return render_template("admin/market_metrics.html")
+
+
+@admin_bp.route("/admin/market-datasets")
+def admin_market_datasets_page():
+    """Render the market dataset manager page."""
+    if not config.is_admin():
+        return redirect(url_for("analysis.dashboard"))
+    return render_template("admin/market_datasets.html")
 
 
 # =============================================================================
@@ -549,6 +563,69 @@ def _set_feedback_resolved_value(value):
         conn.commit()
         conn.close()
         return jsonify({"status": "success", "data": {"message": "Feedback resolution updated."}})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@admin_bp.route("/api/admin/market-dataset/list")
+def api_admin_market_dataset_list():
+    """Return latest dataset rows and active dataset info."""
+    if not _admin_required():
+        return jsonify({"status": "error", "message": "Forbidden."}), 403
+
+    try:
+        rows = get_market_dataset_rows(limit=3)
+        return jsonify({
+            "status": "success",
+            "data": {
+                "datasets": rows,
+                "active": get_active_dataset(),
+            },
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@admin_bp.route("/api/admin/market-dataset/upload", methods=["POST"])
+def api_admin_market_dataset_upload():
+    """Upload a CSV dataset and make it active."""
+    if not _admin_required():
+        return jsonify({"status": "error", "message": "Forbidden."}), 403
+
+    try:
+        upload_file = request.files.get("file")
+        if upload_file is None or not upload_file.filename:
+            return jsonify({"status": "error", "message": "CSV file is required."}), 400
+
+        saved = save_uploaded_market_dataset(upload_file)
+        preview = get_dataset_preview(saved["dataset_path"], limit=8)
+        return jsonify({
+            "status": "success",
+            "data": {
+                "dataset": saved,
+                "preview": preview,
+                "message": "Dataset uploaded and activated.",
+            },
+        })
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@admin_bp.route("/api/admin/market-dataset/preview")
+def api_admin_market_dataset_preview():
+    """Preview active dataset rows."""
+    if not _admin_required():
+        return jsonify({"status": "error", "message": "Forbidden."}), 403
+
+    try:
+        active = get_active_dataset()
+        if not active:
+            return jsonify({"status": "success", "data": {"preview": [], "active": None}})
+
+        preview = get_dataset_preview(active["dataset_path"], limit=8)
+        return jsonify({"status": "success", "data": {"preview": preview, "active": active}})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 

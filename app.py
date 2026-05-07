@@ -51,7 +51,7 @@ app.register_blueprint(review_bp)
 @app.route("/api/admin/market-metrics")
 def api_admin_market_metrics():
     """
-    Purpose : Returns live market metrics derived from data/stock.csv.
+    Purpose : Returns live market metrics derived from the active uploaded dataset.
     Input   : None
     Output  : JSON with summary, market status, movers, counts, and chart paths.
     """

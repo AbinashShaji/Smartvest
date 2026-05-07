@@ -12,6 +12,11 @@ import os
 from datetime import datetime, timedelta
 from typing import Any, Dict
 import pandas as pd
+from utils.market_data import (
+    read_dataset_csv,
+    get_active_dataset,
+    get_previous_dataset,
+)
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -116,23 +121,13 @@ def _safe_stock_name(name):
 
 def load_stock_csv():
     """
-    Purpose : Load stock data from the CSV file used by the upgrade.
+    Purpose : Load stock data from the latest active uploaded market dataset.
     Output  : Pandas DataFrame with the expected stock columns.
     """
-    required_columns = ["name"] + STOCK_DAY_COLUMNS
-    try:
-        stocks = pd.read_csv("data/stock.csv")
-    except (FileNotFoundError, pd.errors.EmptyDataError):
-        return pd.DataFrame(columns=required_columns)
-
-    if "name" not in stocks.columns:
-        stocks["name"] = ""
-
-    for column in STOCK_DAY_COLUMNS:
-        if column not in stocks.columns:
-            stocks[column] = pd.NA
-
-    return stocks.reindex(columns=required_columns)
+    active_dataset = get_active_dataset()
+    if not active_dataset:
+        return pd.DataFrame(columns=["name"] + STOCK_DAY_COLUMNS)
+    return read_dataset_csv(active_dataset["dataset_path"])
 
 
 def analyze_stock_rows(stocks, generate_charts=True):
@@ -1170,9 +1165,10 @@ def get_analysis_data(user_id=None):
 
 def build_market_metrics():
     """
-    Purpose : Analyze data/stock.csv and build admin market metrics.
+    Purpose : Analyze active uploaded market dataset and build admin metrics.
     Output  : Dictionary with counts, market status, top movers, and chart paths.
     """
+    active_dataset = get_active_dataset()
     stock_frame = load_stock_csv()
     os.makedirs("static", exist_ok=True)
 
@@ -1212,6 +1208,9 @@ def build_market_metrics():
             })
 
     total_count = len(stock_rows)
+    average_movement = round(sum(item["percent_change"] for item in stock_rows) / total_count, 2) if total_count else 0.0
+    volatility = round(float(pd.Series([item["percent_change"] for item in stock_rows]).std(ddof=0)), 2) if total_count else 0.0
+    bullish_bearish_ratio = round((good_count / bad_count), 2) if bad_count else (float(good_count) if good_count else 0.0)
     if total_count == 0:
         market_status = "No market data available"
     elif good_count > bad_count:
@@ -1226,6 +1225,7 @@ def build_market_metrics():
 
     trend_chart_path = "static/market_trend.png"
     summary_chart_path = "static/market_summary.png"
+    comparison_chart_path = "static/market_comparison.png"
 
     if not stock_frame.empty:
         day_columns = [f"day{i}" for i in range(1, 11)]
@@ -1269,25 +1269,83 @@ def build_market_metrics():
         )
     _finish_chart(fig, summary_chart_path)
 
+    previous_dataset = get_previous_dataset(active_dataset["id"]) if active_dataset else None
+    comparison = {
+        "has_previous": False,
+        "improvement": "No previous dataset available for comparison.",
+        "movement_difference": 0.0,
+        "volatility_difference": 0.0,
+    }
+
+    previous_average_movement = 0.0
+    previous_volatility = 0.0
+    if previous_dataset:
+        previous_frame = read_dataset_csv(previous_dataset["dataset_path"])
+        previous_changes = []
+        if not previous_frame.empty:
+            for _, row in previous_frame.iterrows():
+                day1 = pd.to_numeric(row["day1"], errors="coerce")
+                day10 = pd.to_numeric(row["day10"], errors="coerce")
+                day1_value = float(day1) if pd.notna(day1) else 0.0
+                day10_value = float(day10) if pd.notna(day10) else 0.0
+                change = ((day10_value - day1_value) / day1_value) * 100 if day1_value else 0.0
+                previous_changes.append(change)
+        if previous_changes:
+            previous_average_movement = round(sum(previous_changes) / len(previous_changes), 2)
+            previous_volatility = round(float(pd.Series(previous_changes).std(ddof=0)), 2)
+            movement_difference = round(average_movement - previous_average_movement, 2)
+            volatility_difference = round(volatility - previous_volatility, 2)
+            direction_text = "improved" if movement_difference >= 0 else "declined"
+            comparison = {
+                "has_previous": True,
+                "improvement": f"Market {direction_text} vs previous dataset.",
+                "movement_difference": movement_difference,
+                "volatility_difference": volatility_difference,
+            }
+
+    fig, ax = _new_chart_figure(figsize=(10, 6))
+    compare_labels = ["Avg Move %", "Volatility %"]
+    current_values = [average_movement, volatility]
+    previous_values = [previous_average_movement, previous_volatility]
+    x_axis = list(range(len(compare_labels)))
+    ax.bar([x - 0.18 for x in x_axis], current_values, width=0.34, color=CHART_SUCCESS, label="Current Dataset")
+    ax.bar([x + 0.18 for x in x_axis], previous_values, width=0.34, color=CHART_TEXT_MUTED, label="Previous Dataset")
+    _style_chart_axes(ax, "Latest vs Previous Dataset", "Metric", "Value")
+    ax.set_xticks(x_axis)
+    ax.set_xticklabels(compare_labels)
+    legend = ax.legend(loc="best", frameon=True, framealpha=0.95, shadow=False)
+    _style_legend(legend)
+    _finish_chart(fig, comparison_chart_path)
+
+    source_name = active_dataset["filename"] if active_dataset else "No active dataset"
     summary = (
-        f"Analysed {total_count} stocks from data/stock.csv. "
-        f"Good: {good_count}, Bad: {bad_count}, Stable: {stable_count}."
+        f"Analysed {total_count} stocks from active dataset ({source_name}). "
+        f"Gainers: {good_count}, Losers: {bad_count}, Stable: {stable_count}."
     )
 
     return {
         "summary": summary,
         "market_status": market_status,
+        "active_dataset": active_dataset,
+        "previous_dataset": previous_dataset,
         "counts": {
             "good": good_count,
             "bad": bad_count,
             "stable": stable_count,
             "total": total_count,
+            "gainers": good_count,
+            "losers": bad_count,
         },
+        "average_movement": average_movement,
+        "bullish_bearish_ratio": bullish_bearish_ratio,
+        "volatility": volatility,
+        "comparison": comparison,
         "top_gainers": top_gainers,
         "top_losers": top_losers,
         "charts": {
             "trend": "/static/market_trend.png",
             "summary": "/static/market_summary.png",
+            "comparison": "/static/market_comparison.png",
         },
     }
 

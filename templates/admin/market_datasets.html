@@ -1,0 +1,167 @@
+{% extends "admin/base_admin.html" %}
+
+{% block title %}Market Dataset Manager - SmartVest{% endblock %}
+{% block page_title %}Market Dataset Manager{% endblock %}
+
+{% block content %}
+<div class="page-stack">
+    <section class="glass-card section-card">
+        <div class="section-header">
+            <div>
+                <h3 style="margin-bottom: 6px;">Upload Market Dataset</h3>
+                <p class="muted-copy">Upload a stock CSV file. The latest upload becomes active automatically.</p>
+            </div>
+        </div>
+
+        <form id="datasetUploadForm" class="market-dataset-upload">
+            <input id="marketCsvFile" type="file" accept=".csv" required>
+            <button id="datasetUploadBtn" type="submit" class="btn-premium">Upload CSV</button>
+        </form>
+        <p id="datasetUploadStatus" class="muted-copy" style="margin-top: 12px;">Awaiting upload.</p>
+    </section>
+
+    <section class="analysis-summary-grid">
+        <article class="glass-card section-card">
+            <h3 style="margin-bottom: 8px;">Active Dataset</h3>
+            <div id="activeDatasetInfo" class="muted-copy">Loading active dataset...</div>
+        </article>
+        <article class="glass-card section-card">
+            <h3 style="margin-bottom: 8px;">Stored Datasets (Latest 3)</h3>
+            <div id="datasetListInfo" class="muted-copy">Loading dataset list...</div>
+        </article>
+    </section>
+
+    <section class="glass-card section-card">
+        <div class="section-header">
+            <div>
+                <h3 style="margin-bottom: 6px;">Active Dataset Preview</h3>
+                <p class="muted-copy">Showing first 8 records of the active source file.</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="dashboard-table">
+                <thead>
+                    <tr>
+                        <th>Stock Name</th>
+                        <th>Day1</th>
+                        <th>Day5</th>
+                        <th>Day10</th>
+                    </tr>
+                </thead>
+                <tbody id="datasetPreviewBody">
+                    <tr><td colspan="4" class="dashboard-muted">Loading preview...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function setUploadState(isLoading, message, color) {
+        const button = document.getElementById('datasetUploadBtn');
+        const status = document.getElementById('datasetUploadStatus');
+        button.disabled = isLoading;
+        button.innerText = isLoading ? 'Uploading...' : 'Upload CSV';
+        status.innerText = message;
+        status.style.color = color || 'var(--fg-secondary)';
+    }
+
+    function renderActiveDataset(active) {
+        const holder = document.getElementById('activeDatasetInfo');
+        if (!active) {
+            holder.innerHTML = 'No active dataset. Upload a CSV to begin.';
+            return;
+        }
+        holder.innerHTML = `
+            <p><strong>${escapeHtml(active.filename)}</strong></p>
+            <p>Uploaded: ${escapeHtml(active.uploaded_at || '-')}</p>
+            <p>Total Records: ${escapeHtml(active.total_records || 0)}</p>
+        `;
+    }
+
+    function renderDatasetList(datasets) {
+        const holder = document.getElementById('datasetListInfo');
+        if (!Array.isArray(datasets) || datasets.length === 0) {
+            holder.innerHTML = 'No datasets saved yet.';
+            return;
+        }
+        holder.innerHTML = datasets.map((item) => `
+            <div style="margin-bottom: 10px;">
+                <strong>${escapeHtml(item.filename)}</strong>
+                <span class="dashboard-muted">(${escapeHtml(item.total_records || 0)} records)</span>
+                <div class="dashboard-muted">${escapeHtml(item.uploaded_at || '-')} ${Number(item.is_active) === 1 ? '· ACTIVE' : ''}</div>
+            </div>
+        `).join('');
+    }
+
+    function renderPreview(rows) {
+        const body = document.getElementById('datasetPreviewBody');
+        if (!Array.isArray(rows) || rows.length === 0) {
+            body.innerHTML = '<tr><td colspan="4" class="dashboard-muted">No preview rows available.</td></tr>';
+            return;
+        }
+        body.innerHTML = rows.map((row) => `
+            <tr>
+                <td>${escapeHtml(row.stock_name || '-')}</td>
+                <td>${escapeHtml(row.day1 || '-')}</td>
+                <td>${escapeHtml(row.day5 || '-')}</td>
+                <td>${escapeHtml(row.day10 || '-')}</td>
+            </tr>
+        `).join('');
+    }
+
+    async function loadDatasetManager() {
+        try {
+            const listData = await API.getMarketDatasetList();
+            renderActiveDataset(listData.active || null);
+            renderDatasetList(listData.datasets || []);
+        } catch (error) {
+            renderActiveDataset(null);
+            renderDatasetList([]);
+        }
+
+        try {
+            const previewData = await API.getMarketDatasetPreview();
+            renderPreview(previewData.preview || []);
+        } catch (error) {
+            renderPreview([]);
+        }
+    }
+
+    document.getElementById('datasetUploadForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const fileInput = document.getElementById('marketCsvFile');
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) {
+            setUploadState(false, 'Please choose a CSV file first.', '#f87171');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+        setUploadState(true, 'Uploading dataset...', 'rgba(255,255,255,0.6)');
+
+        try {
+            const result = await API.uploadMarketDataset(formData);
+            setUploadState(false, result.message || 'Dataset uploaded successfully.', '#4ade80');
+            fileInput.value = '';
+            await loadDatasetManager();
+        } catch (error) {
+            setUploadState(false, error.message || 'Upload failed.', '#f87171');
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', loadDatasetManager);
+</script>
+{% endblock %}

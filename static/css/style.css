@@ -937,6 +937,21 @@ nav.glass-nav {
     color: #f87171;
 }
 
+.market-dataset-upload {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.market-dataset-upload input[type="file"] {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px;
+    color: var(--fg-secondary);
+    padding: 10px 12px;
+}
+
 /* Table Responsiveness */
 .table-responsive {
     width: 100%;
