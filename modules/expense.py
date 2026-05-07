@@ -2,8 +2,17 @@ from flask import Blueprint, render_template, request, jsonify, redirect, url_fo
 from datetime import datetime
 import config
 from utils.db import get_db_connection
-from modules.analysis import get_analysis_data
-from modules.goals import enrich_goal_rows, enrich_goal_row, build_goal_analysis
+from modules.analysis import get_analysis_data, invalidate_analysis_cache
+from modules.goal_analytics import enrich_goal_row_with_context, build_goal_analysis_context, build_goal_portfolio_payload
+from modules.goal_allocation_engine import allocate_monthly_savings
+from modules.goal_repository import (
+    create_goal,
+    fetch_goal,
+    fetch_user_goals,
+    soft_archive_goal,
+    transition_goal_status,
+    update_goal,
+)
 
 # Create the Expense Blueprint
 expense_bp = Blueprint('expense', __name__)
@@ -214,6 +223,7 @@ def api_add_expense():
         cursor.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,))
         new_entry = dict(cursor.fetchone())
         conn.close()
+        invalidate_analysis_cache(user_id)
 
         return jsonify({"status": "success", "data": new_entry})
     except Exception as e:
@@ -238,6 +248,7 @@ def api_delete_expense():
         cursor.execute("DELETE FROM expenses WHERE id = ? AND user_id = ?", (expense_id, user_id))
         conn.commit()
         conn.close()
+        invalidate_analysis_cache(user_id)
 
         return jsonify({"status": "success", "message": "Expense deleted"})
     except Exception as e:
@@ -278,6 +289,7 @@ def api_update_expense():
         )
         conn.commit()
         conn.close()
+        invalidate_analysis_cache(user_id)
 
         return jsonify({"status": "success", "message": "Expense updated"})
     except Exception as e:
@@ -322,6 +334,7 @@ def api_set_income():
 
         conn.commit()
         conn.close()
+        invalidate_analysis_cache(user_id)
 
         return jsonify({"status": "success", "data": {"income": amount_value}})
     except Exception as e:
@@ -340,14 +353,17 @@ def api_goal_status():
 
     user_id = config.get_current_user()["user_id"]
     analysis_snapshot = get_analysis_data(user_id)
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM goals WHERE user_id = ?", (user_id,))
-    user_goals = [dict(row) for row in cursor.fetchall()]
-    conn.close()
+    user_goals = fetch_user_goals(user_id, include_archived=False)
+    payload = build_goal_portfolio_payload(user_goals, user_id=user_id, analysis_snapshot=analysis_snapshot)
 
-    enriched_goals = enrich_goal_rows(user_goals, analysis_snapshot=analysis_snapshot)
-    return jsonify({"status": "success", "data": enriched_goals})
+    # Keep existing `data` contract for current frontend.
+    return jsonify(
+        {
+            "status": "success",
+            "data": payload.get("goals", []),
+            "portfolio_summary": payload.get("portfolio_summary", {}),
+        }
+    )
 
 
 @expense_bp.route("/api/expense/goal/add", methods=["POST"])
@@ -364,6 +380,8 @@ def api_set_goal():
         target = data.get("target")
         saved = data.get("saved", 0)
         deadline = data.get("deadline") or ""
+        priority = data.get("priority", "medium")
+        status = data.get("status", "active")
 
         if not name or target in (None, ""):
             return jsonify({"status": "error", "message": "Goal name and target are required."}), 400
@@ -388,26 +406,17 @@ def api_set_goal():
                 return jsonify({"status": "error", "message": "Deadline must be in YYYY-MM-DD format."}), 400
 
         user_id = config.get_current_user()["user_id"]
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO goals (user_id, goal_name, target_amount, saved_amount, deadline)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (user_id, name, target_value, saved_value, deadline),
+        new_goal = create_goal(
+            user_id=user_id,
+            name=name,
+            target_amount=target_value,
+            saved_amount=saved_value,
+            deadline=deadline,
+            status=status,
+            priority=priority,
         )
-        conn.commit()
-
-        goal_id = cursor.lastrowid
-        cursor.execute("SELECT * FROM goals WHERE id = ? AND user_id = ?", (goal_id, user_id))
-        new_goal = dict(cursor.fetchone())
-        conn.close()
-
-        analysis_snapshot = get_analysis_data(user_id)
-        analysis = build_goal_analysis(user_id, analysis_snapshot=analysis_snapshot)
-        return jsonify({"status": "success", "data": enrich_goal_row(new_goal, analysis)})
+        invalidate_analysis_cache(user_id)
+        return jsonify({"status": "success", "data": new_goal})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
@@ -427,6 +436,7 @@ def api_update_goal():
         target = data.get("target")
         saved = data.get("saved", 0)
         deadline = data.get("deadline") or ""
+        priority = data.get("priority")
 
         if goal_id in (None, ""):
             return jsonify({"status": "error", "message": "Goal ID is required."}), 400
@@ -454,28 +464,20 @@ def api_update_goal():
                 return jsonify({"status": "error", "message": "Deadline must be in YYYY-MM-DD format."}), 400
 
         user_id = config.get_current_user()["user_id"]
-
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            UPDATE goals
-            SET goal_name = ?, target_amount = ?, saved_amount = ?, deadline = ?
-            WHERE id = ? AND user_id = ?
-            """,
-            (name, target_value, saved_value, deadline, goal_id, user_id),
+        updated_goal = update_goal(
+            user_id=user_id,
+            goal_id=goal_id,
+            name=name,
+            target_amount=target_value,
+            saved_amount=saved_value,
+            deadline=deadline,
+            priority=priority,
         )
-        conn.commit()
-        cursor.execute("SELECT * FROM goals WHERE id = ? AND user_id = ?", (goal_id, user_id))
-        updated_goal = cursor.fetchone()
-        conn.close()
-
         if updated_goal is None:
             return jsonify({"status": "error", "message": "Goal not found."}), 404
 
-        analysis_snapshot = get_analysis_data(user_id)
-        analysis = build_goal_analysis(user_id, analysis_snapshot=analysis_snapshot)
-        return jsonify({"status": "success", "data": enrich_goal_row(dict(updated_goal), analysis)})
+        invalidate_analysis_cache(user_id)
+        return jsonify({"status": "success", "data": updated_goal})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
@@ -483,7 +485,7 @@ def api_update_goal():
 @expense_bp.route("/api/expense/goal/delete", methods=["DELETE", "POST"])
 def api_delete_goal():
     """
-    Purpose: Deletes a goal for the active user without affecting the schema.
+    Purpose: Soft-archives a goal for the active user.
     """
     if not config.is_logged_in():
         return jsonify({"status": "error", "message": "Login required"}), 401
@@ -496,13 +498,85 @@ def api_delete_goal():
             return jsonify({"status": "error", "message": "Goal ID is required."}), 400
 
         user_id = config.get_current_user()["user_id"]
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM goals WHERE id = ? AND user_id = ?", (goal_id, user_id))
-        conn.commit()
-        conn.close()
+        archived = soft_archive_goal(user_id, goal_id)
+        if not archived:
+            return jsonify({"status": "error", "message": "Goal not found."}), 404
+        invalidate_analysis_cache(user_id)
+        return jsonify({"status": "success", "message": "Goal archived"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
 
-        return jsonify({"status": "success", "message": "Goal deleted"})
+
+@expense_bp.route("/api/expense/goal/portfolio")
+def api_goal_portfolio_summary():
+    """
+    Purpose: Returns stable portfolio summary + feasibility signals.
+    """
+    if not config.is_logged_in():
+        return jsonify({"status": "error", "message": "Login required"}), 401
+
+    try:
+        user_id = config.get_current_user()["user_id"]
+        analysis_snapshot = get_analysis_data(user_id)
+        goals = fetch_user_goals(user_id, include_archived=False)
+        payload = build_goal_portfolio_payload(goals, user_id=user_id, analysis_snapshot=analysis_snapshot)
+        return jsonify(
+            {
+                "status": "success",
+                "data": payload.get("portfolio_summary", {}),
+                "decision": payload.get("decision", {}),
+                "allocation": payload.get("allocation", {}),
+            }
+        )
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@expense_bp.route("/api/expense/goal/<int:goal_id>")
+def api_goal_detail(goal_id: int):
+    """
+    Purpose: Returns a single enriched goal payload by id.
+    """
+    if not config.is_logged_in():
+        return jsonify({"status": "error", "message": "Login required"}), 401
+
+    try:
+        user_id = config.get_current_user()["user_id"]
+        goal = fetch_goal(user_id, goal_id)
+        if goal is None:
+            return jsonify({"status": "error", "message": "Goal not found."}), 404
+
+        analysis_snapshot = get_analysis_data(user_id)
+        context = build_goal_analysis_context(user_id=user_id, analysis_snapshot=analysis_snapshot)
+        allocation = allocate_monthly_savings([goal], context.get("monthly_surplus", 0.0))
+        detail = enrich_goal_row_with_context(goal, context, allocation_result=allocation)
+        return jsonify({"status": "success", "data": detail})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+
+@expense_bp.route("/api/expense/goal/status", methods=["POST"])
+def api_goal_status_transition():
+    """
+    Purpose: Lifecycle transition endpoint (active, paused, completed, archived).
+    """
+    if not config.is_logged_in():
+        return jsonify({"status": "error", "message": "Login required"}), 401
+
+    try:
+        data = request.get_json(silent=True) or {}
+        goal_id = data.get("goal_id")
+        target_status = data.get("status")
+        if goal_id in (None, ""):
+            return jsonify({"status": "error", "message": "Goal ID is required."}), 400
+
+        user_id = config.get_current_user()["user_id"]
+        updated = transition_goal_status(user_id, goal_id, target_status)
+        if updated is None:
+            return jsonify({"status": "error", "message": "Goal not found."}), 404
+
+        invalidate_analysis_cache(user_id)
+        return jsonify({"status": "success", "data": updated})
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 400
 
@@ -568,6 +642,7 @@ def api_upload_csv():
 
         conn.commit()
         conn.close()
+        invalidate_analysis_cache(user_id)
 
         return jsonify({
             "status": "success",

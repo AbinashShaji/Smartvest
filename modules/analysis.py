@@ -9,6 +9,7 @@ from flask import Blueprint, render_template, jsonify, redirect, url_for, reques
 import config
 from utils.db import get_db_connection   # ← real database helper
 import os
+from copy import deepcopy
 from datetime import datetime, timedelta
 from typing import Any, Dict
 import pandas as pd
@@ -26,6 +27,17 @@ plt.style.use("dark_background")
 
 # Create the Analysis Blueprint so Flask can register these routes
 analysis_bp = Blueprint('analysis', __name__)
+
+_ANALYSIS_CACHE: Dict[Any, Dict[str, Any]] = {}
+_ANALYSIS_CACHE_TTL_SECONDS = 20
+
+
+def invalidate_analysis_cache(user_id=None):
+    """Clear cached analysis data for one user or for all users."""
+    if user_id is None:
+        _ANALYSIS_CACHE.clear()
+        return
+    _ANALYSIS_CACHE.pop(user_id, None)
 
 STOCK_DAY_COLUMNS = [f"day{i}" for i in range(1, 11)]
 CHART_FIGURE_FACE = "#06080d"
@@ -723,6 +735,16 @@ def get_analysis_data(user_id=None):
     if user_id is None:
         raise ValueError("Login required")
 
+    cache_key = (
+        user_id,
+        session.get("ef_manual_months"),
+        session.get("ef_manual_target"),
+    )
+    cache_entry = _ANALYSIS_CACHE.get(cache_key)
+    now_ts = datetime.now().timestamp()
+    if cache_entry and cache_entry["expires_at"] > now_ts:
+        return deepcopy(cache_entry["data"])
+
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -1161,13 +1183,19 @@ def get_analysis_data(user_id=None):
         ],
     }
 
-    return {
+    result = {
         "current": current,
         "yearly": yearly,
         "charts": charts,
         "savings_behavior": savings_behavior,
         "emergency": emergency,
     }
+
+    _ANALYSIS_CACHE[cache_key] = {
+        "expires_at": now_ts + _ANALYSIS_CACHE_TTL_SECONDS,
+        "data": deepcopy(result),
+    }
+    return result
 
 
 def build_market_metrics():

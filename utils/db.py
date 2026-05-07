@@ -62,9 +62,43 @@ def init_db():
         goal_name TEXT,
         target_amount REAL,
         saved_amount REAL,
-        deadline TEXT
+        deadline TEXT,
+        status TEXT DEFAULT 'active',
+        priority TEXT DEFAULT 'medium',
+        created_at TEXT,
+        updated_at TEXT,
+        paused_at TEXT,
+        completed_at TEXT,
+        archived_at TEXT
     )
     """)
+
+    # Keep goals schema compatible with older databases.
+    cursor.execute("PRAGMA table_info(goals)")
+    goals_columns = [column[1] for column in cursor.fetchall()]
+    if "status" not in goals_columns:
+        cursor.execute("ALTER TABLE goals ADD COLUMN status TEXT DEFAULT 'active'")
+    if "priority" not in goals_columns:
+        cursor.execute("ALTER TABLE goals ADD COLUMN priority TEXT DEFAULT 'medium'")
+    if "created_at" not in goals_columns:
+        cursor.execute("ALTER TABLE goals ADD COLUMN created_at TEXT")
+    if "updated_at" not in goals_columns:
+        cursor.execute("ALTER TABLE goals ADD COLUMN updated_at TEXT")
+    if "paused_at" not in goals_columns:
+        cursor.execute("ALTER TABLE goals ADD COLUMN paused_at TEXT")
+    if "completed_at" not in goals_columns:
+        cursor.execute("ALTER TABLE goals ADD COLUMN completed_at TEXT")
+    if "archived_at" not in goals_columns:
+        cursor.execute("ALTER TABLE goals ADD COLUMN archived_at TEXT")
+
+    # Backfill null lifecycle values for stable defaults.
+    cursor.execute("UPDATE goals SET status = 'active' WHERE status IS NULL OR TRIM(status) = ''")
+    cursor.execute("UPDATE goals SET priority = 'medium' WHERE priority IS NULL OR TRIM(priority) = ''")
+
+    # Goal query indexes for fast filtering and portfolio refreshes.
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_goals_user_id ON goals(user_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_goals_deadline ON goals(deadline)")
 
     # INCOME TABLE
     cursor.execute("""

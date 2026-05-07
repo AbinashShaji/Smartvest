@@ -63,6 +63,17 @@ const API = {
     uploadCSV: (formData) => API.request('/api/expense/upload', { method: 'POST', body: formData }),
     exportCSV: () => API.request('/api/expense/export'),
     getGoals: () => API.request('/api/expense/goal/all'),
+    getGoalsPortfolio: () => API.request('/api/expense/goal/portfolio'),
+    getGoalsPortfolioBundle: async () => {
+        const response = await fetch('/api/expense/goal/portfolio', { credentials: 'same-origin' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || result.status === 'error') {
+            throw new Error(result.message || `API Error: ${response.status}`);
+        }
+        return result;
+    },
+    getGoalDetail: (goalId) => API.request(`/api/expense/goal/${goalId}`),
+    setGoalStatus: (data) => API.request('/api/expense/goal/status', { method: 'POST', body: JSON.stringify(data) }),
     addGoal: (data) => API.request('/api/expense/goal/add', { method: 'POST', body: JSON.stringify(data) }),
     setGoal: (data) => API.addGoal(data), // Compatibility alias for older template code
 

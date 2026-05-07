@@ -4,159 +4,1312 @@
 {% block page_title %}Financial Goals{% endblock %}
 
 {% block content %}
-<div class="goals-page">
-    <section class="goals-summary-bar">
-        <div class="goals-summary-card glass-card">
-            <span class="goals-summary-label">Avg Savings</span>
-            <strong class="goals-summary-value" id="summaryAvgSavings">No data yet</strong>
-            <span class="goals-summary-meta">Last 3 months</span>
+<style>
+    .goals-module {
+        --bg-base: #0a0a0a;
+        --bg-card-outer: #111111;
+        --bg-card-inner: #1a1a0a;
+        --bg-card-hover: #1f1f0f;
+        --accent-gold: #b8860b;
+        --accent-gold-lt: #d4a017;
+        --accent-amber: #92400e;
+        --accent-green: #065f46;
+        --accent-red: #7f1d1d;
+        --text-primary: #ffffff;
+        --text-secondary: #a3a3a3;
+        --text-muted: #525252;
+        --text-label: #6b6b4a;
+        --border-outer: #2a2a2a;
+        --border-inner: #2a2500;
+        font-family: Inter, system-ui, sans-serif;
+        color: var(--text-secondary);
+        display: grid;
+        gap: 20px;
+    }
+
+    .goals-module-bar {
+        min-height: 56px;
+        background: var(--bg-card-outer);
+        border: 1px solid var(--border-outer);
+        border-radius: 12px;
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .goals-module-title {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 20px;
+        font-weight: 600;
+    }
+
+    .goals-tabs {
+        display: flex;
+        gap: 0;
+        background: #1a1a1a;
+        border: 1px solid var(--border-outer);
+        border-radius: 10px;
+        padding: 4px;
+    }
+
+    .goals-tab-btn {
+        border: 0;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-radius: 7px;
+        padding: 6px 12px;
+        cursor: pointer;
+    }
+
+    .goals-tab-btn.is-active {
+        background: #fff;
+        color: #000;
+    }
+
+    .goals-cta {
+        background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-lt));
+        border: none;
+        border-radius: 8px;
+        padding: 8px 20px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #000;
+        cursor: pointer;
+    }
+
+    .goals-view {
+        display: none;
+        gap: 16px;
+    }
+
+    .goals-view.is-active {
+        display: grid;
+    }
+
+    .goal-section {
+        background: var(--bg-card-outer);
+        border: 1px solid var(--border-outer);
+        border-radius: 12px;
+        padding: 28px 32px;
+    }
+
+    .goal-section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .goal-label {
+        margin: 0 0 8px;
+        color: var(--text-label);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+    }
+
+    .goal-title {
+        margin: 0 0 6px;
+        color: var(--text-primary);
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .goal-subtitle {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+        font-weight: 400;
+    }
+
+    .goal-title.is-healthy { color: #10b981; }
+    .goal-title.is-stressed { color: #d4a017; }
+    .goal-title.is-critical { color: #ef4444; }
+
+    .goal-head-side {
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    .goal-metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .goal-metric-card {
+        background: linear-gradient(135deg, #1a1a0a, #141400);
+        border: 1px solid var(--border-inner);
+        border-radius: 10px;
+        padding: 20px 24px;
+    }
+
+    .goal-metric-label {
+        margin: 0 0 8px;
+        color: var(--text-label);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .goal-metric-value {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 36px;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+
+    .goal-metric-sub {
+        margin: 6px 0 0;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 400;
+    }
+
+    .goal-inline-warning {
+        margin-top: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .goal-dot {
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        flex: 0 0 auto;
+    }
+
+    .dot-amber { background: var(--accent-gold-lt); }
+    .dot-green { background: #10b981; }
+    .dot-red { background: #ef4444; }
+    .dot-muted { background: #6b7280; }
+
+    .goal-risk-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .goal-risk-card {
+        background: linear-gradient(135deg, #1a1a0a, #141400);
+        border: 1px solid var(--border-inner);
+        border-left-width: 4px;
+        border-radius: 10px;
+        padding: 20px 24px;
+    }
+
+    .risk-amber { border-left-color: var(--accent-gold-lt); }
+    .risk-red { border-left-color: #ef4444; }
+
+    .goal-risk-title {
+        margin: 0 0 8px;
+        font-size: 22px;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    .goal-risk-text,
+    .goal-risk-line {
+        margin: 0 0 6px;
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    .goal-risk-line::before {
+        content: "- ";
+        color: var(--text-label);
+    }
+
+    .goal-filter-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        gap: 12px;
+    }
+
+    .goal-filter-tabs {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+    }
+
+    .goal-filter-tab {
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0 0 6px;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+    }
+
+    .goal-filter-tab.is-active {
+        color: #fff;
+        border-bottom-color: var(--accent-gold-lt);
+    }
+
+    .goal-filter-tools {
+        display: flex;
+        gap: 8px;
+    }
+
+    .goal-input {
+        background: #121212;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        color: #fff;
+        padding: 8px 10px;
+        min-width: 180px;
+    }
+
+    .goal-row {
+        display: grid;
+        grid-template-columns: 80px minmax(260px, 1fr) minmax(340px, 1fr) auto;
+        align-items: center;
+        gap: 16px;
+        border-left: 4px solid #6b7280;
+    }
+
+    .goal-row + .goal-row {
+        margin-top: 12px;
+    }
+
+    .goal-row.border-critical { border-left-color: #ef4444; }
+    .goal-row.border-medium { border-left-color: var(--accent-gold-lt); }
+    .goal-row.border-low { border-left-color: #6b7280; }
+
+    .goal-ring {
+        width: 72px;
+        height: 72px;
+    }
+
+    .goal-name {
+        margin: 0 0 4px;
+        font-size: 18px;
+        font-weight: 600;
+        color: #fff;
+    }
+
+    .goal-deadline {
+        margin: 0 0 8px;
+        color: var(--text-secondary);
+        font-size: 12px;
+    }
+
+    .goal-status {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .goal-inline-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .goal-inline-stat {
+        padding: 0 12px;
+    }
+
+    .goal-inline-stat + .goal-inline-stat {
+        border-left: 1px solid var(--border-outer);
+    }
+
+    .goal-inline-stat .goal-metric-label {
+        margin-bottom: 4px;
+    }
+
+    .goal-inline-stat .value {
+        color: #fff;
+        font-size: 16px;
+        font-weight: 700;
+    }
+
+    .goal-actions {
+        display: grid;
+        justify-items: end;
+        gap: 8px;
+    }
+
+    .goal-action-btn {
+        background: transparent;
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: 13px;
+        color: #fff;
+        cursor: pointer;
+    }
+
+    .goal-overflow {
+        position: relative;
+    }
+
+    .goal-overflow-trigger {
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        background: transparent;
+        color: #fff;
+        width: 34px;
+        height: 30px;
+        cursor: pointer;
+    }
+
+    .goal-overflow-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: #111;
+        border: 1px solid #2a2a2a;
+        border-radius: 8px;
+        display: none;
+        min-width: 140px;
+        padding: 6px;
+        z-index: 200;
+    }
+
+    .goal-overflow.is-open .goal-overflow-menu {
+        display: grid;
+    }
+
+    .goal-overflow-menu .goal-action-btn {
+        border: none;
+        padding: 7px 8px;
+        text-align: left;
+        width: 100%;
+    }
+
+    .goal-detail-select-row {
+        background: var(--bg-card-outer);
+        border: 1px solid var(--border-outer);
+        border-radius: 12px;
+        padding: 14px 18px;
+    }
+
+    .goal-detail-select {
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .goal-detail-two-col {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 14px;
+    }
+
+    .goal-detail-stack {
+        display: grid;
+        gap: 12px;
+    }
+
+    .goal-detail-card {
+        background: linear-gradient(135deg, #1a1a0a, #141400);
+        border: 1px solid var(--border-inner);
+        border-left: 4px solid var(--accent-gold-lt);
+        border-radius: 10px;
+        padding: 16px 18px;
+    }
+
+    .goal-detail-card h4 {
+        margin: 0 0 8px;
+        color: #fff;
+        font-size: 16px;
+        font-weight: 600;
+    }
+
+    .goal-detail-card p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.45;
+    }
+
+    .goal-velocity {
+        background: linear-gradient(135deg, #1a1a0a, #141400);
+        border: 1px solid var(--border-inner);
+        border-radius: 10px;
+        padding: 20px 18px;
+    }
+
+    .goal-velocity-track {
+        margin: 10px 0 12px;
+        height: 6px;
+        border-radius: 999px;
+        background: #222;
+        overflow: hidden;
+    }
+
+    .goal-velocity-fill {
+        height: 100%;
+        background: var(--accent-gold-lt);
+    }
+
+    .goal-velocity-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #2a2a2a;
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .goal-velocity-row:last-child {
+        border-bottom: none;
+    }
+
+    .goal-velocity-row strong {
+        color: #fff;
+    }
+
+    .value-amber { color: var(--accent-gold-lt) !important; }
+
+    .goal-modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.65);
+        z-index: 1000;
+    }
+
+    .goal-modal.is-open {
+        display: flex;
+    }
+
+    .goal-modal-panel {
+        width: min(720px, 96vw);
+        background: var(--bg-card-outer);
+        border: 1px solid var(--border-outer);
+        border-radius: 12px;
+        padding: 20px;
+    }
+</style>
+
+<div class="goals-module">
+    <div class="goals-module-bar">
+        <h2 class="goals-module-title">Goals</h2>
+        <div class="goals-tabs">
+            <button class="goals-tab-btn is-active" data-view-btn="dashboard">Dashboard</button>
+            <button class="goals-tab-btn" data-view-btn="portfolio">Portfolio</button>
+            <button class="goals-tab-btn" data-view-btn="detail">Detail</button>
         </div>
-        <div class="goals-summary-card glass-card">
-            <span class="goals-summary-label">Top Expense Category</span>
-            <strong class="goals-summary-value" id="summaryTopCategory">No data yet</strong>
-            <span class="goals-summary-meta">From live expense data</span>
-        </div>
-        <div class="goals-summary-card glass-card">
-            <span class="goals-summary-label">Feasibility Status</span>
-            <strong class="goals-summary-value" id="summaryFeasibility">No data yet</strong>
-            <span class="goals-summary-meta" id="summaryFeasibilityMeta">Based on current savings pace</span>
+        <button class="goals-cta" data-open-create> Create Goal </button>
+    </div>
+
+    <section id="dashboardView" class="goals-view is-active">
+        <div id="portfolioHealthSection" class="goal-section"></div>
+        <div id="signalsRiskSection" class="goal-section"></div>
+    </section>
+
+    <section id="portfolioView" class="goals-view">
+        <div class="goal-section">
+            <div class="goal-filter-row">
+                <div class="goal-filter-tabs" id="portfolioFilters">
+                    <button class="goal-filter-tab is-active" data-filter="all">All</button>
+                    <button class="goal-filter-tab" data-filter="active">Active</button>
+                    <button class="goal-filter-tab" data-filter="paused">Paused</button>
+                    <button class="goal-filter-tab" data-filter="completed">Completed</button>
+                    <button class="goal-filter-tab" data-filter="archived">Archived</button>
+                </div>
+                <div class="goal-filter-tools">
+                    <input id="goalSearch" class="goal-input" type="search" placeholder="Search goals">
+                    <select id="goalSort" class="goal-input">
+                        <option value="priority">Sort: Priority</option>
+                        <option value="deadline">Sort: Deadline</option>
+                        <option value="progress">Sort: Progress</option>
+                        <option value="remaining">Sort: Remaining</option>
+                    </select>
+                </div>
+            </div>
+            <div id="portfolioRows"></div>
         </div>
     </section>
 
-    <section class="goals-layout">
-        <aside class="goals-create-panel glass-card">
-            <div class="goals-panel-header">
-                <p class="goals-eyebrow">Create Goal</p>
-                <h3>Set a new target</h3>
-                <p class="goals-muted">
-                    Keep it simple. We’ll use your live expense data to estimate how realistic the goal is.
-                </p>
-            </div>
-
-            <form id="goalForm" class="goals-form">
-                <div class="goals-field">
-                    <label for="goalName">Goal Name</label>
-                    <input id="goalName" type="text" name="name" class="goals-input" required placeholder="Emergency fund">
-                </div>
-
-                <div class="goals-grid-2">
-                    <div class="goals-field">
-                        <label for="goalTarget">Target Amount</label>
-                        <input id="goalTarget" type="number" name="target" class="goals-input" required min="0" step="0.01" placeholder="5000">
-                    </div>
-                    <div class="goals-field">
-                        <label for="goalSaved">Saved Amount</label>
-                        <input id="goalSaved" type="number" name="saved" class="goals-input" min="0" step="0.01" placeholder="0">
-                    </div>
-                </div>
-
-                <div class="goals-grid-2">
-                    <div class="goals-field">
-                        <label for="goalDeadline">Deadline</label>
-                        <input id="goalDeadline" type="date" name="deadline" class="goals-input">
-                    </div>
-                    <div class="goals-field">
-                        <label for="goalType">Goal Type</label>
-                        <select id="goalType" name="type" class="goals-input goals-select">
-                            <option value="short">Short</option>
-                            <option value="long">Long</option>
-                        </select>
-                    </div>
-                </div>
-
-                <button type="submit" class="btn-premium goals-primary-cta">Create Goal</button>
-                <p id="goalStatusMsg" class="goals-status"></p>
-            </form>
-        </aside>
-
-        <main class="goals-cards-panel glass-card">
-            <div class="goals-panel-header goals-panel-header--split">
-                <div>
-                    <p class="goals-eyebrow">Goal Cards</p>
-                    <h3>Track progress at a glance</h3>
-                </div>
-                <button type="button" class="goals-tertiary-btn" data-focus-create>Create First Goal</button>
-            </div>
-
-            <div id="goalsContainer" class="goals-cards-grid">
-                <div class="goals-empty-state glass-card">
-                    Loading goals...
-                </div>
-            </div>
-        </main>
+    <section id="detailView" class="goals-view">
+        <div class="goal-detail-select-row">
+            <p class="goal-label">Select Goal For Deep Analysis</p>
+            <select id="detailGoalSelect" class="goal-input goal-detail-select"></select>
+        </div>
+        <div id="goalDetailSection" class="goal-section"></div>
     </section>
 </div>
 
-<div class="goals-modal" id="goalEditModal" aria-hidden="true">
-    <div class="goals-modal-panel glass-card">
-        <div class="goals-modal-header">
+<div id="createGoalModal" class="goal-modal">
+    <div class="goal-modal-panel">
+        <div class="goal-section-head">
             <div>
-                <p class="goals-eyebrow">Edit Goal</p>
-                <h3>Update your goal</h3>
+                <p class="goal-label">Create Goal</p>
+                <h3 class="goal-title" style="font-size:22px;">Add New Goal</h3>
             </div>
-            <button type="button" class="goals-modal-close" data-close-edit-modal aria-label="Close edit modal">x</button>
+            <button class="goal-action-btn" data-close-create>Close</button>
         </div>
-
-        <form id="goalEditForm" class="goals-form">
-            <input type="hidden" name="goal_id" id="goalEditId">
-
-            <div class="goals-field">
-                <label for="goalEditName">Goal Name</label>
-                <input id="goalEditName" type="text" name="name" class="goals-input" required>
-            </div>
-
-            <div class="goals-grid-2">
-                <div class="goals-field">
-                    <label for="goalEditTarget">Target Amount</label>
-                    <input id="goalEditTarget" type="number" name="target" class="goals-input" required min="0" step="0.01">
-                </div>
-                <div class="goals-field">
-                    <label for="goalEditSaved">Saved Amount</label>
-                    <input id="goalEditSaved" type="number" name="saved" class="goals-input" min="0" step="0.01">
-                </div>
-            </div>
-
-            <div class="goals-grid-2">
-                <div class="goals-field">
-                    <label for="goalEditDeadline">Deadline</label>
-                    <input id="goalEditDeadline" type="date" name="deadline" class="goals-input">
-                </div>
-                <div class="goals-field">
-                    <label for="goalEditType">Goal Type</label>
-                    <input id="goalEditType" type="text" name="type" class="goals-input" readonly>
-                </div>
-            </div>
-
-            <div class="goals-modal-actions">
-                <button type="button" class="goals-tertiary-btn" data-close-edit-modal>Cancel</button>
-                <button type="submit" class="btn-premium">Save Changes</button>
-            </div>
-            <p id="goalEditStatus" class="goals-status goals-status--align-right"></p>
+        <form id="createGoalForm" class="goal-detail-stack">
+            <input class="goal-input" name="name" placeholder="Goal name" required>
+            <input class="goal-input" type="number" step="0.01" min="0" name="target" placeholder="Target amount" required>
+            <input class="goal-input" type="number" step="0.01" min="0" name="saved" placeholder="Saved amount">
+            <input class="goal-input" type="date" name="deadline">
+            <select class="goal-input" name="priority">
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium" selected>Medium</option>
+                <option value="low">Low</option>
+            </select>
+            <button class="goals-cta" type="submit">Create Goal</button>
+            <p id="createGoalMsg" class="goal-subtitle"></p>
         </form>
     </div>
 </div>
 
-<div class="goals-modal" id="goalDeleteModal" aria-hidden="true">
-    <div class="goals-modal-panel glass-card">
-        <div class="goals-modal-header">
+<div id="editGoalModal" class="goal-modal">
+    <div class="goal-modal-panel">
+        <div class="goal-section-head">
             <div>
-                <p class="goals-eyebrow">Delete Goal</p>
-                <h3 id="goalDeleteTitle">Remove this goal?</h3>
+                <p class="goal-label">Edit Goal</p>
+                <h3 class="goal-title" style="font-size:22px;">Update Goal</h3>
             </div>
-            <button type="button" class="goals-modal-close" data-close-delete-modal aria-label="Close delete modal">x</button>
+            <button class="goal-action-btn" data-close-edit type="button">Close</button>
         </div>
-        <p id="goalDeleteText" class="goals-muted goals-delete-copy">
-            This action cannot be undone.
-        </p>
-        <div class="goals-modal-actions">
-            <button type="button" class="goals-tertiary-btn" data-close-delete-modal>Cancel</button>
-            <button type="button" class="btn-premium" id="confirmDeleteGoal">Delete Goal</button>
-        </div>
-        <p id="goalDeleteStatus" class="goals-status goals-status--align-right"></p>
+        <form id="editGoalForm" class="goal-detail-stack">
+            <input type="hidden" name="goal_id" id="editGoalId">
+            <input class="goal-input" name="name" id="editGoalName" placeholder="Goal name" required>
+            <input class="goal-input" type="number" step="0.01" min="0" name="target" id="editGoalTarget" placeholder="Target amount" required>
+            <input class="goal-input" type="number" step="0.01" min="0" name="saved" id="editGoalSaved" placeholder="Saved amount">
+            <input class="goal-input" type="date" name="deadline" id="editGoalDeadline">
+            <select class="goal-input" name="priority" id="editGoalPriority">
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+            </select>
+            <button class="goals-cta" type="submit">Save Changes</button>
+            <p id="editGoalMsg" class="goal-subtitle"></p>
+        </form>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/goals.js') }}"></script>
+<script>
+    (function () {
+        const state = {
+            view: 'dashboard',
+            filter: 'all',
+            search: '',
+            sort: 'priority',
+            goals: [],
+            portfolio: {},
+            detailGoalId: null,
+            openOverflowGoalId: null,
+            dashboardRefreshTimer: null,
+            portfolioStale: false,
+        };
+
+        const PRIORITY_ORDER = { critical: 1, high: 2, medium: 3, low: 4 };
+        const currency = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const $ = (selector) => document.querySelector(selector);
+        const esc = (value) => String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const n = (value, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
+        const money = (value) => currency.format(n(value));
+        const tc = (value) => {
+            const normalized = String(value || '').toLowerCase().trim();
+            return normalized ? normalized[0].toUpperCase() + normalized.slice(1) : 'n/a';
+        };
+
+        async function rawRequest(endpoint, options = {}) {
+            const response = await fetch(endpoint, {
+                credentials: 'same-origin',
+                ...options,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(options.headers || {}),
+                },
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok || payload.status === 'error') {
+                throw new Error(payload.message || `Request failed (${response.status})`);
+            }
+            return payload;
+        }
+
+        function normalizeGoal(goal, fallback = {}) {
+            const source = { ...fallback, ...(goal || {}) };
+            const target = n(source.target_amount);
+            const saved = n(source.saved_amount);
+            const remaining = Math.max(0, target - saved);
+            const progress = target > 0 ? (saved / target) * 100 : 0;
+            return {
+                ...source,
+                id: source.id != null ? source.id : fallback.id,
+                target_amount: target,
+                saved_amount: saved,
+                remaining_amount: n(source.remaining_amount, remaining),
+                progress_percent: n(source.progress_percent, progress),
+                analysis: source.analysis || fallback.analysis || {},
+                smart_analysis: source.smart_analysis || fallback.smart_analysis || {},
+            };
+        }
+
+        function setGoals(goals) {
+            state.goals = Array.isArray(goals) ? goals.map((goal) => normalizeGoal(goal)) : [];
+            if (state.detailGoalId && !state.goals.some((goal) => String(goal.id) === String(state.detailGoalId))) {
+                state.detailGoalId = state.goals[0] ? state.goals[0].id : null;
+            }
+        }
+
+        function getGoalById(goalId) {
+            return state.goals.find((goal) => String(goal.id) === String(goalId));
+        }
+
+        function extractGoalData(payload, fallback = {}) {
+            const source = payload && typeof payload === 'object'
+                ? (payload.data ?? payload.goal ?? payload.updated ?? payload.result ?? payload)
+                : payload;
+            return normalizeGoal(source, fallback);
+        }
+
+        function upsertGoal(goal, preserveAnalysis = true) {
+            if (!goal) return null;
+            const nextGoal = normalizeGoal(goal);
+            const index = state.goals.findIndex((item) => String(item.id) === String(nextGoal.id));
+            if (index >= 0) {
+                const existing = state.goals[index];
+                state.goals[index] = preserveAnalysis ? normalizeGoal(nextGoal, existing) : nextGoal;
+            } else {
+                state.goals.unshift(nextGoal);
+            }
+            return nextGoal;
+        }
+
+        function removeGoal(goalId) {
+            state.goals = state.goals.filter((goal) => String(goal.id) !== String(goalId));
+        }
+
+        function closeAllOverflowMenus() {
+            const openNode = state.openOverflowGoalId != null
+                ? document.querySelector(`[data-overflow-goal="${state.openOverflowGoalId}"]`)
+                : null;
+            if (openNode) {
+                openNode.classList.remove('is-open');
+                openNode.querySelector('.goal-overflow-trigger')?.setAttribute('aria-expanded', 'false');
+            } else {
+                document.querySelectorAll('.goal-overflow.is-open').forEach((node) => {
+                    node.classList.remove('is-open');
+                    node.querySelector('.goal-overflow-trigger')?.setAttribute('aria-expanded', 'false');
+                });
+            }
+            state.openOverflowGoalId = null;
+        }
+
+        function healthTone(value) {
+            const x = String(value || '').toLowerCase();
+            if (x === 'healthy') return 'is-healthy';
+            if (x === 'stressed' || x === 'watch') return 'is-stressed';
+            return 'is-critical';
+        }
+
+        function ring(goal) {
+            const p = Math.max(0, Math.min(100, n(goal.progress_percent)));
+            const r = 28;
+            const c = 2 * Math.PI * r;
+            const off = c * (1 - p / 100);
+            const pr = String(goal.priority || 'low').toLowerCase();
+            const col = pr === 'critical' ? '#ef4444' : pr === 'medium' ? '#d4a017' : '#6b7280';
+            return `
+                <svg class="goal-ring" viewBox="0 0 72 72" aria-hidden="true">
+                    <circle cx="36" cy="36" r="${r}" fill="none" stroke="#2a2a2a" stroke-width="6"></circle>
+                    <circle cx="36" cy="36" r="${r}" fill="none" stroke="${col}" stroke-width="6" stroke-linecap="round"
+                        stroke-dasharray="${c.toFixed(2)}" stroke-dashoffset="${off.toFixed(2)}" transform="rotate(-90 36 36)"></circle>
+                    <text x="36" y="40" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">${p.toFixed(0)}%</text>
+                </svg>
+            `;
+        }
+
+        function statusDot(status) {
+            const s = String(status || 'active').toLowerCase();
+            if (s === 'active') return 'dot-green';
+            if (s === 'paused') return 'dot-amber';
+            if (s === 'completed') return 'dot-muted';
+            return 'dot-red';
+        }
+
+        function borderTone(goal) {
+            const p = String(goal.priority || 'low').toLowerCase();
+            if (p === 'critical' || p === 'high') return 'border-critical';
+            if (p === 'medium') return 'border-medium';
+            return 'border-low';
+        }
+
+        function buildLocalPortfolioSummary() {
+            const activeGoals = state.goals.filter((goal) => String(goal.status || 'active').toLowerCase() === 'active');
+            const pausedGoals = state.goals.filter((goal) => String(goal.status || '').toLowerCase() === 'paused');
+            const completedGoals = state.goals.filter((goal) => String(goal.status || '').toLowerCase() === 'completed');
+            const archivedGoals = state.goals.filter((goal) => String(goal.status || '').toLowerCase() === 'archived');
+            const totalTarget = state.goals.reduce((sum, goal) => sum + n(goal.target_amount), 0);
+            const totalSaved = state.goals.reduce((sum, goal) => sum + n(goal.saved_amount), 0);
+            const totalRemaining = Math.max(0, totalTarget - totalSaved);
+            const avgProgress = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
+
+            return {
+                total_goals: state.goals.length,
+                active_goals: activeGoals.length,
+                paused_goals: pausedGoals.length,
+                completed_goals: completedGoals.length,
+                archived_goals: archivedGoals.length,
+                total_target: totalTarget,
+                total_saved: totalSaved,
+                total_remaining: totalRemaining,
+                avg_progress: avgProgress,
+            };
+        }
+
+        function mergedPortfolioSummary() {
+            return {
+                ...buildLocalPortfolioSummary(),
+                ...state.portfolio,
+            };
+        }
+
+        function lifecycleActions(status) {
+            const s = String(status || 'active').toLowerCase();
+            if (s === 'active') return ['paused', 'completed', 'archived'];
+            if (s === 'paused') return ['active', 'archived'];
+            if (s === 'completed') return ['archived'];
+            return [];
+        }
+
+        function filteredGoals() {
+            return state.goals
+                .filter((goal) => state.filter === 'all' || String(goal.status || '').toLowerCase() === state.filter)
+                .filter((goal) => !state.search || String(goal.goal_name || '').toLowerCase().includes(state.search.toLowerCase()))
+                .sort((a, b) => {
+                    if (state.sort === 'deadline') return String(a.deadline || '9999-12-31').localeCompare(String(b.deadline || '9999-12-31'));
+                    if (state.sort === 'progress') return n(b.progress_percent) - n(a.progress_percent);
+                    if (state.sort === 'remaining') return n(b.remaining_amount) - n(a.remaining_amount);
+                return (PRIORITY_ORDER[String(a.priority || 'medium').toLowerCase()] || 3) - (PRIORITY_ORDER[String(b.priority || 'medium').toLowerCase()] || 3);
+            });
+        }
+
+        function renderDashboard() {
+            const p = mergedPortfolioSummary();
+            const health = tc(p.portfolio_feasibility || 'stressed');
+            const tone = healthTone(p.portfolio_feasibility);
+            const warnings = Array.isArray(p.warnings) ? p.warnings : [];
+            const conflicts = Array.isArray(p.conflicts) ? p.conflicts : [];
+            const warn = warnings[0];
+            const loadRatioValue = n(p.allocation_load_ratio ?? p.load_ratio ?? 0);
+            const availableSavings = n(p.available_monthly_savings ?? p.available_savings ?? 0);
+            $('#portfolioHealthSection').innerHTML = `
+                <div class="goal-section-head">
+                    <div>
+                        <p class="goal-label">Portfolio Health</p>
+                        <h3 class="goal-title ${tone}">${esc(health)}</h3>
+                        <p class="goal-subtitle">Total progress ${n(p.avg_progress).toFixed(1)}% across ${n(p.total_goals)} goals</p>
+                    </div>
+                    <div class="goal-head-side">Required monthly: ${money(p.required_monthly_savings)}</div>
+                </div>
+                <div class="goal-metrics-grid">
+                    <article class="goal-metric-card"><p class="goal-metric-label">Target</p><p class="goal-metric-value">${money(p.total_target)}</p><p class="goal-metric-sub">Portfolio total</p></article>
+                    <article class="goal-metric-card"><p class="goal-metric-label">Saved</p><p class="goal-metric-value">${money(p.total_saved)}</p><p class="goal-metric-sub">Current progress</p></article>
+                    <article class="goal-metric-card"><p class="goal-metric-label">Remaining</p><p class="goal-metric-value">${money(p.total_remaining)}</p><p class="goal-metric-sub">To complete</p></article>
+                    <article class="goal-metric-card"><p class="goal-metric-label">Active</p><p class="goal-metric-value">${n(p.active_goals)}</p><p class="goal-metric-sub">In execution</p></article>
+                    <article class="goal-metric-card"><p class="goal-metric-label">Paused/Done</p><p class="goal-metric-value">${n(p.paused_goals)}/${n(p.completed_goals)}</p><p class="goal-metric-sub">Lifecycle mix</p></article>
+                </div>
+                <div class="goal-inline-warning">
+                    <span class="goal-dot ${warn ? 'dot-amber' : 'dot-green'}"></span>
+                    <span>${esc(warn || 'No immediate savings pressure detected.')}</span>
+                </div>
+            `;
+
+            $('#signalsRiskSection').innerHTML = `
+                <div class="goal-section-head">
+                    <div>
+                        <p class="goal-label">Signals & Risks</p>
+                        <h3 class="goal-title">Portfolio Diagnostics</h3>
+                        <p class="goal-subtitle">Feasibility pressure and deadline conflict visibility.</p>
+                    </div>
+                </div>
+                <div class="goal-risk-grid">
+                    <article class="goal-risk-card risk-amber">
+                        <p class="goal-label">Allocation Load</p>
+                        <h4 class="goal-risk-title">${esc(health)}</h4>
+                        <p class="goal-risk-text">Available savings: ${money(availableSavings)}</p>
+                        <p class="goal-risk-text">Load ratio: ${loadRatioValue.toFixed(2)}x</p>
+                    </article>
+                    <article class="goal-risk-card risk-amber">
+                        <p class="goal-label">Feasibility Signals</p>
+                        <h4 class="goal-risk-title">Warnings</h4>
+                        ${warnings.length ? warnings.slice(0, 3).map((w) => `<p class="goal-risk-line">${esc(w)}</p>`).join('') : '<p class="goal-risk-text">No warnings at this time.</p>'}
+                    </article>
+                    <article class="goal-risk-card risk-red">
+                        <p class="goal-label">Upcoming Risks</p>
+                        <h4 class="goal-risk-title">Deadline Conflicts</h4>
+                        ${conflicts.length ? conflicts.slice(0, 3).map((c) => `<p class="goal-risk-line">${esc(c)}</p>`).join('') : '<p class="goal-risk-text">No overlapping deadline risk detected.</p>'}
+                    </article>
+                </div>
+            `;
+        }
+
+        function buildGoalRow(goal) {
+            const actions = lifecycleActions(goal.status).map((s) => `<button class="goal-action-btn" type="button" data-action="status" data-id="${goal.id}" data-status="${s}">${tc(s)}</button>`).join('');
+            return `
+                <article class="goal-section goal-row ${borderTone(goal)}" data-goal-card="${goal.id}">
+                    <div>${ring(goal)}</div>
+                    <div>
+                        <h4 class="goal-name">${esc(goal.goal_name)}</h4>
+                        <p class="goal-deadline">${goal.deadline ? `Deadline: ${esc(goal.deadline)}` : 'No deadline set'}</p>
+                        <div class="goal-status">
+                            <span><span class="goal-dot ${statusDot(goal.status)}"></span> ${tc(goal.status)}</span>
+                            <span><span class="goal-dot dot-amber"></span> ${tc(goal.priority)}</span>
+                        </div>
+                    </div>
+                    <div class="goal-inline-stats">
+                        <div class="goal-inline-stat"><p class="goal-metric-label">Remaining</p><p class="value">${money(goal.remaining_amount)}</p></div>
+                        <div class="goal-inline-stat"><p class="goal-metric-label">Allocated/Mo</p><p class="value">${money(goal.analysis?.allocated_monthly)}</p></div>
+                        <div class="goal-inline-stat"><p class="goal-metric-label">Projection</p><p class="value">${goal.analysis?.realistic_months == null ? 'n/a' : `${n(goal.analysis.realistic_months).toFixed(1)} mo`}</p></div>
+                    </div>
+                    <div class="goal-actions">
+                        <button class="goal-action-btn" type="button" data-action="detail" data-id="${goal.id}">View Analysis</button>
+                        <div class="goal-overflow" data-overflow-goal="${goal.id}">
+                            <button class="goal-overflow-trigger" type="button" data-action="overflow-toggle" data-id="${goal.id}" aria-expanded="false">···</button>
+                            <div class="goal-overflow-menu">
+                                <button class="goal-action-btn" type="button" data-action="edit" data-id="${goal.id}">Edit</button>
+                                ${actions}
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            `;
+        }
+
+        function renderPortfolio() {
+            const rows = filteredGoals();
+            const container = $('#portfolioRows');
+            if (!container) return;
+            if (!rows.length) {
+                container.innerHTML = "<p class='goal-subtitle'>No goals match the current filters.</p>";
+                return;
+            }
+
+            container.innerHTML = rows.map(buildGoalRow).join('');
+
+            if (state.openOverflowGoalId !== null) {
+                const openNode = document.querySelector(`[data-overflow-goal="${state.openOverflowGoalId}"]`);
+                if (openNode) {
+                    openNode.classList.add('is-open');
+                    openNode.querySelector('.goal-overflow-trigger')?.setAttribute('aria-expanded', 'true');
+                } else {
+                    state.openOverflowGoalId = null;
+                }
+            }
+        }
+
+        function renderDetailSelect() {
+            const select = $('#detailGoalSelect');
+            if (!select) return;
+            const goals = state.goals;
+            if (!goals.length) {
+                select.innerHTML = '<option value="">No goals available</option>';
+                state.detailGoalId = null;
+                return;
+            }
+            if (!state.detailGoalId) {
+                state.detailGoalId = goals[0].id;
+            }
+            select.innerHTML = goals.map((g) => `<option value="${g.id}" ${String(g.id) === String(state.detailGoalId) ? 'selected' : ''}>${esc(g.goal_name)} (${tc(g.status)})</option>`).join('');
+        }
+
+        function renderDetailFromGoal(detail) {
+            const container = $('#goalDetailSection');
+            if (!container) return;
+            const a = detail.analysis || {};
+            const s = detail.smart_analysis || {};
+            const isBelow = n(a.allocated_monthly) < n(a.required_monthly);
+            container.innerHTML = `
+                <div class="goal-section-head">
+                    <div>
+                        <p class="goal-label">Goal Detail Report</p>
+                        <h3 class="goal-title">${esc(detail.goal_name || 'Goal')}</h3>
+                        <p class="goal-subtitle">${detail.deadline ? `Deadline: ${esc(detail.deadline)}` : 'No deadline set'}</p>
+                    </div>
+                    <div class="goal-status"><span class="goal-dot ${statusDot(detail.status)}"></span>${tc(detail.status)}</div>
+                </div>
+                <div class="goal-detail-two-col">
+                    <div class="goal-detail-stack">
+                        <article class="goal-detail-card"><h4>Financial Snapshot</h4><p>Target ${money(detail.target_amount)} · Saved ${money(detail.saved_amount)} · Remaining ${money(detail.remaining_amount)}</p></article>
+                        <article class="goal-detail-card"><h4>Feasibility</h4><p>${esc(a.insight || 'No projection available')}</p><p>${esc(a.warning || '')}</p></article>
+                        <article class="goal-detail-card"><h4>Behavior Signal</h4><p>Top expense category impacting pace: ${esc(s.top_category || 'n/a')}.</p></article>
+                    </div>
+                    <div class="goal-velocity">
+                        <p class="goal-label">Savings Velocity</p>
+                        <div class="goal-velocity-track"><div class="goal-velocity-fill" style="width:${Math.max(0, Math.min(100, n(detail.progress_percent))).toFixed(1)}%"></div></div>
+                        <div class="goal-velocity-row"><span>Progress</span><strong>${n(detail.progress_percent).toFixed(1)}%</strong></div>
+                        <div class="goal-velocity-row"><span>Allocated / month</span><strong>${money(a.allocated_monthly)}</strong></div>
+                        <div class="goal-velocity-row"><span>Required / month</span><strong class="${isBelow ? 'value-amber' : ''}">${money(a.required_monthly)}</strong></div>
+                        <div class="goal-velocity-row"><span>Projected completion</span><strong>${a.realistic_months == null ? 'n/a' : `${n(a.realistic_months).toFixed(1)} mo`}</strong></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function renderDetail(forceRefresh = false) {
+            if (state.view !== 'detail' || !state.detailGoalId) {
+                return;
+            }
+
+            const localGoal = getGoalById(state.detailGoalId);
+            if (localGoal && localGoal.analysis && !forceRefresh) {
+                renderDetailFromGoal(localGoal);
+                return;
+            }
+
+            const container = $('#goalDetailSection');
+            if (container) {
+                container.innerHTML = '<div class="goals-empty-state">Loading detail...</div>';
+            }
+            try {
+                const payload = await rawRequest(`/api/expense/goal/${state.detailGoalId}`);
+                const detail = extractGoalData(payload, localGoal || {});
+                upsertGoal(detail, true);
+                renderDetailFromGoal(detail);
+            } catch (error) {
+                if (container) {
+                    container.innerHTML = `<div class="goals-empty-state">${esc(error.message || 'Unable to load goal detail.')}</div>`;
+                }
+            }
+        }
+
+        async function setView(view) {
+            if (state.view === view) {
+                if (view === 'detail') {
+                    renderDetailSelect();
+                    await renderDetail();
+                }
+                return;
+            }
+            state.view = view;
+            ['dashboardView', 'portfolioView', 'detailView'].forEach((id) => {
+                const target = id.replace('View', '').toLowerCase();
+                document.getElementById(id).classList.toggle('is-active', target === view);
+            });
+            document.querySelectorAll('[data-view-btn]').forEach((button) => button.classList.toggle('is-active', button.dataset.viewBtn === view));
+            closeAllOverflowMenus();
+            if (view === 'detail') {
+                renderDetailSelect();
+                renderDetail();
+                return;
+            }
+            if (view === 'dashboard') {
+                if (state.portfolioStale) {
+                    await loadGoalsSnapshot({ render: false });
+                }
+                renderDashboard();
+                return;
+            }
+            if (view === 'portfolio') {
+                renderPortfolio();
+            }
+        }
+
+        async function loadGoalsSnapshot({ render = true } = {}) {
+            const payload = await rawRequest('/api/expense/goal/all');
+            state.portfolio = payload.portfolio_summary || {};
+            setGoals(payload.data || []);
+            state.portfolioStale = false;
+            if (render) {
+                if (state.view === 'dashboard') {
+                    renderDashboard();
+                } else if (state.view === 'portfolio') {
+                    renderPortfolio();
+                }
+                if (state.view === 'detail') {
+                    renderDetailSelect();
+                    await renderDetail();
+                }
+            }
+            return payload;
+        }
+
+        function queueDashboardRefresh() {
+            if (state.dashboardRefreshTimer) {
+                clearTimeout(state.dashboardRefreshTimer);
+            }
+            state.dashboardRefreshTimer = setTimeout(async () => {
+                state.dashboardRefreshTimer = null;
+                if (state.view !== 'dashboard') {
+                    return;
+                }
+                try {
+                    await loadGoalsSnapshot({ render: false });
+                    renderDashboard();
+                } catch (error) {
+                    console.error(error);
+                }
+            }, 150);
+        }
+
+        function applyGoalMutation(updatedGoal, options = {}) {
+            const normalized = upsertGoal(updatedGoal, options.preserveAnalysis !== false);
+            state.portfolioStale = true;
+            if (state.view === 'portfolio') {
+                renderPortfolio();
+            } else if (state.view === 'dashboard') {
+                renderDashboard();
+                queueDashboardRefresh();
+            }
+            if (state.view === 'detail' && String(state.detailGoalId) === String(normalized.id)) {
+                if (!options.detailRefresh) {
+                    renderDetailFromGoal(normalized);
+                }
+            }
+            if (state.view === 'detail') {
+                renderDetailSelect();
+            }
+            return normalized;
+        }
+
+        async function handleCreateGoal(payload) {
+            const response = await rawRequest('/api/expense/goal/add', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+            return extractGoalData(response, payload);
+        }
+
+        async function handleUpdateGoal(payload) {
+            const response = await rawRequest('/api/expense/goal/update', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+            return extractGoalData(response, payload);
+        }
+
+        async function handleLifecycle(goalId, status) {
+            const response = await rawRequest('/api/expense/goal/status', {
+                method: 'POST',
+                body: JSON.stringify({ goal_id: goalId, status }),
+            });
+            return extractGoalData(response, { id: goalId, status });
+        }
+
+        function openCreate(open) {
+            const modal = $('#createGoalModal');
+            if (modal) {
+                modal.classList.toggle('is-open', open);
+            }
+        }
+
+        function openEdit(goal) {
+            if (!goal) return;
+            $('#editGoalId').value = goal.id;
+            $('#editGoalName').value = goal.goal_name || '';
+            $('#editGoalTarget').value = n(goal.target_amount);
+            $('#editGoalSaved').value = n(goal.saved_amount);
+            $('#editGoalDeadline').value = goal.deadline || '';
+            $('#editGoalPriority').value = String(goal.priority || 'medium');
+            $('#editGoalMsg').textContent = '';
+            $('#editGoalModal').classList.add('is-open');
+        }
+
+        function closeEdit() {
+            const modal = $('#editGoalModal');
+            if (modal) {
+                modal.classList.remove('is-open');
+            }
+        }
+
+        function bind() {
+            document.querySelectorAll('[data-view-btn]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.viewBtn)));
+
+            $('#portfolioFilters').addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-filter]');
+                if (!btn) return;
+                state.filter = btn.dataset.filter;
+                document.querySelectorAll('[data-filter]').forEach((x) => x.classList.remove('is-active'));
+                btn.classList.add('is-active');
+                if (state.view === 'portfolio') {
+                    renderPortfolio();
+                }
+            });
+
+            $('#goalSearch').addEventListener('input', (e) => {
+                state.search = e.target.value || '';
+                if (state.view === 'portfolio') {
+                    renderPortfolio();
+                }
+            });
+
+            $('#goalSort').addEventListener('change', (e) => {
+                state.sort = e.target.value;
+                if (state.view === 'portfolio') {
+                    renderPortfolio();
+                }
+            });
+
+            $('#portfolioRows').addEventListener('click', async (e) => {
+                const button = e.target.closest('[data-action]');
+                if (!button) return;
+                e.preventDefault();
+                e.stopPropagation();
+                const id = button.dataset.id;
+                const action = button.dataset.action;
+                const overflowNode = e.target.closest('[data-overflow-goal]');
+
+                if (action === 'overflow-toggle') {
+                    const node = overflowNode || document.querySelector(`[data-overflow-goal="${id}"]`);
+                    if (!node) return;
+                    const wasOpen = node.classList.contains('is-open');
+                    closeAllOverflowMenus();
+                    if (!wasOpen) {
+                        node.classList.add('is-open');
+                        node.querySelector('.goal-overflow-trigger')?.setAttribute('aria-expanded', 'true');
+                        state.openOverflowGoalId = id;
+                    }
+                    return;
+                }
+
+                if (action === 'detail') {
+                    closeAllOverflowMenus();
+                    state.detailGoalId = id;
+                    await setView('detail');
+                    return;
+                }
+
+                if (action === 'edit') {
+                    closeAllOverflowMenus();
+                    openEdit(getGoalById(id));
+                    return;
+                }
+
+                if (action === 'status') {
+                    try {
+                        const updated = await handleLifecycle(id, button.dataset.status);
+                        applyGoalMutation(updated);
+                        if (state.view === 'detail' && String(state.detailGoalId) === String(id)) {
+                            renderDetailFromGoal(getGoalById(id));
+                        }
+                    } catch (error) {
+                        console.error(error);
+                    } finally {
+                        closeAllOverflowMenus();
+                    }
+                }
+            });
+
+            $('#detailGoalSelect').addEventListener('change', async (e) => {
+                state.detailGoalId = e.target.value;
+                if (state.view === 'detail') {
+                    await renderDetail();
+                }
+            });
+
+            document.querySelector('[data-open-create]').addEventListener('click', () => openCreate(true));
+            document.querySelector('[data-close-create]').addEventListener('click', () => openCreate(false));
+            document.querySelector('[data-close-edit]').addEventListener('click', () => closeEdit());
+            $('#createGoalModal').addEventListener('click', (e) => { if (e.target.id === 'createGoalModal') openCreate(false); });
+            $('#editGoalModal').addEventListener('click', (e) => { if (e.target.id === 'editGoalModal') closeEdit(); });
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.goal-overflow')) {
+                    closeAllOverflowMenus();
+                }
+            });
+
+            $('#createGoalForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                const payload = {
+                    name: String(fd.get('name') || '').trim(),
+                    target: Number(fd.get('target') || 0),
+                    saved: Number(fd.get('saved') || 0),
+                    deadline: String(fd.get('deadline') || ''),
+                    priority: String(fd.get('priority') || 'medium'),
+                    status: 'active',
+                };
+                const msg = $('#createGoalMsg');
+                msg.textContent = 'Creating goal...';
+                try {
+                    const created = await handleCreateGoal(payload);
+                    applyGoalMutation(created, { preserveAnalysis: false });
+                    msg.textContent = 'Goal created.';
+                    e.currentTarget.reset();
+                    openCreate(false);
+                    if (state.view === 'detail') {
+                        state.detailGoalId = created.id;
+                        renderDetailSelect();
+                        await renderDetail(true);
+                    }
+                    if (state.view !== 'detail') {
+                        closeAllOverflowMenus();
+                    }
+                } catch (error) {
+                    msg.textContent = error.message || 'Unable to create goal.';
+                }
+            });
+
+            $('#editGoalForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                const payload = {
+                    goal_id: String(fd.get('goal_id') || ''),
+                    name: String(fd.get('name') || '').trim(),
+                    target: Number(fd.get('target') || 0),
+                    saved: Number(fd.get('saved') || 0),
+                    deadline: String(fd.get('deadline') || ''),
+                    priority: String(fd.get('priority') || 'medium'),
+                };
+                const msg = $('#editGoalMsg');
+                msg.textContent = 'Saving changes...';
+                try {
+                    const updated = await handleUpdateGoal(payload);
+                    applyGoalMutation(updated, { detailRefresh: true });
+                    msg.textContent = 'Goal updated.';
+                    closeEdit();
+                    if (state.view === 'detail' && String(state.detailGoalId) === String(updated.id)) {
+                        await renderDetail(true);
+                    }
+                } catch (error) {
+                    msg.textContent = error.message || 'Unable to update goal.';
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            bind();
+            await loadGoalsSnapshot({ render: false });
+            renderDashboard();
+            if (state.view === 'portfolio') {
+                renderPortfolio();
+            }
+            if (state.view === 'detail') {
+                renderDetailSelect();
+                await renderDetail();
+            }
+        });
+    })();
+</script>
 {% endblock %}
+
+
+
+
+
