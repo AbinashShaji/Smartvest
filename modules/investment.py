@@ -501,7 +501,7 @@ def build_live_investment_payload():
 
     # ── Phase 6: Enriched stocks ──
     stock_frame = load_stock_csv()
-    stock_analysis, _ = analyze_stock_rows(stock_frame, generate_charts=False)
+    stock_analysis, status_counts = analyze_stock_rows(stock_frame, generate_charts=False)
     
     risk_level = sip_engine.get("risk_level", "Low")
     
@@ -542,6 +542,38 @@ def build_live_investment_payload():
 
     insights = get_insights(analysis, decision_engine, sip_engine, growth)
 
+    # Explanation metadata for empty-state transparency (no rule changes).
+    readiness_decision = decision_engine.get("decision", "NOT_READY")
+    ef_status = emergency.get("status", "CRITICAL")
+    recommendation_block_reason = "NONE"
+    if not enriched_stocks:
+        if readiness_decision == "NOT_READY":
+            if savings <= 0:
+                recommendation_block_reason = "HIGH_SPENDING"
+            elif savings_rate < 20:
+                recommendation_block_reason = "LOW_SAVINGS"
+            else:
+                recommendation_block_reason = "LOW_EF"
+        elif readiness_decision == "PARTIAL":
+            recommendation_block_reason = "LOW_EF"
+        elif risk_level == "Low" and status_counts.get("Stable", 0) == 0:
+            recommendation_block_reason = "NO_STABLE_STOCKS"
+        elif risk_level == "High" and status_counts.get("Good", 0) == 0:
+            recommendation_block_reason = "MARKET_WEAK"
+        elif status_counts.get("Good", 0) <= status_counts.get("Bad", 0):
+            recommendation_block_reason = "MARKET_WEAK"
+        else:
+            recommendation_block_reason = "NO_MATCHING_STOCKS"
+
+    if not stock_analysis:
+        market_condition = "No Data"
+    elif status_counts.get("Good", 0) > status_counts.get("Bad", 0):
+        market_condition = "Bullish"
+    elif status_counts.get("Bad", 0) > status_counts.get("Good", 0):
+        market_condition = "Weak"
+    else:
+        market_condition = "Neutral"
+
     return {
         # ── Legacy fields (backward compatibility) ──
         "financial_status": financial_status,
@@ -559,6 +591,12 @@ def build_live_investment_payload():
         "emergency": emergency,
         "growth": growth,
         "insights": insights,
+        "investment_readiness": readiness_decision,
+        "readiness_reason": decision_engine.get("impact", ""),
+        "ef_status": ef_status,
+        "recommendation_block_reason": recommendation_block_reason,
+        "stock_status_counts": status_counts,
+        "market_condition": market_condition,
 
         # ── Snapshot for quick display ──
         "snapshot": {

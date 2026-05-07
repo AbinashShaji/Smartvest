@@ -46,6 +46,9 @@
 .stock-name{font-weight:700;font-size:1rem}
 .stock-row{display:flex;justify-content:space-between;padding:4px 0;font-size:.85rem;color:var(--fg-secondary)}
 .stock-row span:last-child{color:#fff;font-weight:600}
+.stock-empty{padding:20px;border-radius:var(--radius-md);background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25)}
+.stock-empty-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.stock-empty p{margin:6px 0;color:var(--fg-secondary);font-size:.9rem}
 
 /* ── Growth Table ── */
 .growth-table{width:100%;border-collapse:collapse;margin-top:12px}
@@ -316,6 +319,91 @@ function fmt(n) { return '₹' + Number(n || 0).toLocaleString('en-IN', {maximum
 function esc(v) { const d = document.createElement('div'); d.textContent = v ?? ''; return d.innerHTML; }
 function badgeClass(tone) { return 'inv-badge inv-badge--' + (tone || 'yellow'); }
 function progressColor(tone) { return {green:'#4ade80',yellow:'#fbbf24',orange:'#fb923c',red:'#f87171'}[tone]||'#fbbf24'; }
+function marketStateFromMetrics(metrics) {
+    const good = Number(metrics?.good || 0);
+    const stable = Number(metrics?.stable || 0);
+    const bad = Number(metrics?.bad || 0);
+    const total = good + stable + bad;
+    if (!total) return { label: 'Cautious Market', tone: 'yellow' };
+
+    const goodRatio = good / total;
+    const badRatio = bad / total;
+
+    if (badRatio >= 0.6) return { label: 'Weak Market', tone: 'red' };
+    if (stable / total >= 0.6) return { label: 'Defensive', tone: 'yellow' };
+    if (badRatio >= 0.4 && goodRatio <= 0.25) return { label: 'High Volatility', tone: 'orange' };
+    if (badRatio > goodRatio) return { label: 'Volatile', tone: 'orange' };
+    if (goodRatio >= 0.5) return { label: 'Bullish', tone: 'green' };
+    return { label: 'Cautious Market', tone: 'yellow' };
+}
+
+function getStocksEmptyState(data, marketState) {
+    const blockReason = data.recommendation_block_reason || 'NO_MATCHING_STOCKS';
+    const readiness = data.investment_readiness || 'NOT_READY';
+    const efStatus = data.ef_status || 'CRITICAL';
+    const marketLabel = marketState?.label || data.market_condition || 'Cautious Market';
+    const marketTone = marketState?.tone || (marketLabel === 'Bullish' ? 'green' : 'yellow');
+
+    // Case 1: Readiness is the primary block.
+    if (['LOW_EF', 'LOW_SAVINGS', 'HIGH_SPENDING'].includes(blockReason) || readiness !== 'READY') {
+        return {
+            title: 'Financial Readiness First',
+            tone: efStatus === 'CRITICAL' ? 'red' : 'orange',
+            badge: readiness === 'PARTIAL' ? 'Partial Readiness' : 'Not Ready',
+            lines: [
+                marketLabel === 'Bullish'
+                    ? 'Market opportunities are available, but your current financial readiness suggests focusing on emergency funds and SIP stability first.'
+                    : 'Your current readiness profile is the main reason direct stock recommendations are limited right now.',
+                data.readiness_reason || 'Strengthen your emergency buffer before increasing direct equity exposure.',
+                'Consider SIPs, diversified funds, and rebuilding emergency-fund coverage first.'
+            ]
+        };
+    }
+
+    // Case 2: Market is weak after readiness is already acceptable.
+    if (blockReason === 'MARKET_WEAK') {
+        return {
+            title: 'Market Conditions Cautious',
+            tone: marketTone === 'green' ? 'yellow' : marketTone,
+            badge: marketLabel,
+            lines: [
+                'Current market breadth is not ideal for your selected stock profile.',
+                'Most tracked stocks are either under pressure or not meeting the quality filter right now.',
+                'Consider waiting for stronger stability before adding direct equity positions.'
+            ]
+        };
+    }
+
+    // Case 3: Matching constraint (for example, no stable stocks for low-risk profile).
+    return {
+        title: 'No Matching Stocks Right Now',
+        tone: 'yellow',
+        badge: 'Profile Filter Active',
+        lines: [
+            'No stocks currently match your risk profile filters from the available dataset.',
+            'This is a selection mismatch, not a system error.',
+            'Keep SIP investments active and review again after market composition changes.'
+        ]
+    };
+}
+
+function renderStocksEmptyState(state) {
+    const title = state?.title || 'No Matching Stocks Right Now';
+    const tone = state?.tone || 'yellow';
+    const badge = state?.badge || 'Limited';
+    const lines = state?.lines || ['No stocks match your risk profile right now.'];
+    return `
+        <div class="stock-empty">
+            <div class="stock-empty-title">
+                <strong>${esc(title)}</strong>
+                <span class="${badgeClass(tone)}">${esc(badge)}</span>
+            </div>
+            <p>${esc(lines[0] || '')}</p>
+            <p>${esc(lines[1] || '')}</p>
+            <p>${esc(lines[2] || '')}</p>
+        </div>
+    `;
+}
 
 function populateInsights(d, tabPrefix, tabName) {
     const i = (d.insights && d.insights[tabName]) || {};
@@ -331,11 +419,16 @@ function populateInsights(d, tabPrefix, tabName) {
 async function loadInvestmentData() {
     try {
         const data = await API.getOverview();
+        const hasNoStockRecommendations = !(data.recommended_stocks || []).length;
+        let marketState = null;
+        if (hasNoStockRecommendations) {
+            marketState = marketStateFromMetrics(data.stock_status_counts || {});
+        }
         renderOverview(data);
         renderReadiness(data);
         renderStrategy(data);
         renderPortfolio(data);
-        renderStocks(data);
+        renderStocks(data, marketState);
         renderGrowth(data);
     } catch (e) {
         document.getElementById('invStatusBadge').textContent = 'Error loading data';
@@ -475,7 +568,7 @@ function renderPortfolio(d) {
 }
 
 /* ── Tab 5: Stocks ── */
-function renderStocks(d) {
+function renderStocks(d, marketState = null) {
     populateInsights(d, 'sk', 'stocks');
     const stocks = d.recommended_stocks || [];
     const sip = d.sip_engine || {};
@@ -484,7 +577,8 @@ function renderStocks(d) {
     document.getElementById('skExplanation').textContent = `These direct equity options are filtered to match your ${sip.risk_level || 'Low'} risk profile. We only recommend allocating a small satellite portion of your portfolio to direct stocks.`;
     
     if (!stocks.length) {
-        document.getElementById('skGrid').innerHTML = '<div class="inv-card"><p class="muted-copy">No stocks match your risk profile.</p></div>';
+        const emptyState = getStocksEmptyState(d, marketState);
+        document.getElementById('skGrid').innerHTML = renderStocksEmptyState(emptyState);
         return;
     }
     document.getElementById('skGrid').innerHTML = stocks.map(s => `

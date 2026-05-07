@@ -28,17 +28,22 @@ plt.style.use("dark_background")
 analysis_bp = Blueprint('analysis', __name__)
 
 STOCK_DAY_COLUMNS = [f"day{i}" for i in range(1, 11)]
-CHART_FIGURE_FACE = "#000000"
-CHART_AXES_FACE = (1, 1, 1, 0.03)
-CHART_GRID_COLOR = (1, 1, 1, 0.08)
-CHART_SPINE_COLOR = (1, 1, 1, 0.15)
+CHART_FIGURE_FACE = "#06080d"
+CHART_AXES_FACE = (1, 1, 1, 0.045)
+CHART_GRID_COLOR = (1, 1, 1, 0.12)
+CHART_SPINE_COLOR = (1, 1, 1, 0.22)
 CHART_TEXT_PRIMARY = "#ffffff"
-CHART_TEXT_MUTED = "#a1a1aa"
+CHART_TEXT_MUTED = "#c6c8d0"
 CHART_TEAL = "#14b8a6"
 CHART_SUCCESS = "#4ade80"
 CHART_WARNING = "#fbbf24"
 CHART_DANGER = "#f87171"
 CHART_SECONDARY = "#60a5fa"
+CHART_DPI = 160
+CHART_TITLE_SIZE = 18
+CHART_LABEL_SIZE = 13
+CHART_TICK_SIZE = 11
+CHART_LEGEND_SIZE = 12
 CHART_PALETTE = [
     CHART_TEAL,
     CHART_SUCCESS,
@@ -51,19 +56,19 @@ CHART_PALETTE = [
 
 def _new_chart_figure(figsize=(10, 6)):
     """Create a web-friendly figure that matches the dashboard dark theme."""
-    fig, ax = plt.subplots(figsize=figsize, dpi=100, facecolor=CHART_FIGURE_FACE)
+    fig, ax = plt.subplots(figsize=figsize, dpi=CHART_DPI, facecolor=CHART_FIGURE_FACE)
     ax.set_facecolor(CHART_AXES_FACE)
     return fig, ax
 
 
 def _style_chart_axes(ax, title, xlabel="", ylabel=""):
     """Apply the shared dark-dashboard chart styling to an axes object."""
-    ax.set_title(title, fontsize=16, color=CHART_TEXT_PRIMARY, fontweight="bold", pad=12)
-    ax.set_xlabel(xlabel, fontsize=12, color=CHART_TEXT_MUTED, labelpad=8)
-    ax.set_ylabel(ylabel, fontsize=12, color=CHART_TEXT_MUTED, labelpad=8)
-    ax.tick_params(axis="both", colors=CHART_TEXT_PRIMARY, labelsize=10)
+    ax.set_title(title, fontsize=CHART_TITLE_SIZE, color=CHART_TEXT_PRIMARY, fontweight="bold", pad=14)
+    ax.set_xlabel(xlabel, fontsize=CHART_LABEL_SIZE, color=CHART_TEXT_MUTED, labelpad=10)
+    ax.set_ylabel(ylabel, fontsize=CHART_LABEL_SIZE, color=CHART_TEXT_MUTED, labelpad=10)
+    ax.tick_params(axis="both", colors=CHART_TEXT_PRIMARY, labelsize=CHART_TICK_SIZE)
     ax.tick_params(axis="x", labelrotation=0)
-    ax.grid(True, axis="both", color=CHART_GRID_COLOR, linestyle="--", linewidth=0.5, alpha=0.15, zorder=0)
+    ax.grid(True, axis="both", color=CHART_GRID_COLOR, linestyle="-", linewidth=0.8, alpha=0.25, zorder=0)
     ax.set_axisbelow(True)
 
     for spine in ax.spines.values():
@@ -73,8 +78,8 @@ def _style_chart_axes(ax, title, xlabel="", ylabel=""):
 
 def _finish_chart(fig, file_path):
     """Save a chart with layout padding that works well in the web UI."""
-    fig.tight_layout(pad=1.5)
-    fig.savefig(file_path, facecolor=CHART_FIGURE_FACE)
+    fig.tight_layout(pad=2.0)
+    fig.savefig(file_path, facecolor=CHART_FIGURE_FACE, dpi=CHART_DPI, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -89,7 +94,7 @@ def _style_legend(legend):
     legend.set_frame_on(True)
     for text in legend.get_texts():
         text.set_color(CHART_TEXT_PRIMARY)
-        text.set_fontsize(11)
+        text.set_fontsize(CHART_LEGEND_SIZE)
 
 
 def _coerce_float(value, default=0.0):
@@ -289,15 +294,15 @@ def _save_pie_chart(file_path, labels, values, title, empty_message):
         startangle=90,
         counterclock=False,
         colors=colors,
-        labeldistance=1.08,
+        labeldistance=1.12,
         pctdistance=0.72,
-        wedgeprops={"linewidth": 0.8, "edgecolor": CHART_FIGURE_FACE},
-        textprops={"color": CHART_TEXT_PRIMARY, "fontsize": 12},
+        wedgeprops={"linewidth": 1.0, "edgecolor": CHART_FIGURE_FACE},
+        textprops={"color": CHART_TEXT_PRIMARY, "fontsize": CHART_TICK_SIZE},
     )
 
     for autotext in autotexts:
         autotext.set_color(CHART_TEXT_PRIMARY)
-        autotext.set_fontsize(12)
+        autotext.set_fontsize(CHART_TICK_SIZE)
 
     if len(labels) > 3:
         legend_labels = [f"{label} ({value:,.0f})" for label, value in zip(labels, values)]
@@ -321,7 +326,7 @@ def _save_pie_chart(file_path, labels, values, title, empty_message):
         )
     _style_legend(legend)
 
-    ax.set_title(title, fontsize=16, color=CHART_TEXT_PRIMARY, fontweight="bold", pad=12)
+    ax.set_title(title, fontsize=CHART_TITLE_SIZE, color=CHART_TEXT_PRIMARY, fontweight="bold", pad=14)
     if len(labels) > 3:
         fig.tight_layout(pad=1.5, rect=(0, 0, 0.82, 1))
     else:
@@ -338,9 +343,9 @@ def _save_bar_chart(file_path, labels, values, title, empty_message):
 
     fig, ax = _new_chart_figure(figsize=(10, 6))
     y_positions = list(range(len(labels)))
-    bars = ax.barh(y_positions, values, color=CHART_TEAL, edgecolor=CHART_SPINE_COLOR, linewidth=0.5, label="Expense")
+    bars = ax.barh(y_positions, values, color=CHART_TEAL, edgecolor=CHART_SPINE_COLOR, linewidth=0.8, label="Expense")
     ax.set_yticks(y_positions)
-    ax.set_yticklabels(labels, color=CHART_TEXT_PRIMARY, fontsize=10)
+    ax.set_yticklabels(labels, color=CHART_TEXT_PRIMARY, fontsize=CHART_TICK_SIZE)
     ax.invert_yaxis()
     _style_chart_axes(ax, title, "Amount", "Category")
     ax.xaxis.set_major_locator(MaxNLocator(nbins=6))
@@ -353,7 +358,7 @@ def _save_bar_chart(file_path, labels, values, title, empty_message):
             va="center",
             ha="left",
             color=CHART_TEXT_PRIMARY,
-            fontsize=10,
+            fontsize=CHART_TICK_SIZE,
         )
 
     legend = ax.legend(loc="best", frameon=True, framealpha=0.95, shadow=False)
@@ -370,9 +375,11 @@ def _save_line_chart(file_path, trend_data, title, empty_message):
     fig, ax = _new_chart_figure(figsize=(10, 6))
     labels = [item.get("label") or item.get("month") or "" for item in trend_data]
     values = [_coerce_float(item.get("expense")) for item in trend_data]
-    ax.plot(labels, values, marker="o", linewidth=2.5, markersize=8, color=CHART_TEAL, label="Expense")
+    ax.plot(labels, values, marker="o", linewidth=2.8, markersize=8, color=CHART_TEAL, label="Expense")
     _style_chart_axes(ax, title, "Month", "Amount")
     ax.xaxis.set_tick_params(labelrotation=0)
+    if len(labels) > 8:
+        ax.xaxis.set_tick_params(labelrotation=25)
     ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
     legend = ax.legend(
         loc="best",
@@ -1232,8 +1239,8 @@ def build_market_metrics():
         daily_average = stock_frame[day_columns].apply(pd.to_numeric, errors="coerce").fillna(0).mean(axis=0)
         x_values = list(range(1, 11))
 
-        fig, ax = _new_chart_figure(figsize=(10, 6))
-        ax.plot(x_values, daily_average.values, marker="o", linewidth=2.5, markersize=8, color=CHART_TEAL, label="Average Price")
+        fig, ax = _new_chart_figure(figsize=(10.5, 6.4))
+        ax.plot(x_values, daily_average.values, marker="o", linewidth=2.8, markersize=8, color=CHART_TEAL, label="Average Price")
         _style_chart_axes(ax, "Market Trend", "Day", "Average Price")
         ax.set_xticks(x_values)
         ax.set_xticklabels([f"Day {i}" for i in x_values], rotation=0)
@@ -1249,11 +1256,11 @@ def build_market_metrics():
     else:
         _save_empty_chart(trend_chart_path, "Market Trend", "No stock data available")
 
-    fig, ax = _new_chart_figure(figsize=(10, 6))
+    fig, ax = _new_chart_figure(figsize=(10.5, 6.4))
     categories = ["Good", "Bad", "Stable"]
     counts = [good_count, bad_count, stable_count]
     colors = [CHART_SUCCESS, CHART_DANGER, CHART_TEXT_MUTED]
-    bars = ax.bar(categories, counts, color=colors, edgecolor=CHART_SPINE_COLOR, linewidth=0.5, zorder=2)
+    bars = ax.bar(categories, counts, color=colors, edgecolor=CHART_SPINE_COLOR, linewidth=0.8, zorder=2)
     _style_chart_axes(ax, "Market Summary", "Classification", "Count")
     ax.yaxis.set_major_locator(MaxNLocator(nbins=6))
     for bar in bars:
@@ -1265,7 +1272,7 @@ def build_market_metrics():
             ha="center",
             va="bottom",
             color=CHART_TEXT_PRIMARY,
-            fontsize=10,
+            fontsize=CHART_TICK_SIZE,
         )
     _finish_chart(fig, summary_chart_path)
 
@@ -1303,7 +1310,7 @@ def build_market_metrics():
                 "volatility_difference": volatility_difference,
             }
 
-    fig, ax = _new_chart_figure(figsize=(10, 6))
+    fig, ax = _new_chart_figure(figsize=(10.5, 6.4))
     compare_labels = ["Avg Move %", "Volatility %"]
     current_values = [average_movement, volatility]
     previous_values = [previous_average_movement, previous_volatility]

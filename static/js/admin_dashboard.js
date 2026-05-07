@@ -1,11 +1,15 @@
 (function () {
     const chartColors = {
-        line: '#ffffff',
-        grid: 'rgba(255,255,255,0.08)',
-        muted: 'rgba(255,255,255,0.55)',
+        line: '#7dd3fc',
+        lineFillTop: 'rgba(125,211,252,0.24)',
+        lineFillBottom: 'rgba(125,211,252,0.03)',
+        grid: 'rgba(255,255,255,0.12)',
+        muted: 'rgba(255,255,255,0.72)',
         active: '#4ade80',
-        inactive: 'rgba(255,255,255,0.16)',
+        inactive: 'rgba(148,163,184,0.35)',
+        axis: 'rgba(255,255,255,0.22)',
     };
+    let latestEngagement = null;
 
     function setText(id, value) {
         const element = document.getElementById(id);
@@ -42,29 +46,49 @@
     function drawLineChart(canvas, labels = [], values = []) {
         if (!canvas) return;
         const { ctx, width, height } = clearCanvas(canvas);
-        const padding = 28;
+        const padding = 36;
         const chartWidth = width - padding * 2;
         const chartHeight = height - padding * 2;
         const maxValue = Math.max(...values.map(safeNumber), 1);
+        const minValue = Math.min(...values.map(safeNumber), 0);
+        const range = Math.max(maxValue - minValue, 1);
 
         ctx.strokeStyle = chartColors.grid;
         ctx.lineWidth = 1;
-        for (let i = 0; i <= 3; i += 1) {
-            const y = padding + (chartHeight / 3) * i;
+        for (let i = 0; i <= 4; i += 1) {
+            const y = padding + (chartHeight / 4) * i;
             ctx.beginPath();
             ctx.moveTo(padding, y);
             ctx.lineTo(width - padding, y);
             ctx.stroke();
         }
+        ctx.strokeStyle = chartColors.axis;
+        ctx.beginPath();
+        ctx.moveTo(padding, height - padding);
+        ctx.lineTo(width - padding, height - padding);
+        ctx.stroke();
 
         const points = values.map((value, index) => {
             const x = padding + (chartWidth / Math.max(values.length - 1, 1)) * index;
-            const y = padding + chartHeight - (safeNumber(value) / maxValue) * chartHeight;
+            const y = padding + chartHeight - ((safeNumber(value) - minValue) / range) * chartHeight;
             return { x, y };
         });
 
+        if (points.length > 1) {
+            const gradient = ctx.createLinearGradient(0, padding, 0, height - padding);
+            gradient.addColorStop(0, chartColors.lineFillTop);
+            gradient.addColorStop(1, chartColors.lineFillBottom);
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, height - padding);
+            points.forEach((point) => ctx.lineTo(point.x, point.y));
+            ctx.lineTo(points[points.length - 1].x, height - padding);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+
         ctx.strokeStyle = chartColors.line;
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.8;
         ctx.beginPath();
         points.forEach((point, index) => {
             if (index === 0) ctx.moveTo(point.x, point.y);
@@ -75,15 +99,16 @@
         ctx.fillStyle = chartColors.line;
         points.forEach((point) => {
             ctx.beginPath();
-            ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+            ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
             ctx.fill();
         });
 
         ctx.fillStyle = chartColors.muted;
-        ctx.font = '11px Inter, sans-serif';
+        ctx.font = '600 12px Inter, sans-serif';
         labels.forEach((label, index) => {
             const x = padding + (chartWidth / Math.max(labels.length - 1, 1)) * index;
-            ctx.fillText(String(label).slice(5), x - 14, height - 8);
+            const shortLabel = String(label).slice(5);
+            ctx.fillText(shortLabel, x - Math.min(20, shortLabel.length * 3), height - 10);
         });
     }
 
@@ -93,7 +118,7 @@
         const active = safeNumber(values[0]);
         const inactive = safeNumber(values[1]);
         const total = Math.max(active + inactive, 1);
-        const radius = Math.min(width, height) / 2 - 18;
+        const radius = Math.min(width, height) / 2 - 24;
         const centerX = width / 2;
         const centerY = height / 2;
         let start = -Math.PI / 2;
@@ -102,19 +127,19 @@
             const angle = (value / total) * Math.PI * 2;
             ctx.beginPath();
             ctx.strokeStyle = index === 0 ? chartColors.active : chartColors.inactive;
-            ctx.lineWidth = 22;
+            ctx.lineWidth = 24;
             ctx.arc(centerX, centerY, radius, start, start + angle);
             ctx.stroke();
             start += angle;
         });
 
         ctx.fillStyle = '#ffffff';
-        ctx.font = '700 24px Inter, sans-serif';
+        ctx.font = '700 26px Inter, sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(`${Math.round((active / total) * 100)}%`, centerX, centerY + 4);
         ctx.fillStyle = chartColors.muted;
-        ctx.font = '12px Inter, sans-serif';
-        ctx.fillText('active', centerX, centerY + 24);
+        ctx.font = '600 12px Inter, sans-serif';
+        ctx.fillText('active users', centerX, centerY + 26);
         ctx.textAlign = 'start';
     }
 
@@ -128,6 +153,7 @@
     }
 
     function renderEngagement(metrics) {
+        latestEngagement = metrics;
         setText('engagementPercent', `${safeNumber(metrics.engagement_percent)}% engaged`);
         setText('activeSplitText', `${safeNumber(metrics.active_users)} active / ${safeNumber(metrics.inactive_users)} inactive users`);
         drawLineChart(
@@ -141,6 +167,19 @@
         if (!insights) return;
         const items = Array.isArray(metrics.insights) && metrics.insights.length ? metrics.insights : ['No platform activity yet.'];
         insights.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
+    }
+
+    function redrawEngagementCharts() {
+        if (!latestEngagement) return;
+        drawLineChart(
+            document.getElementById('weeklyActivityChart'),
+            latestEngagement.weekly_trend?.labels || [],
+            latestEngagement.weekly_trend?.values || []
+        );
+        drawDonutChart(
+            document.getElementById('activeSplitChart'),
+            latestEngagement.active_split?.values || []
+        );
     }
 
     function renderReminders(reminders) {
@@ -202,5 +241,8 @@
     }
 
     document.addEventListener('DOMContentLoaded', loadDashboard);
-    window.addEventListener('resize', loadDashboard);
+    window.addEventListener('resize', () => {
+        clearTimeout(window.adminChartResizeTimer);
+        window.adminChartResizeTimer = setTimeout(redrawEngagementCharts, 150);
+    });
 }());
