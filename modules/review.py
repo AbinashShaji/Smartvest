@@ -9,6 +9,7 @@ Purpose : Handles user-submitted reviews.
 from flask import Blueprint, request, jsonify
 from datetime import datetime   # Used to get the current date automatically
 import config
+from utils.api_errors import safe_api_error
 from utils.db import get_db_connection   # Real database connection
 
 # Create the Review Blueprint
@@ -81,4 +82,9 @@ def api_user_submit_review():
         return jsonify({"status": "success", "data": new_review})
 
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
+
+
+
+
+

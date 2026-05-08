@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
 import config
+from utils.api_errors import safe_api_error
 from utils.db import get_db_connection
 from utils.market_data import (
     save_uploaded_market_dataset,
@@ -202,7 +203,7 @@ def api_admin_activity_stats():
             },
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/engagement-metrics")
@@ -274,7 +275,7 @@ def api_admin_engagement_metrics():
             },
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/reminders")
@@ -299,7 +300,7 @@ def api_admin_reminders():
             },
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/recent-activity")
@@ -349,7 +350,7 @@ def api_admin_recent_activity():
             },
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 # =============================================================================
@@ -370,7 +371,7 @@ def api_admin_users():
         conn.close()
         return jsonify({"status": "success", "data": all_users})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/user/delete", methods=["DELETE"])
@@ -399,7 +400,7 @@ def api_admin_delete_user():
         conn.close()
         return jsonify({"status": "success", "data": {"message": "User deleted successfully."}})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/feedback/all")
@@ -419,7 +420,7 @@ def api_admin_feedback():
         conn.close()
         return jsonify({"status": "success", "data": all_feedback})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/feedback/incoming")
@@ -440,7 +441,7 @@ def api_admin_feedback_incoming():
         conn.close()
         return jsonify({"status": "success", "data": rows})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/feedback/accepted")
@@ -461,7 +462,7 @@ def api_admin_feedback_accepted():
         conn.close()
         return jsonify({"status": "success", "data": rows})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/feedback/accept", methods=["POST"])
@@ -494,7 +495,7 @@ def api_admin_feedback_accept():
         conn.close()
         return jsonify({"status": "success", "data": {"message": "Feedback accepted."}})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/feedback/delete", methods=["DELETE"])
@@ -521,7 +522,7 @@ def api_admin_feedback_delete():
         conn.close()
         return jsonify({"status": "success", "data": {"message": "Feedback deleted."}})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/feedback/resolve", methods=["POST"])
@@ -564,7 +565,7 @@ def _set_feedback_resolved_value(value):
         conn.close()
         return jsonify({"status": "success", "data": {"message": "Feedback resolution updated."}})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/market-dataset/list")
@@ -583,7 +584,7 @@ def api_admin_market_dataset_list():
             },
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/market-dataset/upload", methods=["POST"])
@@ -608,9 +609,9 @@ def api_admin_market_dataset_upload():
             },
         })
     except ValueError as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return jsonify({"status": "error", "message": "Something went wrong. Please try again."}), 400
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/market-dataset/preview")
@@ -627,7 +628,7 @@ def api_admin_market_dataset_preview():
         preview = get_dataset_preview(active["dataset_path"], limit=8)
         return jsonify({"status": "success", "data": {"preview": preview, "active": active}})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/review/all")
@@ -647,7 +648,7 @@ def api_admin_reviews():
         conn.close()
         return jsonify({"status": "success", "data": all_reviews})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/review/incoming")
@@ -668,7 +669,7 @@ def api_admin_reviews_incoming():
         conn.close()
         return jsonify({"status": "success", "data": rows})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/review/accepted")
@@ -689,7 +690,7 @@ def api_admin_reviews_accepted():
         conn.close()
         return jsonify({"status": "success", "data": rows})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/review/accept", methods=["POST"])
@@ -721,7 +722,7 @@ def api_admin_review_accept():
         conn.close()
         return jsonify({"status": "success", "data": {"message": "Review accepted."}})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/review/public-toggle", methods=["POST"])
@@ -767,7 +768,7 @@ def api_admin_review_public_toggle():
         conn.close()
         return jsonify({"status": "success", "data": {"message": "Public visibility updated."}})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/public/reviews")
@@ -788,7 +789,7 @@ def api_public_reviews():
         conn.close()
         return jsonify({"status": "success", "data": rows})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @admin_bp.route("/api/admin/review/delete", methods=["DELETE"])
@@ -815,4 +816,6 @@ def api_admin_delete_review():
         conn.close()
         return jsonify({"status": "success", "data": {"message": "Review deleted successfully."}})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
+
+

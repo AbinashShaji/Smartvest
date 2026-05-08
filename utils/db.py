@@ -1,67 +1,59 @@
-"""
-Purpose: SmartVest SQLite Database Handler
-Handles connection, initialization, and default data setup.
-"""
+"""SmartVest SQLite helpers with production-safe defaults."""
 import sqlite3
 from datetime import datetime
 from werkzeug.security import generate_password_hash
 
+import config
+
+
 def get_db_connection():
     """
-    Purpose: Create connection to SQLite database
-    Input: None
-    Output: Database connection object
+    Open a SQLite connection with safer production defaults.
+    WAL mode improves concurrent read/write behavior on SQLite.
     """
-    conn = sqlite3.connect("smartvest.db")
-    conn.row_factory = sqlite3.Row  # Allows accessing columns like dict
+    conn = sqlite3.connect(config.DATABASE_PATH, timeout=30, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
+
 def init_db():
-    """
-    Purpose: Create all tables if they do not exist
-    Input: None
-    Output: None
-    """
+    """Create/upgrade tables and indexes used by SmartVest."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # USERS TABLE
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT,
-        email TEXT,
-        password TEXT,
-        role TEXT,
-        created_at TEXT
+        username TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user',
+        created_at TEXT NOT NULL
     )
     """)
 
-    cursor.execute("PRAGMA table_info(users)")
-    user_columns = [column[1] for column in cursor.fetchall()]
-    if "created_at" not in user_columns:
-        cursor.execute("ALTER TABLE users ADD COLUMN created_at TEXT")
-
-    # EXPENSES TABLE
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        amount REAL,
-        category TEXT,
-        date TEXT,
+        user_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
+        category TEXT NOT NULL,
+        date TEXT NOT NULL,
         description TEXT
     )
     """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_expenses_user_id ON expenses(user_id)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date)")
 
-    # GOALS TABLE
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS goals (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        goal_name TEXT,
-        target_amount REAL,
-        saved_amount REAL,
+        user_id INTEGER NOT NULL,
+        goal_name TEXT NOT NULL,
+        target_amount REAL NOT NULL,
+        saved_amount REAL NOT NULL DEFAULT 0,
         deadline TEXT,
         status TEXT DEFAULT 'active',
         priority TEXT DEFAULT 'medium',
@@ -72,142 +64,99 @@ def init_db():
         archived_at TEXT
     )
     """)
-
-    # Keep goals schema compatible with older databases.
-    cursor.execute("PRAGMA table_info(goals)")
-    goals_columns = [column[1] for column in cursor.fetchall()]
-    if "status" not in goals_columns:
-        cursor.execute("ALTER TABLE goals ADD COLUMN status TEXT DEFAULT 'active'")
-    if "priority" not in goals_columns:
-        cursor.execute("ALTER TABLE goals ADD COLUMN priority TEXT DEFAULT 'medium'")
-    if "created_at" not in goals_columns:
-        cursor.execute("ALTER TABLE goals ADD COLUMN created_at TEXT")
-    if "updated_at" not in goals_columns:
-        cursor.execute("ALTER TABLE goals ADD COLUMN updated_at TEXT")
-    if "paused_at" not in goals_columns:
-        cursor.execute("ALTER TABLE goals ADD COLUMN paused_at TEXT")
-    if "completed_at" not in goals_columns:
-        cursor.execute("ALTER TABLE goals ADD COLUMN completed_at TEXT")
-    if "archived_at" not in goals_columns:
-        cursor.execute("ALTER TABLE goals ADD COLUMN archived_at TEXT")
-
-    # Backfill null lifecycle values for stable defaults.
-    cursor.execute("UPDATE goals SET status = 'active' WHERE status IS NULL OR TRIM(status) = ''")
-    cursor.execute("UPDATE goals SET priority = 'medium' WHERE priority IS NULL OR TRIM(priority) = ''")
-
-    # Goal query indexes for fast filtering and portfolio refreshes.
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_goals_user_id ON goals(user_id)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_goals_status ON goals(status)")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_goals_deadline ON goals(deadline)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_goals_created_at ON goals(created_at)")
 
-    # INCOME TABLE
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS income (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        amount REAL,
+        user_id INTEGER NOT NULL,
+        amount REAL NOT NULL,
         source TEXT,
-        date TEXT
+        date TEXT NOT NULL
     )
     """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_income_user_id ON income(user_id)")
 
-    # FEEDBACK TABLE
-    # Stores messages submitted by users via the feedback form
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS feedback (
-        id      INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
         subject TEXT DEFAULT 'General Inquiry',
-        message TEXT,
-        date    TEXT,
+        message TEXT NOT NULL,
+        date TEXT NOT NULL,
         status TEXT DEFAULT 'pending',
         accepted_at TEXT,
         resolved INTEGER DEFAULT 0
     )
     """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_feedback_status ON feedback(status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_feedback_date ON feedback(date)")
 
-    # Keep feedback workflow columns compatible with older databases.
-    cursor.execute("PRAGMA table_info(feedback)")
-    feedback_columns = [column[1] for column in cursor.fetchall()]
-    if "status" not in feedback_columns:
-        cursor.execute("ALTER TABLE feedback ADD COLUMN status TEXT DEFAULT 'pending'")
-    if "accepted_at" not in feedback_columns:
-        cursor.execute("ALTER TABLE feedback ADD COLUMN accepted_at TEXT")
-    if "resolved" not in feedback_columns:
-        cursor.execute("ALTER TABLE feedback ADD COLUMN resolved INTEGER DEFAULT 0")
-
-    # REVIEWS TABLE
-    # Stores user reviews; status is PENDING until admin approves/rejects
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS reviews (
-        id      INTEGER PRIMARY KEY AUTOINCREMENT,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER,
-        rating  INTEGER,
-        comment TEXT,
-        status  TEXT DEFAULT 'pending',
-        date    TEXT,
+        rating INTEGER,
+        comment TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        date TEXT NOT NULL,
         show_public INTEGER DEFAULT 0,
         approved_at TEXT
     )
     """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_reviews_status ON reviews(status)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_reviews_public ON reviews(show_public)")
 
-    # Keep review workflow columns compatible with older databases.
-    cursor.execute("PRAGMA table_info(reviews)")
-    review_columns = [column[1] for column in cursor.fetchall()]
-    if "status" not in review_columns:
-        cursor.execute("ALTER TABLE reviews ADD COLUMN status TEXT DEFAULT 'pending'")
-    if "show_public" not in review_columns:
-        cursor.execute("ALTER TABLE reviews ADD COLUMN show_public INTEGER DEFAULT 0")
-    if "approved_at" not in review_columns:
-        cursor.execute("ALTER TABLE reviews ADD COLUMN approved_at TEXT")
-
-    # MARKET DATASETS TABLE
-    # Tracks uploaded stock CSV datasets used by market metrics and investment analysis.
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS market_datasets (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        filename TEXT,
-        dataset_path TEXT,
-        uploaded_at TEXT,
+        filename TEXT NOT NULL,
+        dataset_path TEXT NOT NULL,
+        uploaded_at TEXT NOT NULL,
         total_records INTEGER DEFAULT 0,
         is_active INTEGER DEFAULT 0
     )
     """)
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_market_datasets_active ON market_datasets(is_active)")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_market_datasets_uploaded_at ON market_datasets(uploaded_at)")
 
     conn.commit()
     conn.close()
 
+
 def create_admin():
     """
-    Purpose: Ensure admin account exists in database.
-    Input: None
-    Output: None
+    Bootstrap admin account only when credentials are provided via environment.
+    This avoids shipping hardcoded admin credentials in source code.
     """
+    if not all([config.ADMIN_USERNAME, config.ADMIN_EMAIL, config.ADMIN_PASSWORD]):
+        return
+
     conn = get_db_connection()
     cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM users WHERE username = ?", ("admin",))
+    cursor.execute(
+        "SELECT id, role FROM users WHERE username = ? OR email = ?",
+        (config.ADMIN_USERNAME, config.ADMIN_EMAIL.lower()),
+    )
     admin = cursor.fetchone()
-
     if not admin:
-        cursor.execute("""
-        INSERT INTO users (username, email, password, role, created_at)
-        VALUES (?, ?, ?, ?, ?)
-        """, (
-            "admin",
-            "admin@local",
-            generate_password_hash("admin@7790"),
-            "admin",
-            datetime.now().strftime("%Y-%m-%d"),
-        ))
-    else:
-        # Keep the seeded admin account on a hashed password even if an older DB stored plaintext.
-        password = admin["password"] if "password" in admin.keys() else None
-        if isinstance(password, str) and not password.startswith(("pbkdf2:", "scrypt:", "argon2:")):
-            cursor.execute(
-                "UPDATE users SET password = ? WHERE username = ?",
-                (generate_password_hash(password), "admin")
-            )
-
+        cursor.execute(
+            """
+            INSERT INTO users (username, email, password, role, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                config.ADMIN_USERNAME,
+                config.ADMIN_EMAIL.lower(),
+                generate_password_hash(config.ADMIN_PASSWORD),
+                "admin",
+                datetime.now().strftime("%Y-%m-%d"),
+            ),
+        )
+    elif admin["role"] != "admin":
+        cursor.execute("UPDATE users SET role = 'admin' WHERE id = ?", (admin["id"],))
     conn.commit()
     conn.close()

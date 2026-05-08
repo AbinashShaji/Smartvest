@@ -11,6 +11,7 @@ Design  : ALL data comes from get_analysis_data() — the single source of truth
 
 from flask import Blueprint, render_template, jsonify, redirect, url_for
 import config
+from utils.api_errors import safe_api_error
 from modules.analysis import (
     get_analysis_data,
     analyze_stock_rows,
@@ -648,10 +649,15 @@ def api_investment_overview():
             "data": build_live_investment_payload(),
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @investment_bp.route("/api/investment")
 def api_investment_alias():
     """Compatibility alias for older clients expecting /api/investment."""
     return api_investment_overview()
+
+
+
+
+

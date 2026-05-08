@@ -1226,19 +1226,11 @@
         };
 
         async function rawRequest(endpoint, options = {}) {
-            const response = await fetch(endpoint, {
-                credentials: 'same-origin',
-                ...options,
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(options.headers || {}),
-                },
-            });
-            const payload = await response.json().catch(() => ({}));
-            if (!response.ok || payload.status === 'error') {
-                throw new Error(payload.message || `Request failed (${response.status})`);
-            }
-            return payload;
+            // Why this wrapper exists:
+            // We keep the legacy payload shape used by this page while delegating
+            // CSRF token handling and consistent fetch behavior to API.request.
+            const data = await API.request(endpoint, options);
+            return { status: 'success', data, ...(data && typeof data === 'object' ? data : {}) };
         }
 
         function normalizeGoal(goal, fallback = {}) {

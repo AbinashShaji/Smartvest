@@ -7,6 +7,7 @@ Purpose : Minimal single-value monthly income storage and API.
 
 from flask import Blueprint, jsonify, request
 import config
+from utils.api_errors import safe_api_error
 from utils.db import get_db_connection
 from datetime import datetime
 
@@ -99,9 +100,9 @@ def api_set_income():
         result = set_income(data.get("amount"))
         return jsonify({"status": "success", "data": result})
     except (ValueError, PermissionError) as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
+        return jsonify({"status": "error", "success": False, "message": "Invalid income request."}), 400
     except Exception as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
+        return safe_api_error(exc, status_code=400)
 
 
 @income_bp.route("/api/income/get")
@@ -114,6 +115,11 @@ def api_get_income():
         result = get_income()
         return jsonify({"status": "success", "data": result})
     except PermissionError as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 401
+        return jsonify({"status": "error", "success": False, "message": "Unauthorized access."}), 401
     except Exception as exc:
-        return jsonify({"status": "error", "message": str(exc)}), 400
+        return safe_api_error(exc, status_code=400)
+
+
+
+
+

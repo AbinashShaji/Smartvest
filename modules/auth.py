@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, jsonify, session, redirec
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import config
+from utils.api_errors import safe_api_error
 from utils.db import get_db_connection
 from utils.mail import send_contact_email
 
@@ -73,13 +74,10 @@ def api_send_contact_message():
     except ValueError as e:
         return jsonify({
             "status": "error",
-            "message": str(e)
+            "message": "Something went wrong. Please try again."
         }), 400
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": f"Unable to send message: {str(e)}"
-        }), 500
+        return safe_api_error(e, status_code=500)
 
 @auth_bp.route("/login")
 def login():
@@ -200,10 +198,7 @@ def api_signup():
             "data": session["user"]
         }), 201
     except Exception as e:
-        return jsonify({
-            "status": "error",
-            "message": str(e)
-        }), 500
+        return safe_api_error(e, status_code=500)
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
 def api_login():
@@ -268,10 +263,7 @@ def api_login():
             "data": session["user"]
         })
     except Exception as e:
-        return jsonify({
-            "status": "error", 
-            "message": str(e)
-        }), 500
+        return safe_api_error(e, status_code=500)
 
 @auth_bp.route("/api/auth/logout", methods=["POST"])
 def api_logout():
@@ -287,10 +279,7 @@ def api_logout():
             "data": {"message": "Logged out successfully."}
         })
     except Exception as e:
-        return jsonify({
-            "status": "error", 
-            "message": str(e)
-        }), 500
+        return safe_api_error(e, status_code=500)
 
 @auth_bp.route("/api/auth/check-session")
 def api_check_session():
@@ -357,7 +346,7 @@ def api_update_profile():
             "data": config.get_current_user()
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 @auth_bp.route("/api/auth/password/change", methods=["POST"])
 def api_change_password():
@@ -409,4 +398,6 @@ def api_change_password():
             "data": {"message": "Password updated successfully."}
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
+
+

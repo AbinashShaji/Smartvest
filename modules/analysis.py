@@ -7,8 +7,10 @@ Purpose : Handles the Dashboard and Analysis pages + their data APIs.
 
 from flask import Blueprint, render_template, jsonify, redirect, url_for, request, session
 import config
-from utils.db import get_db_connection   # ← real database helper
+from utils.api_errors import safe_api_error
+from utils.db import get_db_connection   # real database helper
 import os
+import time
 from copy import deepcopy
 from datetime import datetime, timedelta
 from typing import Any, Dict
@@ -30,6 +32,8 @@ analysis_bp = Blueprint('analysis', __name__)
 
 _ANALYSIS_CACHE: Dict[Any, Dict[str, Any]] = {}
 _ANALYSIS_CACHE_TTL_SECONDS = 20
+_MARKET_METRICS_CACHE: Dict[str, Any] = {"key": None, "expires_at": 0.0, "data": None}
+_MARKET_CACHE_TTL_SECONDS = 60
 
 
 def invalidate_analysis_cache(user_id=None):
@@ -403,15 +407,15 @@ def _save_line_chart(file_path, trend_data, title, empty_message):
     _finish_chart(fig, file_path)
 
 
-def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any]) -> Dict[str, str]:
-    """Generate and overwrite the financial charts used by the UI."""
+def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any], user_id: int) -> Dict[str, str]:
+    """Generate user-scoped chart files to avoid cross-user overwrite collisions."""
     os.makedirs("static", exist_ok=True)
 
-    category_chart = "static/current_pie.png"
-    category_bar_chart = "static/current_category_bar.png"
-    trend_chart = "static/current_trend.png"
-    yearly_trend_chart = "static/yearly_trend.png"
-    yearly_bar_chart = "static/yearly_expense_bar.png"
+    category_chart = f"static/current_pie_u{user_id}.png"
+    category_bar_chart = f"static/current_category_bar_u{user_id}.png"
+    trend_chart = f"static/current_trend_u{user_id}.png"
+    yearly_trend_chart = f"static/yearly_trend_u{user_id}.png"
+    yearly_bar_chart = f"static/yearly_expense_bar_u{user_id}.png"
 
     category_breakdown = current.get("category_breakdown") or []
     sorted_category_breakdown = sorted(
@@ -459,15 +463,15 @@ def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any]) 
     )
 
     return {
-        "current_pie": "/static/current_pie.png",
-        "current_category_bar": "/static/current_category_bar.png",
-        "current_trend": "/static/current_trend.png",
-        "yearly_trend_chart": "/static/yearly_trend.png",
-        "yearly_expense_bar": "/static/yearly_expense_bar.png",
-        "category_chart": "/static/current_pie.png",
-        "category_bar_chart": "/static/current_category_bar.png",
-        "trend_chart": "/static/current_trend.png",
-        "yearly_bar_chart": "/static/yearly_expense_bar.png",
+        "current_pie": f"/static/current_pie_u{user_id}.png",
+        "current_category_bar": f"/static/current_category_bar_u{user_id}.png",
+        "current_trend": f"/static/current_trend_u{user_id}.png",
+        "yearly_trend_chart": f"/static/yearly_trend_u{user_id}.png",
+        "yearly_expense_bar": f"/static/yearly_expense_bar_u{user_id}.png",
+        "category_chart": f"/static/current_pie_u{user_id}.png",
+        "category_bar_chart": f"/static/current_category_bar_u{user_id}.png",
+        "trend_chart": f"/static/current_trend_u{user_id}.png",
+        "yearly_bar_chart": f"/static/yearly_expense_bar_u{user_id}.png",
     }
 
 
@@ -1147,7 +1151,7 @@ def get_analysis_data(user_id=None):
         "detailed": yearly_detailed,
     }
 
-    charts = _generate_financial_charts(current, yearly)
+    charts = _generate_financial_charts(current, yearly, int(user_id))
 
     # ── savings_behavior + emergency fund sections ──
     # Determine savings trend direction from the 3-month history
@@ -1204,6 +1208,15 @@ def build_market_metrics():
     Output  : Dictionary with counts, market status, top movers, and chart paths.
     """
     active_dataset = get_active_dataset()
+    cache_key = str(active_dataset["id"]) if active_dataset else "no-dataset"
+    now_ts = time.time()
+    cached = _MARKET_METRICS_CACHE.get("data")
+    if (
+        _MARKET_METRICS_CACHE.get("key") == cache_key
+        and _MARKET_METRICS_CACHE.get("expires_at", 0.0) > now_ts
+        and cached is not None
+    ):
+        return deepcopy(cached)
     stock_frame = load_stock_csv()
     os.makedirs("static", exist_ok=True)
 
@@ -1407,7 +1420,7 @@ def build_market_metrics():
         f"Gainers: {good_count}, Losers: {bad_count}, Stable: {stable_count}."
     )
 
-    return {
+    payload = {
         "summary": summary,
         "market_status": market_status,
         "active_dataset": active_dataset,
@@ -1432,6 +1445,10 @@ def build_market_metrics():
             "comparison": "/static/market_comparison.png",
         },
     }
+    _MARKET_METRICS_CACHE["key"] = cache_key
+    _MARKET_METRICS_CACHE["expires_at"] = now_ts + _MARKET_CACHE_TTL_SECONDS
+    _MARKET_METRICS_CACHE["data"] = deepcopy(payload)
+    return payload
 
 
 def get_user_financial_snapshot(user_id):
@@ -1549,7 +1566,7 @@ def api_dashboard_data():
         analysis_data = get_analysis_data(user_id)
         return jsonify({"status": "success", "data": analysis_data})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @analysis_bp.route("/api/dashboard")
@@ -1585,7 +1602,7 @@ def api_expense_analysis():
             },
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @analysis_bp.route("/api/analysis")
@@ -1603,7 +1620,7 @@ def api_expenses_dataframe():
         user_id = config.get_current_user()["user_id"]
         return jsonify({"status": "success", "data": get_analysis_data(user_id)})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @analysis_bp.route("/api/analysis/ef-override", methods=["POST"])
@@ -1644,3 +1661,8 @@ def api_ef_override():
         })
     except (TypeError, ValueError):
         return jsonify({"status": "error", "message": "Invalid target value"}), 400
+
+
+
+
+

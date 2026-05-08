@@ -36,19 +36,7 @@
     }
 
     async function fetchJSON(url, options = {}) {
-        const response = await fetch(url, {
-            credentials: 'same-origin',
-            ...options,
-            headers: {
-                'Content-Type': 'application/json',
-                ...(options.headers || {}),
-            },
-        });
-        const payload = await response.json().catch(() => ({}));
-        if (!response.ok || payload.status === 'error') {
-            throw new Error(payload.message || `Request failed (${response.status})`);
-        }
-        return payload.data ?? payload;
+        return API.request(url, options);
     }
 
     function renderIncomeKpi(incomeEmpty) {

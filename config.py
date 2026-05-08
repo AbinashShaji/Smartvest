@@ -1,9 +1,6 @@
-"""
-CONFIG.PY
-----------
-Shared configuration and session helpers for SmartVest.
-"""
+"""Shared configuration and session helpers for SmartVest."""
 import os
+from pathlib import Path
 from flask import session
 
 try:
@@ -13,12 +10,30 @@ except ImportError:
     # App still works when environment variables are injected another way.
     pass
 
-# --- SECURITY CONFIGURATION ---
+BASE_DIR = Path(__file__).resolve().parent
+INSTANCE_DIR = BASE_DIR / "instance"
+INSTANCE_DIR.mkdir(exist_ok=True)
 
-# What is SECRET_KEY?
-# This is a random string used by Flask to encrypt our session cookies.
-# It is needed so that users cannot tamper with their session data (like changing their user_id).
-SECRET_KEY = os.getenv("SECRET_KEY", "smartvest-dev-key")
+# Why this strict secret policy exists:
+# Flask signs session cookies with SECRET_KEY.
+# A hardcoded fallback makes every deployment predictable and unsafe.
+SECRET_KEY = os.getenv("SECRET_KEY")
+
+# Why paths are configurable:
+# Render and local machines can have different writable directories.
+DATABASE_PATH = os.getenv("SMARTVEST_DB_PATH", str(INSTANCE_DIR / "smartvest.db"))
+UPLOAD_BASE_DIR = os.getenv("SMARTVEST_UPLOAD_DIR", str(BASE_DIR / "uploads"))
+
+# Why this flag exists:
+# We can keep secure defaults while still allowing local development.
+ENVIRONMENT = os.getenv("FLASK_ENV", "production").lower()
+IS_PRODUCTION = ENVIRONMENT == "production"
+
+# Why these admin values are environment-driven:
+# Bootstrap credentials are sensitive and must never be hardcoded in source.
+ADMIN_USERNAME = os.getenv("SMARTVEST_ADMIN_USERNAME")
+ADMIN_EMAIL = os.getenv("SMARTVEST_ADMIN_EMAIL")
+ADMIN_PASSWORD = os.getenv("SMARTVEST_ADMIN_PASSWORD")
 
 
 # --- AUTH HELPER FUNCTIONS ---

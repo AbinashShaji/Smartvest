@@ -9,10 +9,11 @@ from datetime import datetime
 import pandas as pd
 from werkzeug.utils import secure_filename
 
+import config
 from utils.db import get_db_connection
 
 
-UPLOAD_DIR = os.path.join("uploads", "market_data")
+UPLOAD_DIR = os.path.join(config.UPLOAD_BASE_DIR, "market_data")
 STOCK_NAME_COLUMN = "stock_name"
 REQUIRED_COLUMNS = [STOCK_NAME_COLUMN] + [f"day{i}" for i in range(1, 11)]
 

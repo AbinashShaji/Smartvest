@@ -5,19 +5,31 @@
  */
 
 const API = {
+    getCsrfToken() {
+        const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
+        return match ? decodeURIComponent(match[1]) : '';
+    },
+
     // Base fetch wrapper
     async request(endpoint, options = {}) {
+        const returnEnvelope = !!options.returnEnvelope;
+        const requestOptions = { ...options };
+        delete requestOptions.returnEnvelope;
         const headers = { ...(options.headers || {}) };
-        const hasFormDataBody = typeof FormData !== 'undefined' && options.body instanceof FormData;
+        const hasFormDataBody = typeof FormData !== 'undefined' && requestOptions.body instanceof FormData;
 
         if (!hasFormDataBody && !headers['Content-Type'] && !headers['content-type']) {
             headers['Content-Type'] = 'application/json';
+        }
+        const method = String(requestOptions.method || 'GET').toUpperCase();
+        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method) && !headers['X-CSRF-Token']) {
+            headers['X-CSRF-Token'] = API.getCsrfToken();
         }
 
         try {
             const response = await fetch(endpoint, {
                 credentials: 'same-origin',
-                ...options,
+                ...requestOptions,
                 headers,
             });
             const result = await response.json().catch(() => ({}));
@@ -30,7 +42,7 @@ const API = {
                 throw new Error(result.message || `API Error: ${response.status}`);
             }
 
-            return result.data || result;
+            return returnEnvelope ? result : (result.data || result);
         } catch (error) {
             console.error(`Fetch error for ${endpoint}:`, error);
             throw error;
@@ -64,14 +76,7 @@ const API = {
     exportCSV: () => API.request('/api/expense/export'),
     getGoals: () => API.request('/api/expense/goal/all'),
     getGoalsPortfolio: () => API.request('/api/expense/goal/portfolio'),
-    getGoalsPortfolioBundle: async () => {
-        const response = await fetch('/api/expense/goal/portfolio', { credentials: 'same-origin' });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok || result.status === 'error') {
-            throw new Error(result.message || `API Error: ${response.status}`);
-        }
-        return result;
-    },
+    getGoalsPortfolioBundle: () => API.request('/api/expense/goal/portfolio', { returnEnvelope: true }),
     getGoalDetail: (goalId) => API.request(`/api/expense/goal/${goalId}`),
     setGoalStatus: (data) => API.request('/api/expense/goal/status', { method: 'POST', body: JSON.stringify(data) }),
     addGoal: (data) => API.request('/api/expense/goal/add', { method: 'POST', body: JSON.stringify(data) }),
@@ -87,7 +92,7 @@ const API = {
     uploadMarketDataset: (formData) => API.request('/api/admin/market-dataset/upload', { method: 'POST', body: formData }),
     submitFeedback: (data) => API.request('/api/feedback/add', { method: 'POST', body: JSON.stringify(data) }),
     submitReview: (data) => API.request('/api/review/add', { method: 'POST', body: JSON.stringify(data) }),
-    getReviews: () => API.request('/api/admin/review/all'),
+    getReviews: () => API.request('/api/public/reviews'),
     getIncomingReviews: () => API.request('/api/admin/review/incoming'),
     getAcceptedReviews: () => API.request('/api/admin/review/accepted'),
     acceptReview: (reviewId) => API.request('/api/admin/review/accept', { method: 'POST', body: JSON.stringify({ reviewId }) }),

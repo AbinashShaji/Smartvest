@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 from datetime import datetime
+import uuid
+import os
 import config
+from utils.api_errors import safe_api_error
 from utils.db import get_db_connection
 from modules.analysis import get_analysis_data, invalidate_analysis_cache
 from modules.goal_analytics import enrich_goal_row_with_context, build_goal_analysis_context, build_goal_portfolio_payload
@@ -150,7 +153,7 @@ def api_expenses():
 
         return jsonify({"status": "success", "data": user_data})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @expense_bp.route("/api/expense/recent")
@@ -167,7 +170,7 @@ def api_recent_expenses():
         recent_rows = _fetch_user_expenses(user_id, limit=5)
         return jsonify({"status": "success", "data": recent_rows})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @expense_bp.route("/api/expense/add", methods=["POST"])
@@ -227,7 +230,7 @@ def api_add_expense():
 
         return jsonify({"status": "success", "data": new_entry})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @expense_bp.route("/api/expense/delete", methods=["DELETE", "POST"])
@@ -252,7 +255,7 @@ def api_delete_expense():
 
         return jsonify({"status": "success", "message": "Expense deleted"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @expense_bp.route("/api/expense/update", methods=["POST"])
@@ -293,7 +296,7 @@ def api_update_expense():
 
         return jsonify({"status": "success", "message": "Expense updated"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @expense_bp.route("/api/expense/income/update", methods=["POST"])
@@ -338,7 +341,7 @@ def api_set_income():
 
         return jsonify({"status": "success", "data": {"income": amount_value}})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 # --- GOALS API ROUTES (PROTECTED) ---
@@ -418,7 +421,7 @@ def api_set_goal():
         invalidate_analysis_cache(user_id)
         return jsonify({"status": "success", "data": new_goal})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @expense_bp.route("/api/expense/goal/update", methods=["POST"])
@@ -479,7 +482,7 @@ def api_update_goal():
         invalidate_analysis_cache(user_id)
         return jsonify({"status": "success", "data": updated_goal})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @expense_bp.route("/api/expense/goal/delete", methods=["DELETE", "POST"])
@@ -504,7 +507,7 @@ def api_delete_goal():
         invalidate_analysis_cache(user_id)
         return jsonify({"status": "success", "message": "Goal archived"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @expense_bp.route("/api/expense/goal/portfolio")
@@ -526,10 +529,11 @@ def api_goal_portfolio_summary():
                 "data": payload.get("portfolio_summary", {}),
                 "decision": payload.get("decision", {}),
                 "allocation": payload.get("allocation", {}),
+                "goals": payload.get("goals", []),
             }
         )
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @expense_bp.route("/api/expense/goal/<int:goal_id>")
@@ -552,7 +556,7 @@ def api_goal_detail(goal_id: int):
         detail = enrich_goal_row_with_context(goal, context, allocation_result=allocation)
         return jsonify({"status": "success", "data": detail})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @expense_bp.route("/api/expense/goal/status", methods=["POST"])
@@ -578,7 +582,7 @@ def api_goal_status_transition():
         invalidate_analysis_cache(user_id)
         return jsonify({"status": "success", "data": updated})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
 
 
 # --- CSV TOOLS (PROTECTED) ---
@@ -649,7 +653,7 @@ def api_upload_csv():
             "data": {"message": f"{success_count} rows successfully imported!"},
         })
     except Exception as e:
-        return jsonify({"status": "error", "message": f"Error saving data: {str(e)}"}), 400
+        return safe_api_error(e, status_code=400)
 
 
 @expense_bp.route("/api/expense/export")
@@ -672,9 +676,15 @@ def api_export_data():
 
         df = pd.DataFrame(data)
 
-        file_path = "static/expenses_export.csv"
+        os.makedirs("static/exports", exist_ok=True)
+        # Why this unique filename exists:
+        # Shared static exports can be overwritten by another user request.
+        file_name = f"expenses_export_u{user_id}_{uuid.uuid4().hex[:8]}.csv"
+        file_path = os.path.join("static", "exports", file_name)
         df.to_csv(file_path, index=False)
 
-        return jsonify({"file": "/static/expenses_export.csv"})
+        return jsonify({"file": f"/static/exports/{file_name}"})
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return safe_api_error(e, status_code=500)
+
+

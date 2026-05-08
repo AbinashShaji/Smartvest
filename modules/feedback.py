@@ -8,6 +8,7 @@ Purpose : Handles the user feedback page and the API that saves feedback to the 
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 from datetime import datetime   # Used to get today's date automatically
 import config
+from utils.api_errors import safe_api_error
 from utils.db import get_db_connection   # Real database connection
 
 # Create the Feedback Blueprint
@@ -90,5 +91,8 @@ def api_user_submit_feedback():
         return jsonify({"status": "success", "data": {"message": "Feedback received. Thank you!"}})
 
     except Exception as e:
-        # If anything fails, return the error so it can be debugged
-        return jsonify({"status": "error", "message": str(e)}), 400
+        return safe_api_error(e, status_code=400)
+
+
+
+

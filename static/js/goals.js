@@ -272,11 +272,10 @@
 
     async function refreshAll() {
         const portfolioBundle = await API.getGoalsPortfolioBundle();
-        const goalsPayload = await API.getGoals();
         state.portfolio = (portfolioBundle && portfolioBundle.data) || {};
         state.allocation = (portfolioBundle && portfolioBundle.allocation) || {};
         state.decision = (portfolioBundle && portfolioBundle.decision) || {};
-        state.goals = Array.isArray(goalsPayload) ? goalsPayload : [];
+        state.goals = Array.isArray(portfolioBundle && portfolioBundle.goals) ? portfolioBundle.goals : [];
 
         if (state.detailGoalId && !state.goals.some((goal) => String(goal.id) === String(state.detailGoalId))) {
             state.detailGoalId = state.goals.length ? state.goals[0].id : null;
