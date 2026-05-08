@@ -37,11 +37,14 @@ def _csrf_exempt(path: str) -> bool:
 def create_app():
     app = Flask(__name__)
     app.secret_key = _ensure_secret_key()
+    # Keep local HTTP development working: browsers reject Secure cookies on plain localhost HTTP.
+    session_cookie_secure = False if config.ENVIRONMENT == "development" else config.IS_PRODUCTION
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
-        SESSION_COOKIE_SECURE=config.IS_PRODUCTION,
+        SESSION_COOKIE_SECURE=session_cookie_secure,
     )
+    logger.info("SmartVest active DB path: %s", config.DATABASE_PATH)
     init_mail(app)
 
     # Why startup happens here:
@@ -80,7 +83,7 @@ def create_app():
             "XSRF-TOKEN",
             session["csrf_token"],
             httponly=False,
-            secure=config.IS_PRODUCTION,
+            secure=session_cookie_secure,
             samesite="Lax",
         )
         return response
@@ -102,3 +105,5 @@ def create_app():
 
 
 app = create_app()
+if __name__ == "__main__":
+    app.run(debug=True)

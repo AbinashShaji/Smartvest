@@ -6,10 +6,11 @@ Run once: python migrate_db.py
 """
 
 import sqlite3
+import config
 
 
 def run():
-    conn = sqlite3.connect("smartvest.db")
+    conn = sqlite3.connect(config.DATABASE_PATH)
     cursor = conn.cursor()
 
     # Feedback workflow compatibility
@@ -56,4 +57,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-

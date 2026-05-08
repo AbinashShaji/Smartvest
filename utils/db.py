@@ -138,10 +138,18 @@ def create_admin():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT id, role FROM users WHERE username = ? OR email = ?",
+        """
+        SELECT id
+        FROM users
+        WHERE username = ? OR email = ? OR role = 'admin'
+        ORDER BY CASE WHEN role = 'admin' THEN 0 ELSE 1 END, id ASC
+        LIMIT 1
+        """,
         (config.ADMIN_USERNAME, config.ADMIN_EMAIL.lower()),
     )
     admin = cursor.fetchone()
+    hashed_password = generate_password_hash(config.ADMIN_PASSWORD)
+
     if not admin:
         cursor.execute(
             """
@@ -151,12 +159,21 @@ def create_admin():
             (
                 config.ADMIN_USERNAME,
                 config.ADMIN_EMAIL.lower(),
-                generate_password_hash(config.ADMIN_PASSWORD),
+                hashed_password,
                 "admin",
                 datetime.now().strftime("%Y-%m-%d"),
             ),
         )
-    elif admin["role"] != "admin":
-        cursor.execute("UPDATE users SET role = 'admin' WHERE id = ?", (admin["id"],))
+    else:
+        # Minimal and deterministic reset:
+        # keep exactly one bootstrap admin aligned with configured credentials.
+        cursor.execute(
+            """
+            UPDATE users
+            SET username = ?, email = ?, password = ?, role = 'admin'
+            WHERE id = ?
+            """,
+            (config.ADMIN_USERNAME, config.ADMIN_EMAIL.lower(), hashed_password, admin["id"]),
+        )
     conn.commit()
     conn.close()
