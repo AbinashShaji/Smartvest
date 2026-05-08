@@ -49,6 +49,7 @@ def _goal_type(goal_row: Dict[str, Any]) -> str:
 
 
 def build_goal_analysis_context(user_id: Optional[int] = None, analysis_snapshot: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Build the shared analysis context used by all goal calculations."""
     snapshot = analysis_snapshot if analysis_snapshot is not None else get_analysis_data(user_id)
     current = snapshot.get("current", {})
     yearly = snapshot.get("yearly", {})
@@ -129,6 +130,7 @@ def enrich_goal_row_with_context(
     context: Dict[str, Any],
     allocation_result: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
+    """Add progress, feasibility, and timeline data to one goal row."""
     target = _coerce_float(goal_row.get("target_amount"))
     saved = _coerce_float(goal_row.get("saved_amount"))
     remaining = max(0.0, target - saved)
@@ -225,6 +227,7 @@ def enrich_goal_row_with_context(
 
 
 def build_goal_portfolio_summary(goals: List[Dict[str, Any]], allocation_result: Dict[str, Any], decision_result: Dict[str, Any]) -> Dict[str, Any]:
+    """Summarize the user's whole goal portfolio in a single payload."""
     total_goals = len(goals)
     active_goals = [g for g in goals if str(g.get("status") or "active").lower() == "active"]
     paused_goals = [g for g in goals if str(g.get("status") or "").lower() == "paused"]
@@ -259,6 +262,7 @@ def build_goal_portfolio_summary(goals: List[Dict[str, Any]], allocation_result:
 
 
 def build_goal_portfolio_payload(goals: List[Dict[str, Any]], user_id: Optional[int] = None, analysis_snapshot: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Build the full response object used by the Goals page and APIs."""
     context = build_goal_analysis_context(user_id=user_id, analysis_snapshot=analysis_snapshot)
     allocation = allocate_monthly_savings(goals, context.get("monthly_surplus", 0.0))
     decision = detect_portfolio_conflicts(goals, allocation)
@@ -272,4 +276,3 @@ def build_goal_portfolio_payload(goals: List[Dict[str, Any]], user_id: Optional[
         "decision": decision,
         "analysis_context": context,
     }
-

@@ -1,4 +1,8 @@
-"""Shared configuration and session helpers for SmartVest."""
+"""Shared configuration and session helpers for SmartVest.
+
+This module is the central place for runtime paths, environment-driven secrets,
+and the session helpers shared across blueprints.
+"""
 import os
 from pathlib import Path
 from flask import session
@@ -15,8 +19,8 @@ INSTANCE_DIR = BASE_DIR / "instance"
 INSTANCE_DIR.mkdir(exist_ok=True)
 
 # Why this strict secret policy exists:
-# Flask signs session cookies with SECRET_KEY.
-# A hardcoded fallback makes every deployment predictable and unsafe.
+# Flask signs session cookies with SECRET_KEY, so a hardcoded fallback would
+# make every deployment predictable and unsafe.
 SECRET_KEY = os.getenv("SECRET_KEY")
 
 # Why paths are configurable:
@@ -40,36 +44,52 @@ ADMIN_PASSWORD = os.getenv("SMARTVEST_ADMIN_PASSWORD")
 
 def get_current_user():
     """
-    Purpose: Retrieve the currently logged-in user from the session.
-    Input: None
-    Output: Dictionary containing user_id, username, email, and role OR None.
+    What this function does:
+    Returns the logged-in user stored in Flask session data.
+
+    Why this exists:
+    Many routes need the same current-user lookup, so this keeps that logic in
+    one place instead of repeating session access everywhere.
+
+    Inputs:
+    None.
+
+    Returns:
+    A dictionary with user_id, username, email, and role, or None.
     """
     return session.get("user")
 
 def is_logged_in():
     """
-    Purpose: Check if a user is currently logged in and has valid session data.
-    Input: None
-    Output: True if logged in with valid data, False otherwise.
+    What this function does:
+    Checks whether the current browser session has a logged-in user.
+
+    Why this exists:
+    Route guards need a simple and readable way to ask "is this user signed in?"
+
+    Inputs:
+    None.
+
+    Returns:
+    True when the session contains a user object, otherwise False.
     """
     return "user" in session and session["user"] is not None
 
 def is_admin():
     """
-    Purpose: Check if the currently logged-in user has an admin role for restricted access.
-    Input: None
-    Output: True if logged in as admin, False otherwise.
+    What this function does:
+    Checks whether the logged-in user has admin permissions.
+
+    Why this exists:
+    Admin pages and admin APIs should all use the same role check so the rule
+    stays consistent across the app.
+
+    Inputs:
+    None.
+
+    Returns:
+    True when the current session user has role == "admin".
     """
     user = get_current_user()
     return bool(user and user.get("role") == "admin")
 
-# --- COMPATIBILITY HELPERS ---
-
-def current_user():
-    """
-    Purpose: Wrapper for get_current_user used in legacy templates.
-    Input: None
-    Output: Current user dict or guest fallback.
-    """
-    # Fallback to a safe guest object to prevent crashes in HTML templates
-    return get_current_user() or {"user_id": None, "username": "Guest", "role": "guest"}

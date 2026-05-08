@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SmartVest App{% endblock %}</title>
-    <!-- Fonts -->
+    <!-- Shared fonts and styles for the authenticated app shell. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- CSS -->
+    <!-- Global app CSS first, then module-specific layers. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}">
@@ -24,7 +24,8 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Sidebar -->
+        <!-- Sidebar:
+             This is the main navigation for signed-in users. -->
         <aside class="sidebar">
             <a href="/dashboard" class="sidebar-logo">
                 SMART<span>VEST</span>
@@ -83,7 +84,8 @@
             </div>
         </aside>
 
-        <!-- Main Content Area -->
+        <!-- Main content:
+             Individual pages plug their content into this wrapper. -->
         <main class="main-content">
             <header class="top-nav">
                 <div style="margin-right: auto; display: flex; align-items: center; gap: 12px;">
@@ -108,11 +110,11 @@
         </main>
     </div>
 
-    <!-- Scripts -->
+    <!-- Shared scripts needed by most authenticated pages. -->
     <script src="{{ url_for('static', filename='js/api.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
-        // Mobile Sidebar Toggle
+        // Keep the sidebar usable on small screens.
         const sidebar = document.querySelector('.sidebar');
         const mobileToggle = document.querySelector('.mobile-toggle');
         
@@ -123,7 +125,7 @@
             });
         }
 
-        // Close sidebar when clicking outside
+        // Clicking outside closes the mobile sidebar so it does not trap space.
         document.addEventListener('click', (e) => {
             if (sidebar.classList.contains('active') && !sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
                 sidebar.classList.remove('active');

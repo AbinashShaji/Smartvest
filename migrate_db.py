@@ -1,8 +1,7 @@
-"""
-migrate_db.py
--------------
-Purpose: One-time migration script for compatibility upgrades.
-Run once: python migrate_db.py
+"""One-time migration script for compatibility upgrades.
+
+This file is intentionally separate from the runtime app so old databases can
+be upgraded without touching the main request flow.
 """
 
 import sqlite3

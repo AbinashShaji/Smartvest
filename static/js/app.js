@@ -1,16 +1,19 @@
 /**
- * SmartVest Main App Logic
- * Handles global UI interactions, animations, and common components.
+ * SmartVest main app logic.
+ *
+ * Big picture:
+ * - shared page interactions
+ * - global logout behavior
+ * - small visual polish used across the app shell
  */
 
 document.addEventListener('DOMContentLoaded', () => {
     initScrollEffects();
-    initMobileMenu();
     initFormInteractions();
 });
 
 /**
- * Header scroll background effect
+ * Change the nav background on scroll so the fixed header stays readable.
  */
 function initScrollEffects() {
     const nav = document.querySelector('nav.glass-nav');
@@ -26,15 +29,7 @@ function initScrollEffects() {
 }
 
 /**
- * Mobile nav controls are handled in the base templates.
- * Keeping this as a no-op avoids double-binding the sidebar toggle.
- */
-function initMobileMenu() {
-    return;
-}
-
-/**
- * Glossy form field animations
+ * Add a focused class to wrapped inputs so CSS can style the active field.
  */
 function initFormInteractions() {
     const inputs = document.querySelectorAll('.glass-input input');
@@ -51,18 +46,11 @@ function initFormInteractions() {
 }
 
 /**
- * Utility: Format numeric amounts without currency symbols.
- */
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    }).format(Number(amount) || 0);
-}
-
-/**
- * Logout functionality
- * Clears local state and synchronized session.
+ * Log the user out locally and on the server.
+ *
+ * Why this exists:
+ * The browser cache, local storage, and Flask session all need to be cleared
+ * so the next user does not inherit stale private state.
  */
 async function logout() {
     try {

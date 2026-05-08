@@ -16,3 +16,7 @@ def settings():
         return redirect(url_for('auth.login'))
     
     return render_template("user/settings.html", active_page="settings", user=config.get_current_user())
+"""User settings routes.
+
+This module handles profile and preference updates for the signed-in user.
+"""

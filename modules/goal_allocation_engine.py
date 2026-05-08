@@ -130,3 +130,9 @@ def allocate_monthly_savings(goals: List[Dict[str, Any]], monthly_savings: float
         "is_overloaded": is_overloaded,
         "allocations": allocations,
     }
+"""Goal allocation engine.
+
+This module decides how much monthly savings can be assigned to each goal.
+It exists so the Goals page can show a consistent, calculation-driven view of
+pace, priority, and deadline pressure.
+"""

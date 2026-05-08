@@ -6,7 +6,7 @@ from utils.api_errors import safe_api_error
 from utils.db import get_db_connection
 from utils.mail import send_contact_email
 
-# Create the Auth Blueprint
+# Public routes live here because they are the first entry point for SmartVest.
 auth_bp = Blueprint('auth', __name__)
 
 # --- PUBLIC UI ROUTES ---
@@ -141,6 +141,7 @@ def _build_session_user(user_row):
 
 @auth_bp.route("/api/auth/signup", methods=["POST"])
 def api_signup():
+    """Create a new user account and start a signed-in session."""
     """
     Purpose: Creates a new user account and starts a logged-in session.
     Input: JSON body with username, email, and password.
@@ -202,6 +203,7 @@ def api_signup():
 
 @auth_bp.route("/api/auth/login", methods=["POST"])
 def api_login():
+    """Authenticate a user and persist the session payload."""
     """
     Purpose: Authenticates user credentials and establishes secure session.
     Input: JSON (email, password)
@@ -267,6 +269,7 @@ def api_login():
 
 @auth_bp.route("/api/auth/logout", methods=["POST"])
 def api_logout():
+    """Clear the active session so the browser is fully signed out."""
     """
     Purpose: Terminates user session.
     Input: None
@@ -283,6 +286,7 @@ def api_logout():
 
 @auth_bp.route("/api/auth/check-session")
 def api_check_session():
+    """Return the active session payload if the browser is still signed in."""
     """
     Purpose: Verifies if a user session is still alive.
     Input: None
@@ -304,6 +308,7 @@ def api_check_session():
 
 @auth_bp.route("/api/auth/profile/update", methods=["POST"])
 def api_update_profile():
+    """Update the logged-in user's profile details."""
     """
     Purpose: Modifies user attributes in session and database.
     Input: JSON with 'username' and optionally 'email'
@@ -350,6 +355,7 @@ def api_update_profile():
 
 @auth_bp.route("/api/auth/password/change", methods=["POST"])
 def api_change_password():
+    """Change the logged-in user's password after verifying the current one."""
     """
     Purpose: Update the logged-in user's password in the database.
     Input: JSON with 'new_password'

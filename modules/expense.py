@@ -17,7 +17,7 @@ from modules.goal_repository import (
     update_goal,
 )
 
-# Create the Expense Blueprint
+# This blueprint owns the user finance workflows shown in the main app shell.
 expense_bp = Blueprint('expense', __name__)
 
 
@@ -359,7 +359,7 @@ def api_goal_status():
     user_goals = fetch_user_goals(user_id, include_archived=False)
     payload = build_goal_portfolio_payload(user_goals, user_id=user_id, analysis_snapshot=analysis_snapshot)
 
-    # Keep existing `data` contract for current frontend.
+    # Keep the existing response shape so the frontend can refresh without changes.
     return jsonify(
         {
             "status": "success",
@@ -617,7 +617,7 @@ def api_upload_csv():
         cursor = conn.cursor()
 
         success_count = 0
-        # Debug note: import one CSV row at a time so each line becomes one Expense record.
+        # Import row-by-row so each CSV line becomes one expense record and failures stay isolated.
         for _, row in df.iterrows():
             amount = row.get("amount")
             category = row.get("category")

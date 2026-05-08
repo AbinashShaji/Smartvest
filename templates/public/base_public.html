@@ -4,16 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SmartVest - Intelligent Finance{% endblock %}</title>
-    <!-- Fonts -->
+    <!-- Shared fonts and base marketing styles. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- CSS -->
+    <!-- Public-page styles live in the shared stylesheet. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block head %}{% endblock %}
 </head>
 <body>
-    <!-- Premium Background Effects -->
+    <!-- Background effects:
+         These give the public pages a distinct brand feel without changing the layout logic. -->
     <div class="dotted-background"></div>
     <div class="bg-text-container">
         <div class="bg-text-item">CONTROL</div>
@@ -21,7 +22,8 @@
         <div class="bg-text-item" style="animation-delay: -40s;">BUILD</div>
     </div>
 
-    <!-- Premium Glass Navbar -->
+    <!-- Public navigation:
+         These links are visible before login and lead into the auth flow. -->
     <nav class="glass-nav">
         <div class="container" style="display: flex; justify-content: space-between; align-items: center;">
             <a href="/" class="brand" style="text-decoration: none; color: #fff; font-size: 1.5rem; font-weight: 800; letter-spacing: -1px;">
@@ -48,7 +50,8 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer -->
+    <!-- Footer:
+         This is the shared marketing footer for all public pages. -->
     <footer style="padding: 80px 0; border-top: 1px solid var(--glass-border); margin-top: 100px;">
         <div class="container" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 40px;">
             <div style="flex: 1; min-width: 250px;">
@@ -79,7 +82,7 @@
         </div>
     </footer>
 
-    <!-- Scripts -->
+    <!-- Shared scripts for navigation and small UI interactions. -->
     <script src="{{ url_for('static', filename='js/api.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>

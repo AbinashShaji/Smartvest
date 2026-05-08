@@ -1,4 +1,10 @@
-"""SmartVest SQLite helpers with production-safe defaults."""
+"""SmartVest SQLite helpers.
+
+Big picture:
+- open SQLite connections with the same runtime path everywhere
+- enable WAL mode for safer concurrent reads and writes
+- create tables and indexes during startup
+"""
 import sqlite3
 from datetime import datetime
 from werkzeug.security import generate_password_hash
@@ -8,8 +14,11 @@ import config
 
 def get_db_connection():
     """
-    Open a SQLite connection with safer production defaults.
-    WAL mode improves concurrent read/write behavior on SQLite.
+    Open a SQLite connection with production-safe defaults.
+
+    Why this exists:
+    Every module should use the same database path, row format, and journal
+    settings so the app stays predictable.
     """
     conn = sqlite3.connect(config.DATABASE_PATH, timeout=30, check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -19,7 +28,7 @@ def get_db_connection():
 
 
 def init_db():
-    """Create/upgrade tables and indexes used by SmartVest."""
+    """Create or upgrade tables and indexes used by SmartVest."""
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -129,8 +138,11 @@ def init_db():
 
 def create_admin():
     """
-    Bootstrap admin account only when credentials are provided via environment.
-    This avoids shipping hardcoded admin credentials in source code.
+    Bootstrap the admin account from environment variables.
+
+    Why this exists:
+    Deployments can create or refresh a known admin user without storing a
+    password in source code.
     """
     if not all([config.ADMIN_USERNAME, config.ADMIN_EMAIL, config.ADMIN_PASSWORD]):
         return

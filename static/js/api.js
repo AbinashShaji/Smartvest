@@ -1,7 +1,10 @@
 /**
- * SmartVest API Helper
- * Standardized fetch calls for the final modular backend.
- * All endpoints follow the /api/<module>/<object>/<action> format.
+ * SmartVest API helper.
+ *
+ * Big picture:
+ * - standardize fetch calls
+ * - attach CSRF tokens automatically
+ * - keep route names in one place for the frontend
  */
 
 const API = {
@@ -10,7 +13,8 @@ const API = {
         return match ? decodeURIComponent(match[1]) : '';
     },
 
-    // Base fetch wrapper
+    // Base fetch wrapper:
+    // The app uses one path for JSON, form data, CSRF, and error handling.
     async request(endpoint, options = {}) {
         const returnEnvelope = !!options.returnEnvelope;
         const requestOptions = { ...options };
@@ -49,7 +53,7 @@ const API = {
         }
     },
 
-    // Auth Modules (/api/auth/)
+    // Auth endpoints share the same session and CSRF handling.
     login: (data) => API.request('/api/auth/login', { method: 'POST', body: JSON.stringify(data) }),
     signup: (data) => API.request('/api/auth/signup', { method: 'POST', body: JSON.stringify(data) }),
     logout: () => API.request('/api/auth/logout', { method: 'POST' }),
@@ -57,7 +61,7 @@ const API = {
     updateProfile: (data) => API.request('/api/auth/profile/update', { method: 'POST', body: JSON.stringify(data) }),
     changePassword: (data) => API.request('/api/auth/password/change', { method: 'POST', body: JSON.stringify(data) }),
 
-    // Analysis Modules (/api/analysis/)
+    // Analysis endpoints power the dashboard and chart views.
     getDashboard: () => API.request('/api/analysis/data'),
     getExpenseAnalysis: () => API.request('/api/analysis/report'),
     getStockAnalysis: () => API.request('/api/analysis/dataframe'),
@@ -66,26 +70,22 @@ const API = {
         body: JSON.stringify({ months }),
     }),
 
-    // Expense Modules (/api/expense/)
+    // Expense endpoints cover expense CRUD, income, and goals.
     getExpenses: () => API.request('/api/expense/all'),
     getRecentExpenses: () => API.request('/api/expense/recent'),
     addExpense: (data) => API.request('/api/expense/add', { method: 'POST', body: JSON.stringify(data) }),
     updateIncome: (data) => API.request('/api/expense/income/update', { method: 'POST', body: JSON.stringify(data) }),
-    setIncome: (data) => API.updateIncome(data), // Compatibility alias for older template code
     uploadCSV: (formData) => API.request('/api/expense/upload', { method: 'POST', body: formData }),
     exportCSV: () => API.request('/api/expense/export'),
     getGoals: () => API.request('/api/expense/goal/all'),
-    getGoalsPortfolio: () => API.request('/api/expense/goal/portfolio'),
-    getGoalsPortfolioBundle: () => API.request('/api/expense/goal/portfolio', { returnEnvelope: true }),
     getGoalDetail: (goalId) => API.request(`/api/expense/goal/${goalId}`),
     setGoalStatus: (data) => API.request('/api/expense/goal/status', { method: 'POST', body: JSON.stringify(data) }),
     addGoal: (data) => API.request('/api/expense/goal/add', { method: 'POST', body: JSON.stringify(data) }),
-    setGoal: (data) => API.addGoal(data), // Compatibility alias for older template code
 
-    // Investment Modules (/api/investment/)
+    // Investment endpoint returns the full recommendation payload.
     getOverview: () => API.request('/api/investment/data'),
 
-    // Admin & Community Modules (/api/admin/)
+    // Admin and community endpoints support moderation and uploads.
     getMarketMetrics: () => API.request('/api/admin/market-metrics'),
     getMarketDatasetList: () => API.request('/api/admin/market-dataset/list'),
     getMarketDatasetPreview: () => API.request('/api/admin/market-dataset/preview'),
@@ -108,7 +108,6 @@ const API = {
     deleteFeedback: (feedbackId) => API.request('/api/admin/feedback/delete', { method: 'DELETE', body: JSON.stringify({ feedbackId }) }),
     markFeedbackResolved: (feedbackId) => API.request('/api/admin/feedback/resolve', { method: 'POST', body: JSON.stringify({ feedbackId }) }),
     markFeedbackUnresolved: (feedbackId) => API.request('/api/admin/feedback/unresolve', { method: 'POST', body: JSON.stringify({ feedbackId }) }),
-    getAdminStats: () => API.request('/api/admin/stats'),
     getAdminActivityStats: () => API.request('/api/admin/activity-stats'),
     getAdminEngagementMetrics: () => API.request('/api/admin/engagement-metrics'),
     getAdminRecentActivity: () => API.request('/api/admin/recent-activity'),
@@ -118,7 +117,7 @@ const API = {
     deleteReview: (reviewId) => API.request(`/api/admin/review/delete`, { method: 'DELETE', body: JSON.stringify({ reviewId }) }),
 };
 
-// Export for window access
+// Export for window access so inline template scripts can call API.*
 if (typeof window !== 'undefined') {
     window.API = API;
 }

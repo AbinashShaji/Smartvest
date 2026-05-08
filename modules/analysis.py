@@ -27,7 +27,7 @@ from matplotlib.ticker import MaxNLocator
 
 plt.style.use("dark_background")
 
-# Create the Analysis Blueprint so Flask can register these routes
+# The analysis blueprint powers the dashboard, analysis page, and market metrics.
 analysis_bp = Blueprint('analysis', __name__)
 
 _ANALYSIS_CACHE: Dict[Any, Dict[str, Any]] = {}
@@ -37,7 +37,12 @@ _MARKET_CACHE_TTL_SECONDS = 60
 
 
 def invalidate_analysis_cache(user_id=None):
-    """Clear cached analysis data for one user or for all users."""
+    """Clear cached analysis data for one user or for everyone.
+
+    Why this exists:
+    Expense, income, and goal mutations should force fresh calculations so the
+    UI does not show stale savings or chart data.
+    """
     if user_id is None:
         _ANALYSIS_CACHE.clear()
         return
@@ -141,6 +146,7 @@ def _safe_stock_name(name):
 
 
 def load_stock_csv():
+    """Load the latest active market dataset from SQLite and return a DataFrame."""
     """
     Purpose : Load stock data from the latest active uploaded market dataset.
     Output  : Pandas DataFrame with the expected stock columns.
@@ -152,6 +158,7 @@ def load_stock_csv():
 
 
 def analyze_stock_rows(stocks, generate_charts=True):
+    """Classify each market row and optionally write a chart image."""
     """
     Purpose : Classify each stock row and optionally generate a chart image.
     Input   : DataFrame with stock prices across day1..day10.
@@ -407,15 +414,37 @@ def _save_line_chart(file_path, trend_data, title, empty_message):
     _finish_chart(fig, file_path)
 
 
-def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any], user_id: int) -> Dict[str, str]:
-    """Generate user-scoped chart files to avoid cross-user overwrite collisions."""
-    os.makedirs("static", exist_ok=True)
+GENERATED_CHART_DIR = os.path.join("static", "generated")
+GENERATED_CHART_URL_PREFIX = "/static/generated"
 
-    category_chart = f"static/current_pie_u{user_id}.png"
-    category_bar_chart = f"static/current_category_bar_u{user_id}.png"
-    trend_chart = f"static/current_trend_u{user_id}.png"
-    yearly_trend_chart = f"static/yearly_trend_u{user_id}.png"
-    yearly_bar_chart = f"static/yearly_expense_bar_u{user_id}.png"
+
+def _chart_output_path(filename: str) -> str:
+    """Return a runtime chart path under static/generated.
+
+    Generated images are deployment artifacts, so keeping them in a dedicated
+    folder makes it obvious that they are not source-controlled assets.
+    """
+    os.makedirs(GENERATED_CHART_DIR, exist_ok=True)
+    return os.path.join(GENERATED_CHART_DIR, filename)
+
+
+def _chart_public_url(filename: str) -> str:
+    return f"{GENERATED_CHART_URL_PREFIX}/{filename}"
+
+
+def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any], user_id: int) -> Dict[str, str]:
+    """Generate user-scoped chart files without colliding across sessions."""
+    category_filename = f"current_pie_u{user_id}.png"
+    category_bar_filename = f"current_category_bar_u{user_id}.png"
+    trend_filename = f"current_trend_u{user_id}.png"
+    yearly_trend_filename = f"yearly_trend_u{user_id}.png"
+    yearly_bar_filename = f"yearly_expense_bar_u{user_id}.png"
+
+    category_chart = _chart_output_path(category_filename)
+    category_bar_chart = _chart_output_path(category_bar_filename)
+    trend_chart = _chart_output_path(trend_filename)
+    yearly_trend_chart = _chart_output_path(yearly_trend_filename)
+    yearly_bar_chart = _chart_output_path(yearly_bar_filename)
 
     category_breakdown = current.get("category_breakdown") or []
     sorted_category_breakdown = sorted(
@@ -463,15 +492,15 @@ def _generate_financial_charts(current: Dict[str, Any], yearly: Dict[str, Any], 
     )
 
     return {
-        "current_pie": f"/static/current_pie_u{user_id}.png",
-        "current_category_bar": f"/static/current_category_bar_u{user_id}.png",
-        "current_trend": f"/static/current_trend_u{user_id}.png",
-        "yearly_trend_chart": f"/static/yearly_trend_u{user_id}.png",
-        "yearly_expense_bar": f"/static/yearly_expense_bar_u{user_id}.png",
-        "category_chart": f"/static/current_pie_u{user_id}.png",
-        "category_bar_chart": f"/static/current_category_bar_u{user_id}.png",
-        "trend_chart": f"/static/current_trend_u{user_id}.png",
-        "yearly_bar_chart": f"/static/yearly_expense_bar_u{user_id}.png",
+        "current_pie": _chart_public_url(category_filename),
+        "current_category_bar": _chart_public_url(category_bar_filename),
+        "current_trend": _chart_public_url(trend_filename),
+        "yearly_trend_chart": _chart_public_url(yearly_trend_filename),
+        "yearly_expense_bar": _chart_public_url(yearly_bar_filename),
+        "category_chart": _chart_public_url(category_filename),
+        "category_bar_chart": _chart_public_url(category_bar_filename),
+        "trend_chart": _chart_public_url(trend_filename),
+        "yearly_bar_chart": _chart_public_url(yearly_bar_filename),
     }
 
 
@@ -1203,6 +1232,7 @@ def get_analysis_data(user_id=None):
 
 
 def build_market_metrics():
+    """Analyze the active uploaded market dataset and build admin metrics."""
     """
     Purpose : Analyze active uploaded market dataset and build admin metrics.
     Output  : Dictionary with counts, market status, top movers, and chart paths.
@@ -1271,9 +1301,13 @@ def build_market_metrics():
     top_gainers = sorted(stock_rows, key=lambda item: item["percent_change"], reverse=True)[:5]
     top_losers = sorted(stock_rows, key=lambda item: item["percent_change"])[:5]
 
-    trend_chart_path = "static/market_trend.png"
-    summary_chart_path = "static/market_summary.png"
-    comparison_chart_path = "static/market_comparison.png"
+    trend_chart_filename = "market_trend.png"
+    summary_chart_filename = "market_summary.png"
+    comparison_chart_filename = "market_comparison.png"
+
+    trend_chart_path = _chart_output_path(trend_chart_filename)
+    summary_chart_path = _chart_output_path(summary_chart_filename)
+    comparison_chart_path = _chart_output_path(comparison_chart_filename)
 
     if not stock_frame.empty:
         day_columns = [f"day{i}" for i in range(1, 11)]
@@ -1440,9 +1474,9 @@ def build_market_metrics():
         "top_gainers": top_gainers,
         "top_losers": top_losers,
         "charts": {
-            "trend": "/static/market_trend.png",
-            "summary": "/static/market_summary.png",
-            "comparison": "/static/market_comparison.png",
+            "trend": _chart_public_url(trend_chart_filename),
+            "summary": _chart_public_url(summary_chart_filename),
+            "comparison": _chart_public_url(comparison_chart_filename),
         },
     }
     _MARKET_METRICS_CACHE["key"] = cache_key
@@ -1452,6 +1486,7 @@ def build_market_metrics():
 
 
 def get_user_financial_snapshot(user_id):
+    """Calculate the user's current month income, expenses, savings, and risk level."""
     """
     Purpose : Calculate the current user's income, expenses, savings and risk level.
     Output  : Dictionary used by investment-related APIs.
@@ -1520,6 +1555,7 @@ def get_user_financial_snapshot(user_id):
 
 @analysis_bp.route("/dashboard")
 def dashboard():
+    """Render the main dashboard page."""
     """
     Purpose : Renders the central Intelligence Dashboard page.
     Input   : None (user_id is taken from the session automatically).
@@ -1537,6 +1573,7 @@ def dashboard():
 
 @analysis_bp.route("/analysis")
 def analysis_page():
+    """Render the detailed analysis page."""
     """
     Purpose : Renders the Financial Efficiency Report page.
     Input   : None.
@@ -1558,6 +1595,7 @@ def analysis_page():
 
 @analysis_bp.route("/api/analysis/data")
 def api_dashboard_data():
+    """Return the full dashboard analysis payload as JSON."""
     if not config.is_logged_in():
         return jsonify({"status": "error", "message": "Login required"}), 401
 
@@ -1569,14 +1607,10 @@ def api_dashboard_data():
         return safe_api_error(e, status_code=400)
 
 
-@analysis_bp.route("/api/dashboard")
-def api_dashboard_alias():
-    """Compatibility alias for older clients expecting /api/dashboard."""
-    return api_dashboard_data()
-
 
 @analysis_bp.route("/api/analysis/report")
 def api_expense_analysis():
+    """Return a short human-readable analysis summary for the frontend."""
     if not config.is_logged_in():
         return jsonify({"status": "error", "message": "Login required"}), 401
 
@@ -1605,14 +1639,10 @@ def api_expense_analysis():
         return safe_api_error(e, status_code=400)
 
 
-@analysis_bp.route("/api/analysis")
-def api_analysis_alias():
-    """Compatibility alias for older clients expecting /api/analysis."""
-    return api_expense_analysis()
-
 
 @analysis_bp.route("/api/analysis/dataframe")
 def api_expenses_dataframe():
+    """Return the analysis payload using the legacy route name."""
     if not config.is_logged_in():
         return jsonify({"status": "error", "message": "Login required"}), 401
 
@@ -1625,6 +1655,7 @@ def api_expenses_dataframe():
 
 @analysis_bp.route("/api/analysis/ef-override", methods=["POST"])
 def api_ef_override():
+    """Store a custom emergency-fund target in the user's session."""
     """
     Purpose : Store a custom emergency fund target in the user's session.
     Input   : JSON body with "months" (float or int).

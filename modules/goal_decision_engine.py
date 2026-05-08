@@ -89,4 +89,9 @@ def detect_portfolio_conflicts(goals: List[Dict[str, Any]], allocation_result: D
         "warnings": warnings,
         "conflicts": conflicts,
     }
+"""Goal decision engine.
+
+This module looks for conflicts between goals, deadlines, and available
+monthly savings so the UI can warn the user before the plan gets unrealistic.
+"""
 

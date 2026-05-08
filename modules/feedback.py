@@ -96,3 +96,8 @@ def api_user_submit_feedback():
 
 
 
+"""Feedback submission routes.
+
+This module stores user feedback messages in SQLite so admins can review them
+later from the moderation dashboard.
+"""

@@ -21,6 +21,7 @@ from modules.analysis import (
 )
 
 # ── Blueprint Registration ──────────────────────────────────────────────────
+# The investment blueprint turns analysis data into beginner-friendly advice.
 investment_bp = Blueprint('investment', __name__)
 
 
@@ -29,6 +30,7 @@ investment_bp = Blueprint('investment', __name__)
 # =============================================================================
 
 def get_decision_engine(analysis: dict) -> dict:
+    """Turn the financial snapshot into a readiness decision."""
     behavior = analysis.get("savings_behavior") or {}
     emergency = analysis.get("emergency") or {}
     
@@ -94,6 +96,7 @@ def get_decision_engine(analysis: dict) -> dict:
 # =============================================================================
 
 def get_sip_engine(analysis: dict, decision_engine: dict) -> dict:
+    """Translate readiness into a suggested SIP amount and allocation."""
     decision = decision_engine.get("decision", "NOT_READY")
     behavior = analysis.get("savings_behavior") or {}
     emergency = analysis.get("emergency") or {}
@@ -174,6 +177,7 @@ def get_sip_engine(analysis: dict, decision_engine: dict) -> dict:
 
 
 def get_what_if_analysis(analysis: dict, sip_engine: dict) -> dict:
+    """Show how a small spending cut could improve the user's investing power."""
     current = analysis.get("current") or {}
     expense = current.get("expense", 0.0)
     current_sip = sip_engine.get("sip_amount", 0.0)
@@ -201,6 +205,7 @@ def get_what_if_analysis(analysis: dict, sip_engine: dict) -> dict:
 # =============================================================================
 
 def get_alerts(analysis: dict) -> list:
+    """Create short warnings for risky savings patterns."""
     alerts = []
     behavior = analysis.get("savings_behavior") or {}
     current = analysis.get("current") or {}
@@ -223,11 +228,7 @@ def get_alerts(analysis: dict) -> list:
 # =============================================================================
 
 def _enrich_stock(stock: dict, risk_level: str) -> dict:
-    """
-    Purpose : Add trend, reason, risk_fit, and confidence to a stock entry.
-    Input   : Raw stock dict from analyze_stock_rows, user's risk_level.
-    Output  : Enriched stock dict.
-    """
+    """Add a human-readable trend label, reason, risk fit, and confidence score."""
     change = stock.get("change", 0.0)
     status = stock.get("status", "Stable")
     prices = stock.get("prices", [])
@@ -302,6 +303,7 @@ RETURN_RATES = {
 
 
 def sip_future_value(monthly_amount: float, annual_rate: float, months: int) -> dict:
+    """Project the future value of a monthly SIP investment."""
     """
     Purpose : Project the future value of a monthly SIP investment.
     Formula : FV = P × [((1+r)^n − 1) / r] × (1+r)
@@ -344,6 +346,7 @@ def sip_future_value(monthly_amount: float, annual_rate: float, months: int) -> 
 
 
 def build_growth_comparison(sip_engine: dict) -> dict:
+    """Compare savings versus multiple investment return scenarios."""
     """
     Purpose : Compare growth of savings vs safe vs moderate vs high investments.
     Input   : SIP Engine dictionary.
@@ -395,6 +398,7 @@ def build_growth_comparison(sip_engine: dict) -> dict:
     return comparison
 
 def get_insights(analysis: dict, decision_engine: dict, sip_engine: dict, growth: dict) -> dict:
+    """Build the plain-English explanation blocks shown on the investment page."""
     decision = decision_engine.get("decision", "NOT_READY")
     behavior = analysis.get("savings_behavior") or {}
     emergency = analysis.get("emergency") or {}
@@ -481,6 +485,7 @@ def get_insights(analysis: dict, decision_engine: dict, sip_engine: dict, growth
 # =============================================================================
 
 def build_live_investment_payload():
+    """Build the complete investment payload for the frontend."""
     """
     Purpose : Build the complete investment payload for the frontend.
     Input   : None (uses session user).
@@ -652,10 +657,6 @@ def api_investment_overview():
         return safe_api_error(e, status_code=400)
 
 
-@investment_bp.route("/api/investment")
-def api_investment_alias():
-    """Compatibility alias for older clients expecting /api/investment."""
-    return api_investment_overview()
 
 
 

@@ -1,4 +1,14 @@
-"""SmartVest Flask app bootstrap with production-safe startup flow."""
+"""SmartVest Flask app bootstrap.
+
+Big picture:
+- Load environment settings
+- Set up Flask
+- Initialize the database once at startup
+- Register blueprints for each feature area
+- Add shared security behavior such as CSRF protection
+
+This file is intentionally small so the startup path is easy to follow.
+"""
 import logging
 import secrets
 
@@ -25,16 +35,19 @@ logging.basicConfig(level=logging.INFO)
 
 
 def _ensure_secret_key():
+    """Return the required Flask secret key from the environment."""
     if not config.SECRET_KEY:
         raise RuntimeError("SECRET_KEY environment variable is required.")
     return config.SECRET_KEY
 
 
 def _csrf_exempt(path: str) -> bool:
+    """Allow only login and signup to skip CSRF on first contact."""
     return path.startswith("/api/auth/login") or path.startswith("/api/auth/signup")
 
 
 def create_app():
+    """Build and configure the Flask application object."""
     app = Flask(__name__)
     app.secret_key = _ensure_secret_key()
     # Keep local HTTP development working: browsers reject Secure cookies on plain localhost HTTP.
@@ -64,8 +77,7 @@ def create_app():
 
     @app.before_request
     def enforce_csrf():
-        # Why this exists:
-        # Any state-changing endpoint must include an anti-CSRF token header.
+        # State-changing requests should prove they came from this browser session.
         if request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.path.startswith("/api/"):
             if _csrf_exempt(request.path):
                 return None
@@ -77,6 +89,7 @@ def create_app():
 
     @app.after_request
     def set_csrf_cookie(response):
+        # The browser reads this cookie and sends the token back in X-CSRF-Token.
         if not session.get("csrf_token"):
             session["csrf_token"] = secrets.token_urlsafe(32)
         response.set_cookie(
@@ -90,6 +103,7 @@ def create_app():
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error):
+        # Keep internals out of the response while still logging the full trace server-side.
         logger.exception("Unhandled server error: %s", error)
         if request.path.startswith("/api/"):
             return jsonify({"status": "error", "message": "Unexpected server error."}), 500
@@ -97,6 +111,7 @@ def create_app():
 
     @app.route("/api/admin/market-metrics")
     def api_admin_market_metrics():
+        """Expose the admin market metrics endpoint from the app bootstrap."""
         if not config.is_admin():
             return jsonify({"status": "error", "message": "Forbidden."}), 403
         return jsonify({"status": "success", "data": build_market_metrics()})

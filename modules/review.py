@@ -88,3 +88,8 @@ def api_user_submit_review():
 
 
 
+"""Public review submission routes.
+
+Reviews are collected here, then moderated by the admin workflow before they
+can appear on the public reviews page.
+"""

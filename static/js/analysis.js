@@ -1,6 +1,8 @@
 /* global API */
 
 (function () {
+    // This page is data-heavy, so the script is structured as small render
+    // helpers that turn one API response into many dashboard sections.
     const state = {
         data: null,
         mainTab: 'current',
@@ -76,6 +78,7 @@
     }
 
     function renderChartImage(id, emptyId, src) {
+        // Cache-bust chart URLs so the browser loads the latest generated image.
         const image = document.getElementById(id);
         const empty = document.getElementById(emptyId);
         if (!image) {
@@ -420,6 +423,7 @@
     }
 
     function renderCurrentOverview(current) {
+        // The overview panel is the high-level summary for the current month.
         const breakdown = current.detailed?.category_breakdown || current.category_breakdown || [];
         setText('currentMonthLabel', new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }));
         setText('currentIncome', formatMoney(current.income));
@@ -429,17 +433,15 @@
         setText('currentOverviewInsight', current.insight || 'No insight available yet.');
         setText('currentOverviewTip', current.tip || 'No tip available yet.');
 
-        renderChartImage('currentOverviewChart', 'currentOverviewEmpty', state.data?.charts?.current_pie || state.data?.charts?.category_chart || '/static/current_pie.png');
-        renderChartImage('currentOverviewBarChart', 'currentOverviewBarEmpty', state.data?.charts?.current_category_bar || state.data?.charts?.category_bar_chart || '/static/current_category_bar.png');
-        renderChartImage('currentOverviewTrendChart', 'currentOverviewTrendEmpty', state.data?.charts?.current_trend || state.data?.charts?.trend_chart || '/static/current_trend.png');
+        renderChartImage('currentOverviewChart', 'currentOverviewEmpty', state.data?.charts?.current_pie || state.data?.charts?.category_chart || '/static/generated/current_pie.png');
+        renderChartImage('currentOverviewBarChart', 'currentOverviewBarEmpty', state.data?.charts?.current_category_bar || state.data?.charts?.category_bar_chart || '/static/generated/current_category_bar.png');
+        renderChartImage('currentOverviewTrendChart', 'currentOverviewTrendEmpty', state.data?.charts?.current_trend || state.data?.charts?.trend_chart || '/static/generated/current_trend.png');
         renderTopCategories('currentTopCategories', breakdown);
     }
 
     function renderCurrentDetailed(current) {
         const detailed = current.detailed || {};
         const pattern = detailed.pattern_analysis || {};
-        console.log('Spending Pattern:', detailed.pattern_analysis);
-
         renderList(
             'currentCategoryBreakdown',
             detailed.category_breakdown,
@@ -452,8 +454,8 @@
             'No category breakdown yet.'
         );
 
-        renderChartImage('currentDetailedPieChart', 'currentDetailedPieEmpty', state.data?.charts?.current_pie || state.data?.charts?.category_chart || '/static/current_pie.png');
-        renderChartImage('currentDetailedTrendChart', 'currentDetailedTrendEmpty', state.data?.charts?.current_trend || state.data?.charts?.trend_chart || '/static/current_trend.png');
+        renderChartImage('currentDetailedPieChart', 'currentDetailedPieEmpty', state.data?.charts?.current_pie || state.data?.charts?.category_chart || '/static/generated/current_pie.png');
+        renderChartImage('currentDetailedTrendChart', 'currentDetailedTrendEmpty', state.data?.charts?.current_trend || state.data?.charts?.trend_chart || '/static/generated/current_trend.png');
 
         renderList(
             'currentCategoryChange',
@@ -516,6 +518,7 @@
     }
 
     function renderYearlyOverview(yearly) {
+        // The yearly panel reuses the same API response but presents a longer time horizon.
         setText('yearlyMonthsLabel', `${safeNumber(yearly.months_count).toFixed(0)} months`);
         setText('yearlyIncome', formatMoney(yearly.total_income));
         setText('yearlyExpense', formatMoney(yearly.total_expense));
@@ -523,8 +526,8 @@
         setText('yearlyScore', `${safeNumber(yearly.detailed?.score).toFixed(0)}`);
         setText('yearlyOverviewInsight', yearly.insight || 'No yearly insight available yet.');
 
-        renderChartImage('yearlyOverviewChart', 'yearlyOverviewEmpty', state.data?.charts?.yearly_trend_chart || '/static/yearly_trend.png');
-        renderChartImage('yearlyOverviewBarChart', 'yearlyOverviewBarEmpty', state.data?.charts?.yearly_expense_bar || state.data?.charts?.yearly_bar_chart || '/static/yearly_expense_bar.png');
+        renderChartImage('yearlyOverviewChart', 'yearlyOverviewEmpty', state.data?.charts?.yearly_trend_chart || '/static/generated/yearly_trend.png');
+        renderChartImage('yearlyOverviewBarChart', 'yearlyOverviewBarEmpty', state.data?.charts?.yearly_expense_bar || state.data?.charts?.yearly_bar_chart || '/static/generated/yearly_expense_bar.png');
     }
 
     function renderYearlyDetailed(yearly) {

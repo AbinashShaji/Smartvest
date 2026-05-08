@@ -5,6 +5,9 @@
 
 {% block head %}
 <style>
+/* Investment page:
+   Keep the tabs, cards, and charts visually grouped even though the page is
+   driven by backend analysis data. */
 /* ── Investment Page Tabs ── */
 .inv-tabs{display:flex;gap:4px; background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.20));;border:1px solid var(--glass-border);border-radius:var(--radius-md);padding:4px;flex-wrap:wrap;margin-bottom:24px}
 .inv-tab{padding:10px 18px;border-radius:10px;border:none;background:transparent;color:var(--fg-secondary);font-weight:600;font-size:.85rem;cursor:pointer;transition:var(--transition);white-space:nowrap}
@@ -83,6 +86,7 @@
 {% block content %}
 <div class="page-stack">
     <!-- Hero -->
+    <!-- The hero block explains the current investment readiness in plain language. -->
     <section class="glass-card section-card">
         <div class="section-header">
             <div>
@@ -93,7 +97,8 @@
             <div class="summary-badge" id="invStatusBadge">Loading...</div>
         </div>
         
-        <!-- Decision Block -->
+        <!-- Decision block:
+             This is the summary of the readiness engine and its reasons. -->
         <div id="decisionBlock" style="margin-top: 20px; padding: 18px; border-radius: var(--radius-md); background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); display: none;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                 <h3 id="decisionTitle" style="margin: 0; font-size: 1.3rem;">Decision: --</h3>
@@ -114,7 +119,8 @@
         </div>
     </section>
 
-    <!-- Tabs -->
+    <!-- Tabs:
+         Each panel below is populated by the investment API payload. -->
     <div class="inv-tabs" id="invTabs" role="tablist">
         <button class="inv-tab active" data-tab="overview" role="tab">Overview</button>
         <button class="inv-tab" data-tab="readiness" role="tab">Readiness</button>
@@ -297,6 +303,7 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // The page loads once and then fills every panel from the shared API payload.
     initTabs();
     loadInvestmentData();
 });
@@ -415,7 +422,7 @@ function populateInsights(d, tabPrefix, tabName) {
     }
 }
 
-/* ── Main Data Loader ── */
+/* The loader fetches one API response and fans it out into all the panels. */
 async function loadInvestmentData() {
     try {
         const data = await API.getOverview();

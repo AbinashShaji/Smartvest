@@ -32,6 +32,7 @@ def _normalize_priority(value: Any, default: str = "medium") -> str:
 
 
 def fetch_user_goals(user_id: int, include_archived: bool = False) -> List[Dict[str, Any]]:
+    """Return all goals for one user, optionally including archived rows."""
     conn = get_db_connection()
     cursor = conn.cursor()
     if include_archived:
@@ -47,6 +48,7 @@ def fetch_user_goals(user_id: int, include_archived: bool = False) -> List[Dict[
 
 
 def fetch_goal(user_id: int, goal_id: Any) -> Optional[Dict[str, Any]]:
+    """Return one goal row for the given user and goal id."""
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM goals WHERE id = ? AND user_id = ?", (goal_id, user_id))
@@ -64,6 +66,7 @@ def create_goal(
     status: str = "active",
     priority: str = "medium",
 ) -> Dict[str, Any]:
+    """Insert a new goal and return the created row."""
     status_value = _normalize_status(status, default="active")
     priority_value = _normalize_priority(priority, default="medium")
     now = _now_iso()
@@ -110,6 +113,7 @@ def update_goal(
     deadline: str,
     priority: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
+    """Update a goal and auto-adjust status when progress reaches the target."""
     now = _now_iso()
     current = fetch_goal(user_id, goal_id)
     if current is None:
@@ -157,6 +161,7 @@ def update_goal(
 
 
 def transition_goal_status(user_id: int, goal_id: Any, target_status: str) -> Optional[Dict[str, Any]]:
+    """Move a goal through its lifecycle state machine."""
     status_value = _normalize_status(target_status, default="active")
     now = _now_iso()
     current = fetch_goal(user_id, goal_id)
@@ -197,5 +202,6 @@ def transition_goal_status(user_id: int, goal_id: Any, target_status: str) -> Op
 
 
 def soft_archive_goal(user_id: int, goal_id: Any) -> bool:
+    """Archive a goal without deleting its history from the database."""
     row = transition_goal_status(user_id, goal_id, "archived")
     return row is not None

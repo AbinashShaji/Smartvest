@@ -1,6 +1,9 @@
-"""
-Admin routes and APIs for SmartVest.
-The admin dashboard monitors platform activity, engagement, reminders, and moderation.
+"""Admin routes and APIs for SmartVest.
+
+Big picture:
+- render admin pages
+- expose moderation and engagement data
+- manage users, feedback, reviews, and uploaded market datasets
 """
 
 from datetime import datetime, timedelta
@@ -15,6 +18,7 @@ from utils.market_data import (
     get_market_dataset_rows,
     get_active_dataset,
     get_dataset_preview,
+    RETENTION_LIMIT,
 )
 
 
@@ -80,6 +84,7 @@ def admin_market_datasets_page():
 # =============================================================================
 
 def _admin_required():
+    """Keep admin-only API checks readable and consistent."""
     return config.is_admin()
 
 
@@ -163,12 +168,6 @@ def _activity_counts(cursor):
 # =============================================================================
 # DASHBOARD API ROUTES
 # =============================================================================
-
-@admin_bp.route("/api/admin/stats")
-def api_admin_stats():
-    """Compatibility endpoint for existing dashboard code."""
-    return api_admin_activity_stats()
-
 
 @admin_bp.route("/api/admin/activity-stats")
 def api_admin_activity_stats():
@@ -575,7 +574,7 @@ def api_admin_market_dataset_list():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        rows = get_market_dataset_rows(limit=3)
+        rows = get_market_dataset_rows(limit=RETENTION_LIMIT)
         return jsonify({
             "status": "success",
             "data": {

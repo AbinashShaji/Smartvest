@@ -123,3 +123,8 @@ def api_get_income():
 
 
 
+"""Income update routes.
+
+This module keeps the user's monthly income snapshot in sync with the rest of
+the expense and analysis flows.
+"""
