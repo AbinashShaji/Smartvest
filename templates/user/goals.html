@@ -35,15 +35,9 @@
         padding: 10px 14px;
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: center;
         gap: 12px;
-    }
-
-    .goals-module-title {
-        margin: 0;
-        color: var(--text-primary);
-        font-size: 20px;
-        font-weight: 600;
+        flex-wrap: wrap;
     }
 
     .goals-tabs {
@@ -91,6 +85,11 @@
 
     .goals-view.is-active {
         display: grid;
+    }
+
+    .goals-dashboard-stack {
+        display: grid;
+        gap: 16px;
     }
 
     .goal-section {
@@ -504,37 +503,627 @@
         border-radius: 12px;
         padding: 20px;
     }
+
+    .goals-page {
+        display: grid;
+        gap: 20px;
+    }
+
+    .goals-shell,
+    .goals-section,
+    .goals-selector-bar,
+    .goals-hero-card,
+    .goals-decision-card,
+    .goals-report-card,
+    .goals-filter-shell,
+    .goals-detail-shell {
+        background: var(--bg-card-outer);
+        border: 1px solid var(--border-outer);
+        border-radius: 12px;
+    }
+
+    .goals-shell {
+        padding: 28px 32px;
+        display: grid;
+        gap: 16px;
+    }
+
+    .goals-section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    .goals-hero-card {
+        padding: 0;
+        border: none;
+        background: transparent;
+    }
+
+    .goals-hero-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        align-items: flex-start;
+    }
+
+    .goals-label,
+    .goals-card-label,
+    .goals-metric-label {
+        margin: 0;
+        color: var(--text-label);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .goals-hero-title,
+    .goals-section-title {
+        margin: 6px 0 6px;
+        color: var(--text-primary);
+        font-size: clamp(2.1rem, 4vw, 2.7rem);
+        font-weight: 700;
+        line-height: 1.05;
+    }
+
+    .goals-hero-title.is-healthy { color: #10b981; }
+    .goals-hero-title.is-stressed { color: var(--accent-gold-lt); }
+    .goals-hero-title.is-critical { color: #ef4444; }
+
+    .goals-subtitle,
+    .goals-card-subtitle,
+    .goals-copy {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.55;
+    }
+
+    .goals-status-line {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    .goals-status-dot,
+    .goal-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex: 0 0 auto;
+    }
+
+    .dot-amber,
+    .goals-status-dot.is-stressed { background: var(--accent-gold-lt); }
+    .dot-green,
+    .goals-status-dot.is-healthy { background: #10b981; }
+    .dot-red,
+    .goals-status-dot.is-critical { background: #ef4444; }
+    .dot-muted { background: #6b7280; }
+
+    .goals-decision-card {
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .goals-decision-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+    }
+
+    .goals-decision-col h4,
+    .goals-signal-card h4,
+    .goals-detail-card h4,
+    .goals-velocity h4 {
+        margin: 0 0 10px;
+        color: var(--text-primary);
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+    }
+
+    .goals-decision-list {
+        display: grid;
+        gap: 8px;
+    }
+
+    .goals-decision-item {
+        padding: 10px 12px;
+        border-left: 3px solid var(--accent-amber);
+        border-radius: 0 8px 8px 0;
+        background: rgba(255, 255, 255, 0.02);
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.45;
+    }
+
+    .goals-warning-bar {
+        margin-top: 16px;
+        padding: 10px 16px;
+        border-radius: 8px;
+        background: rgba(146, 64, 14, 0.3);
+        border: 1px solid var(--accent-amber);
+        color: var(--text-secondary);
+        font-size: 14px;
+    }
+
+    .goals-warning-bar strong {
+        color: var(--accent-gold-lt);
+        font-weight: 700;
+    }
+
+    .goals-tabs {
+        display: flex;
+        gap: 4px;
+        background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.2));
+        border: 1px solid var(--border-outer);
+        border-radius: 12px;
+        padding: 4px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .goals-tab-btn {
+        padding: 10px 18px;
+        border-radius: 6px;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        font-weight: 600;
+        font-size: 0.85rem;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+
+    .goals-tab-btn.is-active {
+        background: #ffffff;
+        color: #000000;
+    }
+
+    .goals-cta {
+        margin-left: auto;
+        padding: 10px 18px;
+        border: none;
+        border-radius: 8px;
+        background: linear-gradient(135deg, var(--accent-gold), var(--accent-gold-lt));
+        color: #000;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .goals-panel {
+        display: none;
+        gap: 20px;
+    }
+
+    .goals-panel.is-active {
+        display: grid;
+    }
+
+    .goals-section {
+        padding: 28px 32px;
+        display: grid;
+        gap: 20px;
+    }
+
+    .goals-metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .goals-metric-card,
+    .goals-detail-card,
+    .goals-velocity {
+        background: linear-gradient(135deg, #1a1a0a, #141400);
+        border: 1px solid var(--border-inner);
+        border-radius: 10px;
+    }
+
+    .goals-metric-card {
+        padding: 20px 24px;
+    }
+
+    .goals-metric-value {
+        margin: 8px 0 4px;
+        color: var(--text-primary);
+        font-size: 2rem;
+        font-weight: 700;
+        line-height: 1.05;
+    }
+
+    .goals-metric-subtitle,
+    .goals-metric-note {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 12px;
+    }
+
+    .goals-signals-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .goals-signal-card {
+        padding: 20px 24px;
+        background: linear-gradient(135deg, #1a1a0a, #141400);
+        border: 1px solid var(--border-inner);
+        border-left-width: 4px;
+        border-radius: 10px;
+    }
+
+    .goals-signal-card.is-amber { border-left-color: var(--accent-gold-lt); }
+    .goals-signal-card.is-red { border-left-color: var(--accent-red); }
+    .goals-signal-card.is-green { border-left-color: var(--accent-green); }
+
+    .goals-signal-list {
+        display: grid;
+        gap: 8px;
+        margin: 0;
+    }
+
+    .goals-signal-item {
+        margin: 0;
+        padding-left: 12px;
+        border-left: 3px solid var(--accent-amber);
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.45;
+    }
+
+    .goals-filter-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .goals-filter-tabs {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .goals-filter-tab {
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 0 0 6px;
+        border-bottom: 2px solid transparent;
+        cursor: pointer;
+    }
+
+    .goals-filter-tab.is-active {
+        color: var(--text-primary);
+        border-bottom-color: var(--accent-gold-lt);
+    }
+
+    .goals-filter-tools {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .goals-input {
+        background: #121212;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        color: #fff;
+        padding: 10px 12px;
+        min-width: 180px;
+    }
+
+    .goals-card-stack {
+        display: grid;
+        gap: 12px;
+    }
+
+    .goals-goal-card {
+        display: grid;
+        grid-template-columns: 84px minmax(220px, 1fr) minmax(280px, 1fr) auto;
+        gap: 16px;
+        align-items: center;
+        padding: 20px 24px;
+        background: var(--bg-card-outer);
+        border: 1px solid var(--border-outer);
+        border-left-width: 4px;
+        border-radius: 12px;
+    }
+
+    .goals-goal-card.border-critical { border-left-color: var(--accent-red); }
+    .goals-goal-card.border-medium { border-left-color: var(--accent-gold-lt); }
+    .goals-goal-card.border-low { border-left-color: #6b7280; }
+
+    .goals-ring {
+        width: 72px;
+        height: 72px;
+    }
+
+    .goals-goal-name {
+        margin: 0 0 6px;
+        color: var(--text-primary);
+        font-size: 18px;
+        font-weight: 700;
+    }
+
+    .goals-goal-meta {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+    }
+
+    .goals-inline-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0;
+    }
+
+    .goals-inline-stat {
+        padding: 0 12px;
+    }
+
+    .goals-inline-stat + .goals-inline-stat {
+        border-left: 1px solid var(--border-outer);
+    }
+
+    .goals-inline-stat .goals-metric-label {
+        margin-bottom: 4px;
+    }
+
+    .goals-inline-stat .goals-inline-value {
+        color: var(--text-primary);
+        font-size: 16px;
+        font-weight: 700;
+        margin-top: 4px;
+    }
+
+    .goals-card-actions {
+        display: grid;
+        justify-items: end;
+        gap: 8px;
+    }
+
+    .goals-action-btn {
+        background: transparent;
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: 13px;
+        color: #fff;
+        cursor: pointer;
+    }
+
+    .goals-action-btn--danger {
+        border-color: var(--accent-red);
+        color: #fca5a5;
+    }
+
+    .goals-overflow {
+        position: relative;
+    }
+
+    .goals-overflow-trigger {
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        background: transparent;
+        color: #fff;
+        width: 34px;
+        height: 30px;
+        cursor: pointer;
+    }
+
+    .goals-overflow-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: #111;
+        border: 1px solid #2a2a2a;
+        border-radius: 8px;
+        display: none;
+        min-width: 140px;
+        padding: 6px;
+        z-index: 200;
+    }
+
+    .goals-overflow.is-open .goals-overflow-menu {
+        display: grid;
+    }
+
+    .goals-overflow-menu .goals-action-btn {
+        border: none;
+        padding: 7px 8px;
+        text-align: left;
+        width: 100%;
+    }
+
+    .goals-selector-bar {
+        padding: 16px 18px;
+        margin-bottom: 14px;
+    }
+
+    .goals-detail-select {
+        width: 100%;
+        margin-top: 8px;
+    }
+
+    .goals-detail-report {
+        padding: 28px 32px;
+        display: grid;
+        gap: 16px;
+    }
+
+    .goals-detail-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 14px;
+    }
+
+    .goals-detail-stack {
+        display: grid;
+        gap: 12px;
+    }
+
+    .goals-detail-card {
+        padding: 16px 18px;
+        border-left: 4px solid var(--accent-gold-lt);
+    }
+
+    .goals-detail-card p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.45;
+    }
+
+    .goals-velocity {
+        padding: 20px 18px;
+    }
+
+    .goals-progress-track {
+        margin: 10px 0 12px;
+        height: 6px;
+        border-radius: 999px;
+        background: #222;
+        overflow: hidden;
+    }
+
+    .goals-progress-fill {
+        height: 100%;
+        background: var(--accent-gold-lt);
+    }
+
+    .goals-velocity-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #2a2a2a;
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+
+    .goals-velocity-row:last-child {
+        border-bottom: none;
+    }
+
+    .goals-velocity-row strong {
+        color: var(--text-primary);
+    }
+
+    .goals-empty-state {
+        padding: 20px;
+        border-radius: 12px;
+        background: rgba(245, 158, 11, 0.08);
+        border: 1px solid rgba(245, 158, 11, 0.25);
+        color: var(--text-secondary);
+    }
+
+    .goals-modal-panel .goals-input {
+        min-width: 0;
+        width: 100%;
+    }
+
+    @media (max-width: 1100px) {
+        .goals-metrics-grid,
+        .goals-signals-grid,
+        .goals-detail-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .goals-goal-card {
+            grid-template-columns: 72px 1fr;
+        }
+
+        .goals-inline-stats,
+        .goals-card-actions {
+            grid-column: 1 / -1;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .goals-shell,
+        .goals-section,
+        .goals-detail-report {
+            padding: 20px;
+        }
+
+        .goals-hero-row {
+            flex-direction: column;
+        }
+
+        .goals-decision-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .goals-filter-bar {
+            align-items: stretch;
+        }
+
+        .goals-filter-tools,
+        .goals-tabs {
+            width: 100%;
+        }
+
+        .goals-cta {
+            margin-left: 0;
+            width: 100%;
+        }
+    }
 </style>
 
-<div class="goals-module">
-    <div class="goals-module-bar">
-        <h2 class="goals-module-title">Goals</h2>
-        <div class="goals-tabs">
-            <button class="goals-tab-btn is-active" data-view-btn="dashboard">Dashboard</button>
-            <button class="goals-tab-btn" data-view-btn="portfolio">Portfolio</button>
-            <button class="goals-tab-btn" data-view-btn="detail">Detail</button>
-        </div>
-        <button class="goals-cta" data-open-create> Create Goal </button>
-    </div>
-
-    <section id="dashboardView" class="goals-view is-active">
-        <div id="portfolioHealthSection" class="goal-section"></div>
-        <div id="signalsRiskSection" class="goal-section"></div>
+<div class="goals-module goals-page">
+    <section class="goals-shell">
+        <div id="goalsHero"></div>
+        <div id="goalsDecision"></div>
     </section>
 
-    <section id="portfolioView" class="goals-view">
-        <div class="goal-section">
-            <div class="goal-filter-row">
-                <div class="goal-filter-tabs" id="portfolioFilters">
-                    <button class="goal-filter-tab is-active" data-filter="all">All</button>
-                    <button class="goal-filter-tab" data-filter="active">Active</button>
-                    <button class="goal-filter-tab" data-filter="paused">Paused</button>
-                    <button class="goal-filter-tab" data-filter="completed">Completed</button>
-                    <button class="goal-filter-tab" data-filter="archived">Archived</button>
+    <div class="goals-tabs" id="goalsTabs" role="tablist">
+        <button class="goals-tab-btn is-active" data-view-btn="dashboard" role="tab">Dashboard</button>
+        <button class="goals-tab-btn" data-view-btn="portfolio" role="tab">Portfolio</button>
+        <button class="goals-tab-btn" data-view-btn="detail" role="tab">Detail</button>
+        <button class="goals-cta" data-open-create type="button">Create Goal</button>
+    </div>
+
+    <section id="dashboardView" class="goals-panel is-active">
+        <div id="goalsMetrics"></div>
+        <div id="goalsSignals"></div>
+    </section>
+
+    <section id="portfolioView" class="goals-panel">
+        <div class="goals-section">
+            <div class="goals-filter-bar">
+                <div class="goals-filter-tabs" id="portfolioFilters">
+                    <button class="goals-filter-tab is-active" data-filter="all">All</button>
+                    <button class="goals-filter-tab" data-filter="active">Active</button>
+                    <button class="goals-filter-tab" data-filter="paused">Paused</button>
+                    <button class="goals-filter-tab" data-filter="completed">Completed</button>
+                    <button class="goals-filter-tab" data-filter="archived">Archived</button>
                 </div>
-                <div class="goal-filter-tools">
-                    <input id="goalSearch" class="goal-input" type="search" placeholder="Search goals">
-                    <select id="goalSort" class="goal-input">
+                <div class="goals-filter-tools">
+                    <input id="goalSearch" class="goals-input" type="search" placeholder="Search goals">
+                    <select id="goalSort" class="goals-input">
                         <option value="priority">Sort: Priority</option>
                         <option value="deadline">Sort: Deadline</option>
                         <option value="progress">Sort: Progress</option>
@@ -542,16 +1131,16 @@
                     </select>
                 </div>
             </div>
-            <div id="portfolioRows"></div>
+            <div id="portfolioRows" class="goals-card-stack"></div>
         </div>
     </section>
 
-    <section id="detailView" class="goals-view">
-        <div class="goal-detail-select-row">
-            <p class="goal-label">Select Goal For Deep Analysis</p>
-            <select id="detailGoalSelect" class="goal-input goal-detail-select"></select>
+    <section id="detailView" class="goals-panel">
+        <div class="goals-selector-bar">
+            <p class="goals-label">Select Goal For Deep Analysis</p>
+            <select id="detailGoalSelect" class="goals-input goals-detail-select"></select>
         </div>
-        <div id="goalDetailSection" class="goal-section"></div>
+        <div id="goalDetailSection"></div>
     </section>
 </div>
 
@@ -711,11 +1300,11 @@
                 : null;
             if (openNode) {
                 openNode.classList.remove('is-open');
-                openNode.querySelector('.goal-overflow-trigger')?.setAttribute('aria-expanded', 'false');
+                openNode.querySelector('.goals-overflow-trigger')?.setAttribute('aria-expanded', 'false');
             } else {
-                document.querySelectorAll('.goal-overflow.is-open').forEach((node) => {
+                document.querySelectorAll('.goals-overflow.is-open').forEach((node) => {
                     node.classList.remove('is-open');
-                    node.querySelector('.goal-overflow-trigger')?.setAttribute('aria-expanded', 'false');
+                    node.querySelector('.goals-overflow-trigger')?.setAttribute('aria-expanded', 'false');
                 });
             }
             state.openOverflowGoalId = null;
@@ -728,13 +1317,20 @@
             return 'is-critical';
         }
 
+        function statusLabel(value) {
+            const x = String(value || '').toLowerCase();
+            if (x === 'healthy') return 'HEALTHY';
+            if (x === 'stressed') return 'STRESSED';
+            return 'CRITICAL';
+        }
+
         function ring(goal) {
             const p = Math.max(0, Math.min(100, n(goal.progress_percent)));
             const r = 28;
             const c = 2 * Math.PI * r;
             const off = c * (1 - p / 100);
             const pr = String(goal.priority || 'low').toLowerCase();
-            const col = pr === 'critical' ? '#ef4444' : pr === 'medium' ? '#d4a017' : '#6b7280';
+            const col = pr === 'critical' ? '#ef4444' : (pr === 'medium' || pr === 'high') ? '#d4a017' : '#6b7280';
             return `
                 <svg class="goal-ring" viewBox="0 0 72 72" aria-hidden="true">
                     <circle cx="36" cy="36" r="${r}" fill="none" stroke="#2a2a2a" stroke-width="6"></circle>
@@ -812,88 +1408,164 @@
 
         function renderDashboard() {
             const p = mergedPortfolioSummary();
-            const health = tc(p.portfolio_feasibility || 'stressed');
-            const tone = healthTone(p.portfolio_feasibility);
+            const health = String(p.portfolio_feasibility || 'critical').toLowerCase();
+            const tone = healthTone(health);
             const warnings = Array.isArray(p.warnings) ? p.warnings : [];
             const conflicts = Array.isArray(p.conflicts) ? p.conflicts : [];
-            const warn = warnings[0];
             const loadRatioValue = n(p.allocation_load_ratio ?? p.load_ratio ?? 0);
             const availableSavings = n(p.available_monthly_savings ?? p.available_savings ?? 0);
-            $('#portfolioHealthSection').innerHTML = `
-                <div class="goal-section-head">
-                    <div>
-                        <p class="goal-label">Portfolio Health</p>
-                        <h3 class="goal-title ${tone}">${esc(health)}</h3>
-                        <p class="goal-subtitle">Total progress ${n(p.avg_progress).toFixed(1)}% across ${n(p.total_goals)} goals</p>
-                    </div>
-                    <div class="goal-head-side">Required monthly: ${money(p.required_monthly_savings)}</div>
-                </div>
-                <div class="goal-metrics-grid">
-                    <article class="goal-metric-card"><p class="goal-metric-label">Target</p><p class="goal-metric-value">${money(p.total_target)}</p><p class="goal-metric-sub">Portfolio total</p></article>
-                    <article class="goal-metric-card"><p class="goal-metric-label">Saved</p><p class="goal-metric-value">${money(p.total_saved)}</p><p class="goal-metric-sub">Current progress</p></article>
-                    <article class="goal-metric-card"><p class="goal-metric-label">Remaining</p><p class="goal-metric-value">${money(p.total_remaining)}</p><p class="goal-metric-sub">To complete</p></article>
-                    <article class="goal-metric-card"><p class="goal-metric-label">Active</p><p class="goal-metric-value">${n(p.active_goals)}</p><p class="goal-metric-sub">In execution</p></article>
-                    <article class="goal-metric-card"><p class="goal-metric-label">Paused/Done</p><p class="goal-metric-value">${n(p.paused_goals)}/${n(p.completed_goals)}</p><p class="goal-metric-sub">Lifecycle mix</p></article>
-                </div>
-                <div class="goal-inline-warning">
-                    <span class="goal-dot ${warn ? 'dot-amber' : 'dot-green'}"></span>
-                    <span>${esc(warn || 'No immediate savings pressure detected.')}</span>
-                </div>
-            `;
+            const requiredSavings = n(p.required_monthly_savings);
+            const topSignal = warnings[0] || (conflicts[0] && (conflicts[0].message || conflicts[0].type || conflicts[0])) || 'No immediate savings pressure detected.';
+            const signals = [
+                loadRatioValue > 1
+                    ? `Required monthly savings exceed available savings by $${money(Math.max(0, requiredSavings - availableSavings))}.`
+                    : `Allocation load remains at ${loadRatioValue.toFixed(2)}x.`,
+                topSignal,
+                conflicts[0] && (conflicts[0].message || conflicts[0].type || conflicts[0]),
+            ].filter(Boolean).slice(0, 3);
+            const actions = [
+                loadRatioValue > 1 ? 'Increase monthly allocation' : 'Maintain current allocation',
+                warnings.length || conflicts.length ? 'Review goal priorities' : 'Keep monitoring current pace',
+                conflicts.length ? 'Extend or shift deadlines' : 'Continue current plan',
+            ];
+            if (tone !== 'is-healthy') {
+                actions.unshift('Reduce low-priority commitments');
+            }
 
-            $('#signalsRiskSection').innerHTML = `
-                <div class="goal-section-head">
-                    <div>
-                        <p class="goal-label">Signals & Risks</p>
-                        <h3 class="goal-title">Portfolio Diagnostics</h3>
-                        <p class="goal-subtitle">Feasibility pressure and deadline conflict visibility.</p>
+            const hero = $('#goalsHero');
+            if (hero) {
+                hero.innerHTML = `
+                    <div class="goals-hero-card">
+                        <div class="goals-hero-row">
+                            <div>
+                                <p class="goals-label">SMARTVEST GOALS</p>
+                                <h1 class="goals-hero-title ${tone}">${esc(statusLabel(health))}</h1>
+                                <p class="goals-subtitle">Total progress ${n(p.avg_progress).toFixed(1)}% across ${n(p.total_goals)} goals</p>
+                            </div>
+                            <div class="goals-status-line">
+                                <span class="goals-status-dot ${tone}"></span>
+                                <span>${statusLabel(health)}</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="goal-risk-grid">
-                    <article class="goal-risk-card risk-amber">
-                        <p class="goal-label">Allocation Load</p>
-                        <h4 class="goal-risk-title">${esc(health)}</h4>
-                        <p class="goal-risk-text">Available savings: ${money(availableSavings)}</p>
-                        <p class="goal-risk-text">Load ratio: ${loadRatioValue.toFixed(2)}x</p>
-                    </article>
-                    <article class="goal-risk-card risk-amber">
-                        <p class="goal-label">Feasibility Signals</p>
-                        <h4 class="goal-risk-title">Warnings</h4>
-                        ${warnings.length ? warnings.slice(0, 3).map((w) => `<p class="goal-risk-line">${esc(w)}</p>`).join('') : '<p class="goal-risk-text">No warnings at this time.</p>'}
-                    </article>
-                    <article class="goal-risk-card risk-red">
-                        <p class="goal-label">Upcoming Risks</p>
-                        <h4 class="goal-risk-title">Deadline Conflicts</h4>
-                        ${conflicts.length ? conflicts.slice(0, 3).map((c) => `<p class="goal-risk-line">${esc(c)}</p>`).join('') : '<p class="goal-risk-text">No overlapping deadline risk detected.</p>'}
-                    </article>
-                </div>
-            `;
+                `;
+            }
+
+            const decision = $('#goalsDecision');
+            if (decision) {
+                const decisionDescription = tone === 'is-healthy'
+                    ? 'Your goal plan has room to breathe and the current allocation can keep pace.'
+                    : tone === 'is-stressed'
+                        ? 'The plan is workable but monthly savings are running close to the limit.'
+                        : 'The current goal mix is asking for more monthly savings than the portfolio can safely support.';
+
+                decision.innerHTML = `
+                    <div class="goals-decision-card">
+                        <div>
+                            <p class="goals-label">Decision</p>
+                            <h2 class="goals-section-title">Portfolio Status: ${statusLabel(health)}</h2>
+                            <p class="goals-subtitle">${esc(decisionDescription)}</p>
+                        </div>
+                        <div class="goals-decision-grid">
+                            <div class="goals-decision-col">
+                                <h4>Signals</h4>
+                                <div class="goals-decision-list">
+                                    ${signals.map((item) => `<div class="goals-decision-item">${esc(item)}</div>`).join('')}
+                                </div>
+                            </div>
+                            <div class="goals-decision-col">
+                                <h4>Actions</h4>
+                                <div class="goals-decision-list">
+                                    ${actions.slice(0, 3).map((item) => `<div class="goals-decision-item">${esc(item)}</div>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                        ${(tone !== 'is-healthy' || warnings.length || conflicts.length) ? `
+                            <div class="goals-warning-bar">
+                                <strong>WARNING:</strong> Required monthly savings exceed available savings.
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+
+            const metrics = $('#goalsMetrics');
+            if (metrics) {
+                metrics.innerHTML = `
+                    <section class="goals-section">
+                        <div class="goals-metrics-grid">
+                            <article class="goals-metric-card"><p class="goals-metric-label">Target</p><p class="goals-metric-value">${money(p.total_target)}</p><p class="goals-metric-subtitle">Portfolio total</p></article>
+                            <article class="goals-metric-card"><p class="goals-metric-label">Saved</p><p class="goals-metric-value">${money(p.total_saved)}</p><p class="goals-metric-subtitle">Current progress</p></article>
+                            <article class="goals-metric-card"><p class="goals-metric-label">Remaining</p><p class="goals-metric-value">${money(p.total_remaining)}</p><p class="goals-metric-subtitle">To complete</p></article>
+                            <article class="goals-metric-card"><p class="goals-metric-label">Active</p><p class="goals-metric-value">${n(p.active_goals)}</p><p class="goals-metric-subtitle">In execution</p></article>
+                            <article class="goals-metric-card"><p class="goals-metric-label">Paused/Done</p><p class="goals-metric-value">${n(p.paused_goals)}/${n(p.completed_goals)}</p><p class="goals-metric-subtitle">Lifecycle mix</p></article>
+                        </div>
+                    </section>
+                `;
+            }
+
+            const signalsPanel = $('#goalsSignals');
+            if (signalsPanel) {
+                signalsPanel.innerHTML = `
+                    <section class="goals-section">
+                        <div class="goals-section-head">
+                            <div>
+                                <p class="goals-label">Signals & Risks</p>
+                                <h2 class="goals-section-title" style="font-size: 28px;">Portfolio Diagnostics</h2>
+                                <p class="goals-subtitle">Feasibility pressure and deadline conflict visibility.</p>
+                            </div>
+                        </div>
+                        <div class="goals-signals-grid">
+                            <article class="goals-signal-card is-amber">
+                                <p class="goals-card-label">Allocation Load</p>
+                                <h4>Signals</h4>
+                                <p class="goals-copy">Available savings: ${money(availableSavings)}</p>
+                                <p class="goals-copy">Load ratio: ${loadRatioValue.toFixed(2)}x</p>
+                            </article>
+                            <article class="goals-signal-card is-amber">
+                                <p class="goals-card-label">Feasibility Signals</p>
+                                <h4>Warnings</h4>
+                                <div class="goals-signal-list">
+                                    ${warnings.length ? warnings.slice(0, 3).map((item) => `<p class="goals-signal-item">${esc(item)}</p>`).join('') : '<p class="goals-copy">No warnings at this time.</p>'}
+                                </div>
+                            </article>
+                            <article class="goals-signal-card is-red">
+                                <p class="goals-card-label">Upcoming Risks</p>
+                                <h4>Deadline Conflicts</h4>
+                                <div class="goals-signal-list">
+                                    ${conflicts.length ? conflicts.slice(0, 3).map((item) => `<p class="goals-signal-item">${esc(item.message || item.type || item)}</p>`).join('') : '<p class="goals-copy">No overlapping deadline risk detected.</p>'}
+                                </div>
+                            </article>
+                        </div>
+                    </section>
+                `;
+            }
         }
 
         function buildGoalRow(goal) {
             const actions = lifecycleActions(goal.status).map((s) => `<button class="goal-action-btn" type="button" data-action="status" data-id="${goal.id}" data-status="${s}">${tc(s)}</button>`).join('');
             return `
-                <article class="goal-section goal-row ${borderTone(goal)}" data-goal-card="${goal.id}">
+                <article class="goals-goal-card ${borderTone(goal)}" data-goal-card="${goal.id}">
                     <div>${ring(goal)}</div>
                     <div>
-                        <h4 class="goal-name">${esc(goal.goal_name)}</h4>
-                        <p class="goal-deadline">${goal.deadline ? `Deadline: ${esc(goal.deadline)}` : 'No deadline set'}</p>
-                        <div class="goal-status">
+                        <h4 class="goals-goal-name">${esc(goal.goal_name)}</h4>
+                        <p class="goals-card-subtitle">${goal.deadline ? `Deadline: ${esc(goal.deadline)}` : 'No deadline set'}</p>
+                        <div class="goals-goal-meta">
                             <span><span class="goal-dot ${statusDot(goal.status)}"></span> ${tc(goal.status)}</span>
                             <span><span class="goal-dot dot-amber"></span> ${tc(goal.priority)}</span>
                         </div>
                     </div>
-                    <div class="goal-inline-stats">
-                        <div class="goal-inline-stat"><p class="goal-metric-label">Remaining</p><p class="value">${money(goal.remaining_amount)}</p></div>
-                        <div class="goal-inline-stat"><p class="goal-metric-label">Allocated/Mo</p><p class="value">${money(goal.analysis?.allocated_monthly)}</p></div>
-                        <div class="goal-inline-stat"><p class="goal-metric-label">Projection</p><p class="value">${goal.analysis?.realistic_months == null ? 'n/a' : `${n(goal.analysis.realistic_months).toFixed(1)} mo`}</p></div>
+                    <div class="goals-inline-stats">
+                        <div class="goals-inline-stat"><p class="goals-metric-label">Remaining</p><p class="goals-inline-value">${money(goal.remaining_amount)}</p></div>
+                        <div class="goals-inline-stat"><p class="goals-metric-label">Allocated/Mo</p><p class="goals-inline-value">${money(goal.analysis?.allocated_monthly)}</p></div>
+                        <div class="goals-inline-stat"><p class="goals-metric-label">Projection</p><p class="goals-inline-value">${goal.analysis?.realistic_months == null ? 'n/a' : `${n(goal.analysis.realistic_months).toFixed(1)} mo`}</p></div>
                     </div>
-                    <div class="goal-actions">
-                        <button class="goal-action-btn" type="button" data-action="detail" data-id="${goal.id}">View Analysis</button>
-                        <div class="goal-overflow" data-overflow-goal="${goal.id}">
-                            <button class="goal-overflow-trigger" type="button" data-action="overflow-toggle" data-id="${goal.id}" aria-expanded="false">···</button>
-                            <div class="goal-overflow-menu">
-                                <button class="goal-action-btn" type="button" data-action="edit" data-id="${goal.id}">Edit</button>
+                    <div class="goals-card-actions">
+                        <button class="goals-action-btn" type="button" data-action="detail" data-id="${goal.id}">View Analysis</button>
+                        <div class="goals-overflow" data-overflow-goal="${goal.id}">
+                            <button class="goals-overflow-trigger" type="button" data-action="overflow-toggle" data-id="${goal.id}" aria-expanded="false">...</button>
+                            <div class="goals-overflow-menu">
+                                <button class="goals-action-btn" type="button" data-action="edit" data-id="${goal.id}">Edit</button>
                                 ${actions}
                             </div>
                         </div>
@@ -907,7 +1579,7 @@
             const container = $('#portfolioRows');
             if (!container) return;
             if (!rows.length) {
-                container.innerHTML = "<p class='goal-subtitle'>No goals match the current filters.</p>";
+                container.innerHTML = "<div class='goals-empty-state'>No goals match the current filters.</div>";
                 return;
             }
 
@@ -917,7 +1589,7 @@
                 const openNode = document.querySelector(`[data-overflow-goal="${state.openOverflowGoalId}"]`);
                 if (openNode) {
                     openNode.classList.add('is-open');
-                    openNode.querySelector('.goal-overflow-trigger')?.setAttribute('aria-expanded', 'true');
+                    openNode.querySelector('.goals-overflow-trigger')?.setAttribute('aria-expanded', 'true');
                 } else {
                     state.openOverflowGoalId = null;
                 }
@@ -946,27 +1618,27 @@
             const s = detail.smart_analysis || {};
             const isBelow = n(a.allocated_monthly) < n(a.required_monthly);
             container.innerHTML = `
-                <div class="goal-section-head">
+                <div class="goals-section-head">
                     <div>
-                        <p class="goal-label">Goal Detail Report</p>
-                        <h3 class="goal-title">${esc(detail.goal_name || 'Goal')}</h3>
-                        <p class="goal-subtitle">${detail.deadline ? `Deadline: ${esc(detail.deadline)}` : 'No deadline set'}</p>
+                        <p class="goals-label">GOAL DETAIL REPORT</p>
+                        <h3 class="goals-section-title" style="font-size: 28px;">${esc(detail.goal_name || 'Goal')}</h3>
+                        <p class="goals-subtitle">${detail.deadline ? `Deadline: ${esc(detail.deadline)}` : 'No deadline set'}</p>
                     </div>
-                    <div class="goal-status"><span class="goal-dot ${statusDot(detail.status)}"></span>${tc(detail.status)}</div>
+                    <div class="goals-status-line"><span class="goal-dot ${statusDot(detail.status)}"></span>${tc(detail.status)}</div>
                 </div>
-                <div class="goal-detail-two-col">
-                    <div class="goal-detail-stack">
-                        <article class="goal-detail-card"><h4>Financial Snapshot</h4><p>Target ${money(detail.target_amount)} · Saved ${money(detail.saved_amount)} · Remaining ${money(detail.remaining_amount)}</p></article>
-                        <article class="goal-detail-card"><h4>Feasibility</h4><p>${esc(a.insight || 'No projection available')}</p><p>${esc(a.warning || '')}</p></article>
-                        <article class="goal-detail-card"><h4>Behavior Signal</h4><p>Top expense category impacting pace: ${esc(s.top_category || 'n/a')}.</p></article>
+                <div class="goals-detail-grid goals-detail-report">
+                    <div class="goals-detail-stack">
+                        <article class="goals-detail-card"><h4>Financial Snapshot</h4><p>Target ${money(detail.target_amount)} · Saved ${money(detail.saved_amount)} · Remaining ${money(detail.remaining_amount)}</p></article>
+                        <article class="goals-detail-card"><h4>Feasibility</h4><p>${esc(a.insight || 'No projection available')}</p><p>${esc(a.warning || '')}</p></article>
+                        <article class="goals-detail-card"><h4>Behavior Signal</h4><p>Top expense category impacting pace: ${esc(s.top_category || 'n/a')}.</p></article>
                     </div>
-                    <div class="goal-velocity">
-                        <p class="goal-label">Savings Velocity</p>
-                        <div class="goal-velocity-track"><div class="goal-velocity-fill" style="width:${Math.max(0, Math.min(100, n(detail.progress_percent))).toFixed(1)}%"></div></div>
-                        <div class="goal-velocity-row"><span>Progress</span><strong>${n(detail.progress_percent).toFixed(1)}%</strong></div>
-                        <div class="goal-velocity-row"><span>Allocated / month</span><strong>${money(a.allocated_monthly)}</strong></div>
-                        <div class="goal-velocity-row"><span>Required / month</span><strong class="${isBelow ? 'value-amber' : ''}">${money(a.required_monthly)}</strong></div>
-                        <div class="goal-velocity-row"><span>Projected completion</span><strong>${a.realistic_months == null ? 'n/a' : `${n(a.realistic_months).toFixed(1)} mo`}</strong></div>
+                    <div class="goals-velocity">
+                        <p class="goals-label">SAVINGS VELOCITY</p>
+                        <div class="goals-progress-track"><div class="goals-progress-fill" style="width:${Math.max(0, Math.min(100, n(detail.progress_percent))).toFixed(1)}%"></div></div>
+                        <div class="goals-velocity-row"><span>Progress</span><strong>${n(detail.progress_percent).toFixed(1)}%</strong></div>
+                        <div class="goals-velocity-row"><span>Allocated / month</span><strong>${money(a.allocated_monthly)}</strong></div>
+                        <div class="goals-velocity-row"><span>Required / month</span><strong class="${isBelow ? 'value-amber' : ''}">${money(a.required_monthly)}</strong></div>
+                        <div class="goals-velocity-row"><span>Projected completion</span><strong>${a.realistic_months == null ? 'n/a' : `${n(a.realistic_months).toFixed(1)} mo`}</strong></div>
                     </div>
                 </div>
             `;
@@ -1008,10 +1680,12 @@
                 return;
             }
             state.view = view;
-            ['dashboardView', 'portfolioView', 'detailView'].forEach((id) => {
-                const target = id.replace('View', '').toLowerCase();
-                document.getElementById(id).classList.toggle('is-active', target === view);
-            });
+            const dashboardView = document.getElementById('dashboardView');
+            const portfolioView = document.getElementById('portfolioView');
+            const detailView = document.getElementById('detailView');
+            if (dashboardView) dashboardView.classList.toggle('is-active', view === 'dashboard');
+            if (portfolioView) portfolioView.classList.toggle('is-active', view === 'portfolio');
+            if (detailView) detailView.classList.toggle('is-active', view === 'detail');
             document.querySelectorAll('[data-view-btn]').forEach((button) => button.classList.toggle('is-active', button.dataset.viewBtn === view));
             closeAllOverflowMenus();
             if (view === 'detail') {
@@ -1182,7 +1856,7 @@
                     closeAllOverflowMenus();
                     if (!wasOpen) {
                         node.classList.add('is-open');
-                        node.querySelector('.goal-overflow-trigger')?.setAttribute('aria-expanded', 'true');
+                        node.querySelector('.goals-overflow-trigger')?.setAttribute('aria-expanded', 'true');
                         state.openOverflowGoalId = id;
                     }
                     return;
@@ -1229,7 +1903,7 @@
             $('#createGoalModal').addEventListener('click', (e) => { if (e.target.id === 'createGoalModal') openCreate(false); });
             $('#editGoalModal').addEventListener('click', (e) => { if (e.target.id === 'editGoalModal') closeEdit(); });
             document.addEventListener('click', (e) => {
-                if (!e.target.closest('.goal-overflow')) {
+                if (!e.target.closest('.goals-overflow')) {
                     closeAllOverflowMenus();
                 }
             });
@@ -1297,17 +1971,15 @@
             bind();
             await loadGoalsSnapshot({ render: false });
             renderDashboard();
-            if (state.view === 'portfolio') {
-                renderPortfolio();
-            }
-            if (state.view === 'detail') {
-                renderDetailSelect();
-                await renderDetail();
-            }
+            renderPortfolio();
+            renderDetailSelect();
+            if (state.view === 'detail') await renderDetail();
         });
     })();
 </script>
 {% endblock %}
+
+
 
 
 
