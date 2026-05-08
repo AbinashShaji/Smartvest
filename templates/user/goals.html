@@ -236,7 +236,7 @@
             const c = 2 * Math.PI * r;
             const off = c * (1 - p / 100);
             const pr = String(goal.priority || 'low').toLowerCase();
-            const col = pr === 'critical' ? '#ef4444' : (pr === 'medium' || pr === 'high') ? '#d4a017' : '#6b7280';
+            const col = pr === 'critical' ? '#ef4444' : (pr === 'medium' || pr === 'high') ? '#f59e0b' : '#6b7280';
             return `
                 <svg class="goal-ring" viewBox="0 0 72 72" aria-hidden="true">
                     <circle cx="36" cy="36" r="${r}" fill="none" stroke="#2a2a2a" stroke-width="6"></circle>

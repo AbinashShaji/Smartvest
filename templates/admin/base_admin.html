@@ -10,12 +10,313 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/forms.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/badges.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/a11y.css') }}">
+    <style>
+        body {
+            background:
+                radial-gradient(circle at 12% 10%, rgba(255, 255, 255, 0.05), transparent 24%),
+                radial-gradient(circle at 88% 12%, rgba(52, 120, 246, 0.10), transparent 22%),
+                radial-gradient(circle at 50% 100%, rgba(59, 130, 246, 0.08), transparent 30%),
+                var(--bg-primary);
+        }
+
+        .app-container {
+            position: relative;
+            min-height: 100vh;
+            isolation: isolate;
+        }
+
+        .app-container::before {
+            content: 'SMARTVEST';
+            position: fixed;
+            top: 12vh;
+            right: -4vw;
+            font-size: clamp(6rem, 16vw, 15rem);
+            font-weight: 900;
+            letter-spacing: -0.08em;
+            color: rgba(255, 255, 255, 0.028);
+            pointer-events: none;
+            user-select: none;
+            z-index: 0;
+            filter: blur(0.5px);
+        }
+
+        .app-container::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(circle at 18% 14%, rgba(255, 255, 255, 0.04), transparent 28%),
+                radial-gradient(circle at 82% 18%, rgba(40, 90, 200, 0.16), transparent 26%),
+                linear-gradient(180deg, rgba(255, 255, 255, 0.015), transparent 30%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .sidebar {
+            top: 20px;
+            left: 20px;
+            bottom: 20px;
+            width: 264px;
+            height: auto;
+            padding: 24px 18px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.045);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+            overflow: hidden;
+            transition: transform 0.3s var(--easing), box-shadow 0.3s var(--easing), border-color 0.3s var(--easing), background 0.3s var(--easing);
+        }
+
+        .sidebar::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 35%);
+            pointer-events: none;
+        }
+
+        .sidebar-logo {
+            font-size: 1.12rem;
+            letter-spacing: 0.22em;
+            filter: drop-shadow(0 0 10px rgba(90, 140, 255, 0.12));
+        }
+
+        .sidebar-logo span {
+            color: rgba(238, 242, 247, 0.82);
+            font-weight: 300;
+        }
+
+        .nav-menu {
+            gap: 6px;
+        }
+
+        .nav-item a {
+            padding: 12px 14px;
+            border-radius: 14px;
+            border: 1px solid transparent;
+            color: rgba(255, 255, 255, 0.65);
+            transition: transform 0.22s ease, background-color 0.22s ease, border-color 0.22s ease, color 0.22s ease, box-shadow 0.22s ease;
+        }
+
+        .nav-item a:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            transform: translateX(2px);
+        }
+
+        .nav-item.active a {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.12);
+            color: #fff;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.03), 0 14px 30px rgba(0, 0, 0, 0.22);
+        }
+
+        .main-content {
+            margin-left: 296px;
+            padding: 28px 32px 32px;
+            background: transparent;
+            position: relative;
+            z-index: 1;
+        }
+
+        .top-nav {
+            min-height: 64px;
+            margin-bottom: 24px;
+            padding: 14px 18px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 14px 40px rgba(0, 0, 0, 0.22);
+            align-items: center;
+        }
+
+        .content-body {
+            display: grid;
+            gap: 20px;
+            animation: svFadeUp 0.45s var(--easing);
+        }
+
+        .glass-card,
+        .section-card,
+        .dashboard-topbar,
+        .dashboard-kpi-card,
+        .dashboard-chart-panel,
+        .dashboard-side-card,
+        .dashboard-activity-panel,
+        .dashboard-modal-panel,
+        .expense-module-shell,
+        .expense-card,
+        .expense-modal,
+        .analysis-card,
+        .analysis-summary-card,
+        .analysis-mini-card,
+        .analysis-panel-card,
+        .inv-card,
+        .inv-tabs,
+        .feedback-panel,
+        .feedback-entry-card,
+        .feedback-workflow-panel,
+        .admin-panel,
+        .admin-monitor-hero {
+            background: rgba(255, 255, 255, 0.045);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            transition: transform 0.24s ease, box-shadow 0.24s ease, border-color 0.24s ease, background 0.24s ease;
+        }
+
+        .glass-card:hover,
+        .section-card:hover,
+        .dashboard-topbar:hover,
+        .dashboard-kpi-card:hover,
+        .dashboard-chart-panel:hover,
+        .dashboard-side-card:hover,
+        .dashboard-activity-panel:hover,
+        .expense-card:hover,
+        .analysis-card:hover,
+        .inv-card:hover,
+        .feedback-panel:hover,
+        .feedback-entry-card:hover,
+        .admin-panel:hover,
+        .admin-monitor-hero:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.14);
+            box-shadow: 0 22px 48px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .btn-premium {
+            border-radius: 10px;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .mobile-toggle {
+            display: none;
+        }
+
+        .glass-input-field {
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.03);
+            color: #f8fafc;
+            transition: transform 0.18s ease, border-color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .glass-input-field:focus-visible {
+            border-color: rgba(52, 120, 246, 0.65);
+            box-shadow: 0 0 0 4px rgba(52, 120, 246, 0.14);
+            transform: translateY(-1px);
+        }
+
+        .admin-sidebar-actions {
+            margin-top: auto;
+        }
+
+        .admin-logout-btn {
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .summary-badge,
+        .trend-chip,
+        .status-pill,
+        .dashboard-chip,
+        .expense-badge,
+        .analysis-badge,
+        .feedback-count-badge,
+        .feedback-badge,
+        .inv-badge {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        @keyframes svFadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 1100px) {
+            .sidebar {
+                width: 92px;
+                padding: 28px 10px;
+            }
+
+            .sidebar-logo span,
+            .nav-item span {
+                display: none;
+            }
+
+            .main-content {
+                margin-left: 112px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: min(86vw, 300px);
+                top: 12px;
+                left: 12px;
+                bottom: 12px;
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .sidebar.active span {
+                display: inline;
+            }
+
+            .main-content {
+                margin-left: 0;
+                padding: 18px;
+            }
+
+            .top-nav {
+                position: sticky;
+                top: 12px;
+                z-index: 90;
+            }
+
+            .mobile-toggle {
+                display: inline-flex !important;
+            }
+        }
+    </style>
     {% block head %}{% endblock %}
 </head>
 <body>
     <div class="app-container">
         <!-- Sidebar -->
-        <aside class="sidebar" style="border-right-color: rgba(255,255,255,0.05); background: #050505;">
+        <aside class="sidebar">
             <a href="/admin/dashboard" class="sidebar-logo">
                 SV<span style="color: #fff; opacity: 0.5;">_ADMIN</span>
             </a>
@@ -68,6 +369,9 @@
         <main class="main-content">
             <header class="top-nav">
                 <div style="margin-right: auto;">
+                    <button class="mobile-toggle btn-premium btn-secondary" style="padding: 8px; margin-right: 12px;" aria-label="Open navigation">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
                     <h2 style="font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
                         <span style="width: 8px; height: 8px; background: #fff; border-radius: 50%;"></span>
                         {% block page_title %}Admin Overview{% endblock %}
@@ -85,6 +389,24 @@
     <!-- Scripts -->
     <script src="{{ url_for('static', filename='js/api.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        const sidebar = document.querySelector('.sidebar');
+        const mobileToggle = document.querySelector('.mobile-toggle');
+
+        if (mobileToggle && sidebar) {
+            mobileToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                sidebar.classList.toggle('active');
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!sidebar || !mobileToggle) return;
+            if (sidebar.classList.contains('active') && !sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
+                sidebar.classList.remove('active');
+            }
+        });
+    </script>
     {% block scripts %}{% endblock %}
 </body>
 </html>

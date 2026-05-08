@@ -3,11 +3,11 @@
 
 .goals-module {
     --bg-base: #0a0a0a;
-    --bg-card-outer: #111111;
-    --bg-card-inner: #1a1a0a;
-    --bg-card-hover: #1f1f0f;
-    --accent-gold: #b8860b;
-    --accent-gold-lt: #d4a017;
+    --bg-card-outer: #0b1020;
+    --bg-card-inner: #10192b;
+    --bg-card-hover: #13213b;
+    --accent-gold: #1d4ed8;
+    --accent-gold-lt: #60a5fa;
     --accent-amber: #92400e;
     --accent-green: #065f46;
     --accent-red: #7f1d1d;
@@ -16,7 +16,7 @@
     --text-muted: #525252;
     --text-label: #6b6b4a;
     --border-outer: #2a2a2a;
-    --border-inner: #2a2500;
+    --border-inner: #1b2a45;
     font-family: Inter, system-ui, sans-serif;
     color: var(--text-secondary);
     display: grid;
@@ -49,7 +49,7 @@
 .goals-tabs {
     display: flex;
     gap: 4px;
-    background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.2));
+    background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
     border: 1px solid var(--border-outer);
     border-radius: 12px;
     padding: 4px;
@@ -116,7 +116,7 @@
 }
 
 .goals-hero-title.is-healthy { color: #10b981; }
-.goals-hero-title.is-stressed { color: var(--accent-gold-lt); }
+.goals-hero-title.is-stressed { color: #fbbf24; }
 .goals-hero-title.is-critical { color: #ef4444; }
 
 .goals-summary-grid {
@@ -236,13 +236,13 @@
 }
 
 .goals-warning-bar strong {
-    color: var(--accent-gold-lt);
+    color: #fbbf24;
     font-weight: 700;
 }
 
 .goals-metric-card,
 .goals-detail-card {
-    background: linear-gradient(135deg, #1a1a0a, #141400);
+    background: linear-gradient(135deg, #10192b, #0c1426);
     border: 1px solid var(--border-inner);
     border-radius: 10px;
 }
@@ -337,13 +337,13 @@
 
 .goals-signal-card {
     padding: 20px 24px;
-    background: linear-gradient(135deg, #1a1a0a, #141400);
+    background: linear-gradient(135deg, #10192b, #0c1426);
     border: 1px solid var(--border-inner);
     border-left-width: 4px;
     border-radius: 10px;
 }
 
-.goals-signal-card.is-amber { border-left-color: var(--accent-gold-lt); }
+.goals-signal-card.is-amber { border-left-color: #f59e0b; }
 .goals-signal-card.is-red { border-left-color: var(--accent-red); }
 .goals-signal-card.is-green { border-left-color: var(--accent-green); }
 
@@ -423,7 +423,7 @@
     align-items: center;
     gap: 16px;
     border-left: 4px solid #6b7280;
-    background: linear-gradient(135deg, #1a1a0a, #141400);
+    background: linear-gradient(135deg, #10192b, #0c1426);
     border: 1px solid var(--border-inner);
     border-left-width: 4px;
     border-radius: 10px;
@@ -540,7 +540,7 @@
 }
 
 .goals-velocity {
-    background: linear-gradient(135deg, #1a1a0a, #141400);
+    background: linear-gradient(135deg, #10192b, #0c1426);
     border: 1px solid var(--border-inner);
     border-radius: 10px;
     padding: 20px 18px;
@@ -625,7 +625,7 @@
 }
 
 .goal-title.is-healthy { color: #10b981; }
-.goal-title.is-stressed { color: #d4a017; }
+.goal-title.is-stressed { color: #fbbf24; }
 .goal-title.is-critical { color: #ef4444; }
 
 .goal-head-side {
@@ -640,7 +640,7 @@
 }
 
 .goal-metric-card {
-    background: linear-gradient(135deg, #1a1a0a, #141400);
+    background: linear-gradient(135deg, #10192b, #0c1426);
     border: 1px solid var(--border-inner);
     border-radius: 10px;
     padding: 20px 24px;
@@ -698,7 +698,7 @@
 }
 
 .goal-risk-card {
-    background: linear-gradient(135deg, #1a1a0a, #141400);
+    background: linear-gradient(135deg, #10192b, #0c1426);
     border: 1px solid var(--border-inner);
     border-left-width: 4px;
     border-radius: 10px;
@@ -916,7 +916,7 @@
 }
 
 .goal-detail-card {
-    background: linear-gradient(135deg, #1a1a0a, #141400);
+    background: linear-gradient(135deg, #10192b, #0c1426);
     border: 1px solid var(--border-inner);
     border-left: 4px solid var(--accent-gold-lt);
     border-radius: 10px;
@@ -938,7 +938,7 @@
 }
 
 .goal-velocity {
-    background: linear-gradient(135deg, #1a1a0a, #141400);
+    background: linear-gradient(135deg, #10192b, #0c1426);
     border: 1px solid var(--border-inner);
     border-radius: 10px;
     padding: 20px 18px;

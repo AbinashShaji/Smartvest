@@ -30,7 +30,7 @@
     padding: 6px;
     border: 1px solid var(--border-default);
     border-radius: 18px;
-    background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.20));
+    background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
     backdrop-filter: blur(18px);
 }
 
@@ -59,7 +59,7 @@
 
 .analysis-switcher button.active,
 .analysis-subtabs button.active {
-    background: linear-gradient(135deg, rgba(233, 175, 14, 0.28), rgba(1, 14, 6, 0.22));
+    background: linear-gradient(135deg, rgba(52, 120, 246, 0.16), rgba(18, 28, 52, 0.34));
     color: #f8fafc;
     color: #f8fafc;
     box-shadow: 0 10px 30px rgba(14, 165, 233, 0.18);
@@ -108,7 +108,7 @@
     padding: 16px;
     border-radius: 16px;
     border: 1px solid var(--border-default);
-   background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.20));
+   background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
 }
 
 .analysis-summary-label {
@@ -162,7 +162,7 @@
     padding: 16px;
     border-radius: 18px;
     border: 1px dashed var(--border-default);
-    background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.20));
+    background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
     color: var(--fg-secondary);
     text-align: center;
 }
@@ -196,12 +196,12 @@
     padding: 14px 16px;
     border-radius: 14px;
     border: 1px solid rgba(148, 163, 184, 0.16);
-    background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.20));
+    background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
 }
 
 .analysis-item--highlight {
     border-color: rgba(14, 165, 233, 0.35);
-    background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.20));
+    background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
 }
 
 .analysis-item-title {

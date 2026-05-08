@@ -13,8 +13,8 @@
     --glass-blur: blur(20px);
     
     /* Glows & Gradients */
-    --glow-soft: 0 0 20px rgba(255, 255, 255, 0.1);
-    --accent-glow: 0 0 30px rgba(255, 255, 255, 0.15);
+    --glow-soft: 0 0 20px rgba(59, 130, 246, 0.14);
+    --accent-glow: 0 0 30px rgba(40, 90, 200, 0.20);
     
     /* System */
     --radius-lg: 16px;

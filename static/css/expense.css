@@ -7,7 +7,7 @@
 .expense-module-shell {
     padding: 28px;
     border-radius: 32px;
-   background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.20));
+   background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
     border: 1px solid rgba(148, 163, 184, 0.16);
     color: #fff;
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
@@ -48,7 +48,7 @@
     gap: 8px;
     padding: 8px 12px;
     border-radius: 999px;
-     background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.20));
+     background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
     border: 1px solid rgba(148, 163, 184, 0.18);
 }
 
@@ -61,7 +61,7 @@
     margin-bottom: 20px;
     border-radius: 18px;
     border: 1px solid rgba(148, 163, 184, 0.18);
-     background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.20));
+     background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
 
 }
 
@@ -87,7 +87,7 @@
 }
 
 .expense-tab-link.active {
-    background: linear-gradient(135deg, rgba(233, 175, 14, 0.28), rgba(1, 14, 6, 0.22));
+    background: linear-gradient(135deg, rgba(52, 120, 246, 0.16), rgba(18, 28, 52, 0.34));
     color: #fff;
 }
 
@@ -95,7 +95,7 @@
 .expense-card {
     padding: 24px;
     border-radius: 24px;
- background: linear-gradient(135deg, rgba(40, 31, 19, 0.23), rgba(0, 0, 0, 0.20));
+ background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
     border: 1px solid rgba(148, 163, 184, 0.18);
 }
 
@@ -140,7 +140,7 @@
     padding: 12px 14px;
     border-radius: 14px;
     border: 1px solid rgba(148, 163, 184, 0.18);
-    background: linear-gradient(135deg, rgba(233, 175, 14, 0.28), rgba(1, 14, 6, 0.22));
+    background: linear-gradient(135deg, rgba(52, 120, 246, 0.10), rgba(18, 28, 52, 0.24));
     color: #f8fafc;
 }
 
