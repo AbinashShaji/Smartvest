@@ -11,14 +11,19 @@
     <!-- Public-page styles live in the shared stylesheet. -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
+        :root {
+            --public-shell-top: 68px;
+            --public-hero-top: 72px;
+        }
+
         body {
-            padding-top: 84px;
+            padding-top: var(--public-shell-top);
         }
 
         .nav-wrapper {
             width: 100%;
             position: fixed;
-            top: 16px;
+            top: 26px;
             left: 0;
             display: flex;
             justify-content: center;
@@ -44,6 +49,15 @@
             box-shadow: 0 4px 30px rgba(5, 5, 5, 0.3);
             transition: background 0.3s ease, border-color 0.3s ease;
             pointer-events: auto;
+        }
+
+        main > section:first-of-type {
+            padding-top: var(--public-hero-top) !important;
+        }
+
+        main > section:first-of-type .container {
+            position: relative;
+            z-index: 1;
         }
 
         .nav-logo,
@@ -155,8 +169,14 @@
         }
 
         @media (max-width: 768px) {
+            :root {
+                --public-shell-top: 62px;
+                --public-hero-top: 76px;
+            }
+
             .nav-wrapper {
                 padding: 0 20px;
+                top: 20px;
             }
 
             .nav-container {

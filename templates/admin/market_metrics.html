@@ -117,14 +117,14 @@
                     <p class="metric-label market-signal-label">Status</p>
                     <span id="marketStatusBadgeInline" class="market-sentiment-badge">Loading...</span>
                 </div>
-                <div class="market-status-layout" id="marketStatusLayout">
+                <div class="market-status-layout market-status-stage" id="marketStatusLayout">
                     <div class="market-status-stack">
                         <div class="market-status-heading-row">
                             <p id="marketStatusText" class="market-signal-copy market-signal-copy--status">Loading</p>
                         </div>
                         <p id="marketStatusSubtext" class="market-status-subtext">Status details loading...</p>
                     </div>
-                    <div class="market-status-visual" aria-hidden="true">
+                    <div class="market-status-visual market-status-visual--vector" aria-hidden="true">
                         <img
                             id="marketStatusIllustration"
                             class="market-status-illustration"
@@ -255,12 +255,6 @@
         return escaped.replace(/([+-]?\d+(?:\.\d+)?)%/g, '<span class="market-percent-highlight">$1%</span>');
     }
 
-    function setSignalHtml(id, value) {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.innerHTML = formatSignalHtml(value);
-    }
-
     function chipTone(value, inverse = false) {
         const normalized = inverse ? -safeNumber(value) : safeNumber(value);
         if (normalized > 2) return 'up';
@@ -279,6 +273,26 @@
         };
         el.className = classMap[tone] || classMap.info;
         el.textContent = text;
+    }
+
+    function renderSummaryPanel(summaryText, counts) {
+        return `
+            &bull; Analysed <span class="market-signal-compact-value market-signal-compact-value--info">${safeNumber(counts.total).toFixed(0)}</span> stocks from active dataset.<br>
+            &bull; <span class="market-signal-compact-value market-signal-compact-value--up">${safeNumber(counts.good).toFixed(0)}</span> gainers identified across positive sectors.<br>
+            &bull; <span class="market-signal-compact-value market-signal-compact-value--down">${safeNumber(counts.bad).toFixed(0)}</span> equities remain under bearish pressure.<br>
+            &bull; <span class="market-signal-compact-value market-signal-compact-value--stable">${safeNumber(counts.stable).toFixed(0)}</span> assets continue stable low-volatility movement.
+        `;
+    }
+
+    function renderComparisonPanel(comparisonText, statusLabel, movementDiff, volatilityDiff) {
+        const movementTone = chipTone(movementDiff);
+        const volatilityTone = chipTone(volatilityDiff, true);
+        const trendTone = movementTone === 'up' ? 'up' : movementTone === 'down' ? 'down' : 'stable';
+        return `
+            &bull; Market movement declined by <span class="market-signal-compact-value market-signal-compact-value--${movementTone}">${formatSignalHtml(formatPercent(movementDiff))}</span>.<br>
+            &bull; Volatility increased by <span class="market-signal-compact-value market-signal-compact-value--${volatilityTone}">${formatSignalHtml(formatPercent(volatilityDiff))}</span>.<br>
+            &bull; Current trend suggests <span class="market-signal-compact-value market-signal-compact-value--${trendTone}">${escapeHtml(statusLabel || 'bearish')} market pressure</span>.
+        `;
     }
 
     function renderStockList(items, emptyMessage, direction) {
@@ -400,7 +414,7 @@
             marketStatusBadgeInline.className = status.cardBadgeClass;
             marketStatusBadgeInline.textContent = status.cardBadge;
             const marketStatusLayout = document.getElementById('marketStatusLayout');
-            marketStatusLayout.className = `market-status-layout ${status.cardToneClass || 'status-stable'}`;
+            marketStatusLayout.className = `market-status-layout market-status-stage ${status.cardToneClass || 'status-stable'}`;
             const marketStatusIllustration = document.getElementById('marketStatusIllustration');
             marketStatusIllustration.src = status.cardVisual;
             marketStatusIllustration.alt = `${status.cardBadge} illustration`;
@@ -414,14 +428,12 @@
             const sentimentChip = document.getElementById('marketSentimentChip');
             sentimentChip.className = status.textClass;
             sentimentChip.textContent = status.text;
-            setSignalHtml('marketSummaryText', data?.summary || 'No market summary is available.');
             document.getElementById('countGood').innerText = good.toFixed(0);
             document.getElementById('countBad').innerText = bad.toFixed(0);
             document.getElementById('countStable').innerText = stable.toFixed(0);
             document.getElementById('countTotal').innerText = total.toFixed(0);
             document.getElementById('avgMovement').innerText = `${avgMove.toFixed(2)}%`;
             document.getElementById('bullBearRatio').innerText = ratio.toFixed(2);
-            setSignalHtml('datasetComparisonText', data?.comparison?.improvement || 'No previous dataset available.');
 
             const movementDiff = safeNumber(data?.comparison?.movement_difference);
             const volatilityDiff = safeNumber(data?.comparison?.volatility_difference);
@@ -429,6 +441,16 @@
             const goodShare = total > 0 ? (good / total) * 100 : 0;
             const badShare = total > 0 ? (bad / total) * 100 : 0;
             const stableShare = total > 0 ? (stable / total) * 100 : 0;
+            const summaryPanel = document.getElementById('marketSummaryText');
+            summaryPanel.innerHTML = renderSummaryPanel(data?.summary, counts);
+
+            const comparisonPanel = document.getElementById('datasetComparisonText');
+            comparisonPanel.innerHTML = renderComparisonPanel(
+                data?.comparison?.improvement,
+                status.cardBadge,
+                movementDiff,
+                volatilityDiff
+            );
 
             setChip('trendGoodChip', 'up', `\u25B2 +${goodShare.toFixed(1)}% gainers`);
             setChip('trendBadChip', 'down', `\u25BC -${badShare.toFixed(1)}% losers`);
@@ -513,7 +535,7 @@
             marketStatusBadgeInline.className = 'market-sentiment-badge market-sentiment-badge--down';
             marketStatusBadgeInline.textContent = 'Unavailable';
             const marketStatusLayout = document.getElementById('marketStatusLayout');
-            marketStatusLayout.className = 'market-status-layout status-bearish';
+            marketStatusLayout.className = 'market-status-layout market-status-stage status-bearish';
             const marketStatusIllustration = document.getElementById('marketStatusIllustration');
             marketStatusIllustration.src = "{{ url_for('static', filename='images/bearish_market_vector.png') }}";
             marketStatusIllustration.alt = 'Bearish Pressure illustration';
@@ -523,8 +545,21 @@
             const marketStatusSubtext = document.getElementById('marketStatusSubtext');
             marketStatusSubtext.className = 'market-status-subtext status-bearish';
             marketStatusSubtext.textContent = 'Bearish pressure increasing';
-            setSignalHtml('marketSummaryText', 'Unable to load market metrics right now.');
-            setSignalHtml('datasetComparisonText', 'Comparison unavailable.');
+            const summaryPanel = document.getElementById('marketSummaryText');
+            summaryPanel.innerHTML = `
+                Unable to load market metrics right now.<br>
+                &bull; <span class="market-signal-compact-value market-signal-compact-value--info">0</span> active stocks.<br>
+                &bull; <span class="market-signal-compact-value market-signal-compact-value--up">0</span> gainers identified across positive sectors.<br>
+                &bull; <span class="market-signal-compact-value market-signal-compact-value--down">0</span> equities remain under bearish pressure.<br>
+                &bull; <span class="market-signal-compact-value market-signal-compact-value--stable">0</span> assets continue stable low-volatility movement.
+            `;
+            const comparisonPanel = document.getElementById('datasetComparisonText');
+            comparisonPanel.innerHTML = `
+                Comparison unavailable.<br>
+                &bull; Market movement declined by <span class="market-signal-compact-value market-signal-compact-value--stable">0.00%</span>.<br>
+                &bull; Volatility increased by <span class="market-signal-compact-value market-signal-compact-value--stable">0.00%</span>.<br>
+                &bull; Current trend suggests <span class="market-signal-compact-value market-signal-compact-value--info">unavailable market pressure</span>.
+            `;
             document.getElementById('trendChartImg').removeAttribute('src');
             document.getElementById('summaryChartImg').removeAttribute('src');
             document.getElementById('comparisonChartImg').removeAttribute('src');
@@ -544,3 +579,4 @@
     }
 </script>
 {% endblock %}
+
