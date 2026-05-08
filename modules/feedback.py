@@ -64,8 +64,14 @@ def api_user_submit_feedback():
         if not message:
             return jsonify({"status": "error", "message": "Feedback message is required."}), 400
 
+        if len(message) > 4000:
+            return jsonify({"status": "error", "message": "Feedback message is too long."}), 400
+
         # Step 5: Get the subject, default to "General Inquiry" if not provided
         subject = (data.get("subject") or "General Inquiry").strip()
+
+        if len(subject) > 120:
+            return jsonify({"status": "error", "message": "Subject is too long."}), 400
 
         # Step 6: Get the integer user_id from the session
         #         We use user_id — NOT email (email is not stored in the session)

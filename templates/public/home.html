@@ -4,10 +4,10 @@
 
 {% block content %}
 <!-- Hero Section -->
-<section style="padding: 160px 0 100px; position: relative; overflow: hidden;">
-    <div class="container" style="display: flex; align-items: center; gap: 80px; position: relative; z-index: 1;">
+<section class="home-hero-section" style="padding: 160px 0 100px; position: relative; overflow: hidden;">
+    <div class="container home-hero-container" style="display: flex; align-items: center; gap: 80px; position: relative; z-index: 1;">
         <!-- Left: Content -->
-        <div style="flex: 1; min-width: 320px;">
+        <div class="home-hero-copy" style="flex: 1; min-width: 320px;">
             <span class="glass-card" style="padding: 8px 20px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 3px; border-radius: 100px; margin-bottom: 32px; display: inline-block; color: #fff; border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.05);">
                 INTELLIGENT WEALTH LAYER
             </span>
@@ -17,7 +17,7 @@
             <p style="color: var(--fg-secondary); font-size: 1.15rem; max-width: 550px; margin-bottom: 48px; line-height: 1.6;">
                 SmartVest is the choice for individuals who demand precision and aesthetics. Transform raw data into structured financial impact.
             </p>
-            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+            <div class="home-hero-actions" style="display: flex; gap: 20px; flex-wrap: wrap;">
                 <a href="/signup" class="btn-premium btn-glow" style="padding: 16px 36px; font-size: 1rem; border-radius: 100px; min-width: 180px;">Get Started</a>
                 <a href="/login" class="btn-premium btn-secondary" style="padding: 16px 36px; font-size: 1rem; border-radius: 100px; min-width: 180px;">Login</a>
             </div>
@@ -42,10 +42,10 @@
     }
     @media (max-width: 1024px) {
         .hero-visual-container { display: none !important; }
-        section { text-align: center; }
-        .container { flex-direction: column; justify-content: center; }
-        p { margin-left: auto; margin-right: auto; }
-        div[style*="display: flex; gap: 20px"] { justify-content: center; }
+        .home-hero-section { text-align: center; }
+        .home-hero-container { flex-direction: column; justify-content: center; }
+        .home-hero-copy p { margin-left: auto; margin-right: auto; }
+        .home-hero-actions { justify-content: center; }
     }
 </style>
 
@@ -139,10 +139,4 @@
     </div>
 </section>
 
-<style>
-    @keyframes pulse {
-        0% { transform: scale(1) translate(0, 0); opacity: 0.5; }
-        100% { transform: scale(1.1) translate(20px, 20px); opacity: 0.8; }
-    }
-</style>
 {% endblock %}

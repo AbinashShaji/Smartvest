@@ -145,7 +145,8 @@ img {
 }
 
 /* Navbar */
-nav.glass-nav {
+nav.glass-nav,
+.nav-container {
     position: fixed;
     top: 0;
     left: 0;
@@ -1408,7 +1409,8 @@ nav.glass-nav {
         padding: 0 20px;
     }
 
-    nav.glass-nav {
+    nav.glass-nav,
+    .nav-container {
         padding: 16px 0;
     }
 

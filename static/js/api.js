@@ -48,7 +48,6 @@ const API = {
 
             return returnEnvelope ? result : (result.data || result);
         } catch (error) {
-            console.error(`Fetch error for ${endpoint}:`, error);
             throw error;
         }
     },

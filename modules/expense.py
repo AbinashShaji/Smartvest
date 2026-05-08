@@ -189,6 +189,9 @@ def api_add_expense():
         amount = data.get("amount")
         date_value = (data.get("date") or "").strip()
 
+        if len(description) > 500 or len(category) > 80:
+            return jsonify({"status": "error", "message": "One or more fields are too long."}), 400
+
         if amount in (None, ""):
             return jsonify({"status": "error", "message": "Amount is required."}), 400
 
@@ -598,6 +601,22 @@ def api_upload_csv():
     file = request.files.get("file")
     if file is None or not file.filename:
         return jsonify({"status": "error", "message": "Please choose a CSV file."}), 400
+
+    allowed_mimes = {
+        "text/csv",
+        "application/csv",
+        "application/vnd.ms-excel",
+        "text/plain",
+        "application/octet-stream",
+    }
+    if not file.filename.lower().endswith(".csv") or file.mimetype not in allowed_mimes:
+        return jsonify({"status": "error", "message": "Please upload a valid CSV file."}), 400
+
+    file.stream.seek(0, os.SEEK_END)
+    file_size = file.stream.tell()
+    file.stream.seek(0)
+    if file_size > 16 * 1024 * 1024:
+        return jsonify({"status": "error", "message": "CSV file is too large."}), 413
 
     try:
         user_id = config.get_current_user()["user_id"]

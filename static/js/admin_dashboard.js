@@ -370,7 +370,6 @@
             if (insights) {
                 insights.innerHTML = '<li class="insight-card insight-card--down"><span class="insight-icon">\u25BC</span><span>Unable to load dashboard data.</span></li>';
             }
-            console.error('Admin dashboard load failed:', error);
         }
     }
 

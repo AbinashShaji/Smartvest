@@ -14,6 +14,7 @@ import secrets
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, session
+from werkzeug.exceptions import RequestEntityTooLarge
 
 import config
 from modules.admin import admin_bp
@@ -56,6 +57,7 @@ def create_app():
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=session_cookie_secure,
+        MAX_CONTENT_LENGTH=16 * 1024 * 1024,
     )
     logger.info("SmartVest active DB path: %s", config.DATABASE_PATH)
     init_mail(app)
@@ -109,6 +111,12 @@ def create_app():
             return jsonify({"status": "error", "message": "Unexpected server error."}), 500
         return "Unexpected server error.", 500
 
+    @app.errorhandler(RequestEntityTooLarge)
+    def handle_too_large(error):
+        if request.path.startswith("/api/"):
+            return jsonify({"status": "error", "message": "Uploaded file is too large."}), 413
+        return "Uploaded file is too large.", 413
+
     @app.route("/api/admin/market-metrics")
     def api_admin_market_metrics():
         """Expose the admin market metrics endpoint from the app bootstrap."""
@@ -121,4 +129,4 @@ def create_app():
 
 app = create_app()
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=config.ENVIRONMENT == "development")

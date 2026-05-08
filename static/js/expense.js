@@ -32,7 +32,6 @@
             await refreshExpenseCache();
         } catch (error) {
             // The page still loads, but we show a friendly message in the UI.
-            console.error('Unable to load expenses:', error);
             showPageStatus(page === 'list' ? 'expenseListStatus' : 'expenseExportStatus', error.message || 'Unable to load expenses.', 'error');
             if (page === 'list') {
                 renderExpenseRows([]);

@@ -91,5 +91,31 @@ def is_admin():
     True when the current session user has role == "admin".
     """
     user = get_current_user()
-    return bool(user and user.get("role") == "admin")
+    if not user or user.get("role") != "admin":
+        return False
+
+    try:
+        from utils.db import get_db_connection
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, role FROM users WHERE id = ?", (user.get("user_id"),))
+        row = cursor.fetchone()
+        conn.close()
+
+        if row is None:
+            session.pop("user", None)
+            return False
+
+        if row["role"] != "admin":
+            session["user"] = {
+                **user,
+                "role": row["role"],
+            }
+            session.modified = True
+            return False
+
+        return True
+    except Exception:
+        return False
 

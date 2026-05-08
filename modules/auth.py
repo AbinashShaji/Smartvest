@@ -159,6 +159,12 @@ def api_signup():
                 "message": "Username, email, and password are required."
             }), 400
 
+        if len(username) > 120 or len(email) > 254 or len(password) > 128:
+            return jsonify({
+                "status": "error",
+                "message": "One or more fields are too long."
+            }), 400
+
         conn = get_db_connection()
         cursor = conn.cursor()
 
@@ -219,6 +225,12 @@ def api_login():
             return jsonify({
                 "status": "error", 
                 "message": "Username/Email and password are required."
+            }), 400
+
+        if len(username_input) > 254:
+            return jsonify({
+                "status": "error",
+                "message": "Email address is too long."
             }), 400
 
         # 2. Database logic: Verify credentials
@@ -325,6 +337,12 @@ def api_update_profile():
         if not username:
             return jsonify({"status": "error", "message": "Username is required."}), 400
 
+        if len(username) > 120 or len(email) > 254:
+            return jsonify({"status": "error", "message": "One or more fields are too long."}), 400
+
+        if email and "@" not in email:
+            return jsonify({"status": "error", "message": "Please enter a valid email address."}), 400
+
         # Get the ID of the logged-in user
         user_id = session["user"]["user_id"]
 
@@ -373,6 +391,9 @@ def api_change_password():
         # Check if new password is provided
         if not new_password:
             return jsonify({"status": "error", "message": "New password is required."}), 400
+
+        if len(new_password) > 128:
+            return jsonify({"status": "error", "message": "Password is too long."}), 400
 
         # Get the current user's ID
         user_id = session["user"]["user_id"]

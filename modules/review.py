@@ -43,12 +43,18 @@ def api_user_submit_review():
         if not review_text:
             return jsonify({"status": "error", "message": "Review text is required."}), 400
 
+        if len(review_text) > 4000:
+            return jsonify({"status": "error", "message": "Review text is too long."}), 400
+
         # Step 5: Get the rating — default to 5 stars if not provided
         #         We use int() to make sure it is a whole number (1–5)
         try:
             rating = int(data.get("rating") or 5)
         except (ValueError, TypeError):
             rating = 5   # If the value is not a valid number, safely default to 5
+
+        if rating < 1 or rating > 5:
+            return jsonify({"status": "error", "message": "Rating must be between 1 and 5."}), 400
 
         # Step 6: Get the integer user_id from the session
         user_id = config.get_current_user()["user_id"]

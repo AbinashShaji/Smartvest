@@ -7,6 +7,7 @@ Big picture:
 """
 
 from datetime import datetime, timedelta
+import os
 
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
@@ -596,6 +597,22 @@ def api_admin_market_dataset_upload():
         upload_file = request.files.get("file")
         if upload_file is None or not upload_file.filename:
             return jsonify({"status": "error", "message": "CSV file is required."}), 400
+
+        allowed_mimes = {
+            "text/csv",
+            "application/csv",
+            "application/vnd.ms-excel",
+            "text/plain",
+            "application/octet-stream",
+        }
+        if not upload_file.filename.lower().endswith(".csv") or upload_file.mimetype not in allowed_mimes:
+            return jsonify({"status": "error", "message": "Please upload a valid CSV file."}), 400
+
+        upload_file.stream.seek(0, os.SEEK_END)
+        file_size = upload_file.stream.tell()
+        upload_file.stream.seek(0)
+        if file_size > 16 * 1024 * 1024:
+            return jsonify({"status": "error", "message": "CSV file is too large."}), 413
 
         saved = save_uploaded_market_dataset(upload_file)
         preview = get_dataset_preview(saved["dataset_path"], limit=8)

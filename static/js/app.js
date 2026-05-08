@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
  * Change the nav background on scroll so the fixed header stays readable.
  */
 function initScrollEffects() {
-    const nav = document.querySelector('nav.glass-nav');
+    const nav = document.querySelector('.nav-container, nav.glass-nav');
     if (nav) {
         window.addEventListener('scroll', () => {
             if (window.scrollY > 50) {
@@ -64,7 +64,6 @@ async function logout() {
         // Redirect to system gateway
         window.location.href = "/login";
     } catch (err) {
-        console.error("Logout Protocol Failure:", err);
         // Fallback redirect
         window.location.href = "/";
     }
