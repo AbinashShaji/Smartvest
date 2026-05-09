@@ -12,6 +12,8 @@ This file is intentionally small so the startup path is easy to follow.
 import logging
 import secrets
 
+logging.basicConfig(level=logging.INFO)
+
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, session
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -32,7 +34,6 @@ from utils.mail import init_mail
 load_dotenv()
 
 logger = logging.getLogger("smartvest")
-logging.basicConfig(level=logging.INFO)
 
 
 def _ensure_secret_key():
