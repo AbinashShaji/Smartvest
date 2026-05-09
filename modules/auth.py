@@ -64,6 +64,11 @@ def api_send_contact_message():
             }), 400
 
         result = send_contact_email(name=name, email=email, message=message)
+        if result is False:
+            return jsonify({
+                "status": "error",
+                "message": "Unable to send contact email right now."
+            }), 503
         return jsonify({
             "status": "success",
             "data": {
