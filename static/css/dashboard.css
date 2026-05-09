@@ -264,12 +264,6 @@
     border-color: rgba(148, 163, 184, 0.18);
 }
 
-.dashboard-summary-text {
-    color: #f8fafc;
-    font-size: 1rem;
-    line-height: 1.8;
-}
-
 /* === Modal === */
 .dashboard-modal {
     position: fixed;
