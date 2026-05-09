@@ -5,11 +5,15 @@ Big picture:
 - enable WAL mode for safer concurrent reads and writes
 - create tables and indexes during startup
 """
+import logging
 import sqlite3
 from datetime import datetime
 from werkzeug.security import generate_password_hash
 
 import config
+
+
+logger = logging.getLogger("smartvest")
 
 
 def get_db_connection():
@@ -141,11 +145,19 @@ def create_admin():
     Bootstrap the admin account from environment variables.
 
     Why this exists:
-    Deployments can create or refresh a known admin user without storing a
-    password in source code.
+    Deployments can create a known admin user without storing a password in
+    source code.
     """
-    if not all([config.ADMIN_USERNAME, config.ADMIN_EMAIL, config.ADMIN_PASSWORD]):
-        return
+    username = (config.ADMIN_USERNAME or "").strip()
+    password = config.ADMIN_PASSWORD or ""
+    email = (config.ADMIN_EMAIL or "").strip().lower()
+
+    if not username or not password:
+        logger.info("Admin bootstrap skipped: ADMIN_USERNAME and ADMIN_PASSWORD are not configured.")
+        return False
+
+    if not email:
+        email = username if "@" in username else f"{username}@smartvest.local"
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -153,39 +165,52 @@ def create_admin():
         """
         SELECT id
         FROM users
-        WHERE username = ? OR email = ? OR role = 'admin'
-        ORDER BY CASE WHEN role = 'admin' THEN 0 ELSE 1 END, id ASC
+        WHERE role = 'admin'
+        ORDER BY id ASC
         LIMIT 1
         """,
-        (config.ADMIN_USERNAME, config.ADMIN_EMAIL.lower()),
+        (),
     )
     admin = cursor.fetchone()
-    hashed_password = generate_password_hash(config.ADMIN_PASSWORD)
+    if admin:
+        logger.info("Admin bootstrap skipped: existing admin user already present (id=%s).", admin["id"])
+        conn.close()
+        return False
 
-    if not admin:
-        cursor.execute(
-            """
-            INSERT INTO users (username, email, password, role, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                config.ADMIN_USERNAME,
-                config.ADMIN_EMAIL.lower(),
-                hashed_password,
-                "admin",
-                datetime.now().strftime("%Y-%m-%d"),
-            ),
+    cursor.execute(
+        """
+        SELECT id
+        FROM users
+        WHERE username = ? OR email = ?
+        ORDER BY id ASC
+        LIMIT 1
+        """,
+        (username, email),
+    )
+    conflict = cursor.fetchone()
+    if conflict:
+        logger.warning(
+            "Admin bootstrap skipped: username or email already exists (user id=%s).",
+            conflict["id"],
         )
-    else:
-        # Minimal and deterministic reset:
-        # keep exactly one bootstrap admin aligned with configured credentials.
-        cursor.execute(
-            """
-            UPDATE users
-            SET username = ?, email = ?, password = ?, role = 'admin'
-            WHERE id = ?
-            """,
-            (config.ADMIN_USERNAME, config.ADMIN_EMAIL.lower(), hashed_password, admin["id"]),
-        )
+        conn.close()
+        return False
+
+    hashed_password = generate_password_hash(password)
+    cursor.execute(
+        """
+        INSERT INTO users (username, email, password, role, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        (
+            username,
+            email,
+            hashed_password,
+            "admin",
+            datetime.now().strftime("%Y-%m-%d"),
+        ),
+    )
     conn.commit()
     conn.close()
+    logger.info("Admin bootstrap complete: created admin user '%s'.", username)
+    return True

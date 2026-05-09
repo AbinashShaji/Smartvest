@@ -5,6 +5,7 @@ and the session helpers shared across blueprints.
 """
 import os
 from pathlib import Path
+
 from flask import session
 
 try:
@@ -16,7 +17,12 @@ except ImportError:
 
 BASE_DIR = Path(__file__).resolve().parent
 INSTANCE_DIR = BASE_DIR / "instance"
-INSTANCE_DIR.mkdir(exist_ok=True)
+INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _is_render_production() -> bool:
+    """Detect Render production without forcing local development into prod paths."""
+    return os.getenv("RENDER", "").lower() == "true" or os.getenv("FLASK_ENV", "").lower() == "production"
 
 # Why this strict secret policy exists:
 # Flask signs session cookies with SECRET_KEY, so a hardcoded fallback would
@@ -25,19 +31,30 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 
 # Why paths are configurable:
 # Render and local machines can have different writable directories.
-DATABASE_PATH = os.getenv("SMARTVEST_DB_PATH", str(INSTANCE_DIR / "smartvest.db"))
-UPLOAD_BASE_DIR = os.getenv("SMARTVEST_UPLOAD_DIR", str(BASE_DIR / "uploads"))
+IS_PRODUCTION = _is_render_production()
+ENVIRONMENT = "production" if IS_PRODUCTION else os.getenv("FLASK_ENV", "development").lower()
+DATABASE_PATH = os.getenv(
+    "SMARTVEST_DB_PATH",
+    "/var/data/smartvest.db" if IS_PRODUCTION else str(INSTANCE_DIR / "smartvest.db"),
+)
+UPLOAD_BASE_DIR = Path(
+    os.getenv(
+        "SMARTVEST_UPLOAD_DIR",
+        "/var/data/uploads" if IS_PRODUCTION else str(BASE_DIR / "uploads"),
+    )
+)
 
-# Why this flag exists:
-# We can keep secure defaults while still allowing local development.
-ENVIRONMENT = os.getenv("FLASK_ENV", "production").lower()
-IS_PRODUCTION = ENVIRONMENT == "production"
+Path(DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
+UPLOAD_BASE_DIR.mkdir(parents=True, exist_ok=True)
 
 # Why these admin values are environment-driven:
 # Bootstrap credentials are sensitive and must never be hardcoded in source.
-ADMIN_USERNAME = os.getenv("SMARTVEST_ADMIN_USERNAME")
-ADMIN_EMAIL = os.getenv("SMARTVEST_ADMIN_EMAIL")
-ADMIN_PASSWORD = os.getenv("SMARTVEST_ADMIN_PASSWORD")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME") or os.getenv("SMARTVEST_ADMIN_USERNAME")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD") or os.getenv("SMARTVEST_ADMIN_PASSWORD")
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL") or os.getenv("SMARTVEST_ADMIN_EMAIL")
+
+if not ADMIN_EMAIL and ADMIN_USERNAME:
+    ADMIN_EMAIL = ADMIN_USERNAME if "@" in ADMIN_USERNAME else f"{ADMIN_USERNAME}@smartvest.local"
 
 
 # --- AUTH HELPER FUNCTIONS ---

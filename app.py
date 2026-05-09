@@ -52,8 +52,9 @@ def create_app():
     app = Flask(__name__)
     app.secret_key = _ensure_secret_key()
     # Keep local HTTP development working: browsers reject Secure cookies on plain localhost HTTP.
-    session_cookie_secure = False if config.ENVIRONMENT == "development" else config.IS_PRODUCTION
+    session_cookie_secure = config.IS_PRODUCTION
     app.config.update(
+        DEBUG=not config.IS_PRODUCTION,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=session_cookie_secure,
@@ -65,7 +66,9 @@ def create_app():
     # Why startup happens here:
     # We avoid import-time side effects and run DB bootstrap in one controlled place.
     init_db()
-    create_admin()
+    admin_bootstrapped = create_admin()
+    if admin_bootstrapped:
+        logger.info("SmartVest admin bootstrap finished successfully.")
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(expense_bp)
@@ -129,4 +132,4 @@ def create_app():
 
 app = create_app()
 if __name__ == "__main__":
-    app.run(debug=config.ENVIRONMENT == "development")
+    app.run(debug=not config.IS_PRODUCTION)
