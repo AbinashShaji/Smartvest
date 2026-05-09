@@ -1531,6 +1531,77 @@
     gap: 8px;
 }
 
+.goals-modal-actions--edit {
+    margin-top: 4px;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.goals-modal-save {
+    min-width: 160px;
+    min-height: 44px;
+    padding: 0 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    background: linear-gradient(180deg, #ffffff 0%, #eef4ff 100%);
+    color: #050608;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0 24px rgba(79, 142, 247, 0.14);
+    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.goals-modal-save:hover {
+    background: linear-gradient(180deg, #ffffff 0%, #f5f8ff 100%);
+    border-color: rgba(255, 255, 255, 0.65);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26), 0 0 0 1px rgba(255, 255, 255, 0.16), 0 0 30px rgba(79, 142, 247, 0.18);
+    transform: translateY(-1px);
+}
+
+.goals-modal-save:active {
+    transform: translateY(0);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0 20px rgba(79, 142, 247, 0.12);
+}
+
+.goals-modal-save:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(79, 142, 247, 0.24), 0 10px 24px rgba(0, 0, 0, 0.22), 0 0 24px rgba(79, 142, 247, 0.16);
+}
+
+.goals-modal-delete {
+    min-height: 44px;
+    padding: 0 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    background: rgba(239, 68, 68, 0.12);
+    color: #ffb4b4;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.goals-modal-delete:hover {
+    background: rgba(239, 68, 68, 0.18);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #ffd1d1;
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(239, 68, 68, 0.08);
+    transform: translateY(-1px);
+}
+
+.goals-modal-delete:active {
+    transform: translateY(0);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.16);
+}
+
+.goals-modal-delete:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18), 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
 #portfolioView .goals-filter-tools .goals-input,
 #portfolioView .goals-filter-tools select.goals-input {
     min-height: 40px;
@@ -1575,4 +1646,19 @@
 #createGoalForm > .goals-cta:focus-visible {
     outline: none;
     box-shadow: 0 0 0 3px rgba(255, 196, 0, 0.18), 0 10px 24px rgba(255, 196, 0, 0.14);
+}
+
+#editGoalForm > .goals-modal-actions {
+    margin-top: 2px;
+}
+
+@media (max-width: 560px) {
+    .goals-modal-actions--edit {
+        justify-content: stretch;
+    }
+
+    .goals-modal-save,
+    .goals-modal-delete {
+        width: 100%;
+    }
 }

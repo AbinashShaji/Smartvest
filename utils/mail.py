@@ -5,6 +5,7 @@ Uses Flask-Mail with environment-based SMTP settings.
 
 import os
 import re
+import logging
 from datetime import datetime
 
 from flask import current_app
@@ -13,6 +14,27 @@ from flask_mail import Mail, Message
 
 mail = Mail()
 CONTACT_RECIPIENT = "fakermallu@gmail.com"
+logger = logging.getLogger("smartvest.mail")
+
+
+def _parse_bool_env(name, default=False):
+    """Parse common boolean environment values safely."""
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+    return raw_value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _parse_int_env(name, default):
+    """Parse integer environment values with a safe fallback."""
+    raw_value = os.getenv(name)
+    if raw_value is None or raw_value.strip() == "":
+        return default
+    try:
+        return int(raw_value)
+    except (TypeError, ValueError):
+        logger.warning("Invalid integer for %s=%r. Falling back to %s.", name, raw_value, default)
+        return default
 
 
 def init_mail(app):
@@ -21,14 +43,27 @@ def init_mail(app):
     The app should already have environment variables loaded.
     """
     app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "smtp.gmail.com")
-    app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", "587"))
-    app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "True").strip().lower() in {"1", "true", "yes", "on"}
-    app.config["MAIL_USE_SSL"] = os.getenv("MAIL_USE_SSL", "False").strip().lower() in {"1", "true", "yes", "on"}
+    app.config["MAIL_PORT"] = _parse_int_env("MAIL_PORT", 587)
+    app.config["MAIL_USE_TLS"] = _parse_bool_env("MAIL_USE_TLS", True)
+    app.config["MAIL_USE_SSL"] = _parse_bool_env("MAIL_USE_SSL", False)
     app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "")
     app.config["MAIL_PASSWORD"] = re.sub(r"\s+", "", os.getenv("MAIL_PASSWORD", ""))
     app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_DEFAULT_SENDER", app.config["MAIL_USERNAME"])
-    app.config["MAIL_MAX_EMAILS"] = int(os.getenv("MAIL_MAX_EMAILS", "1"))
+    app.config["MAIL_MAX_EMAILS"] = _parse_int_env("MAIL_MAX_EMAILS", 1)
     app.config["MAIL_SUPPRESS_SEND"] = False
+
+    if app.config["MAIL_USE_TLS"] and app.config["MAIL_USE_SSL"]:
+        logger.warning("Both MAIL_USE_TLS and MAIL_USE_SSL are enabled. Disabling SSL to keep Gmail SMTP compatible.")
+        app.config["MAIL_USE_SSL"] = False
+
+    if not app.config["MAIL_USERNAME"] or not app.config["MAIL_PASSWORD"]:
+        logger.warning(
+            "SMTP credentials are incomplete. Contact form mail delivery will fail until MAIL_USERNAME and MAIL_PASSWORD are configured."
+        )
+
+    if not app.config["MAIL_DEFAULT_SENDER"] and app.config["MAIL_USERNAME"]:
+        app.config["MAIL_DEFAULT_SENDER"] = app.config["MAIL_USERNAME"]
+
     mail.init_app(app)
 
 
@@ -89,7 +124,11 @@ def send_contact_email(name, email, message):
         ),
     )
 
-    mail.send(mail_message)
+    try:
+        mail.send(mail_message)
+    except Exception as exc:
+        logger.exception("Failed to send SmartVest contact email via SMTP.")
+        raise RuntimeError("Unable to send contact email right now.") from exc
 
     return {
         "recipient": CONTACT_RECIPIENT,

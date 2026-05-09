@@ -109,7 +109,10 @@
                 <option value="medium">Medium</option>
                 <option value="low">Low</option>
             </select>
-            <button class="goals-cta" type="submit">Save Changes</button>
+            <div class="goals-modal-actions goals-modal-actions--edit">
+                <button class="goals-modal-delete" type="button" id="deleteGoalBtn">Delete Goal</button>
+                <button class="goals-modal-save" type="submit">Save Changes</button>
+            </div>
             <p id="editGoalMsg" class="goal-subtitle"></p>
         </form>
     </div>
@@ -661,6 +664,14 @@
             return extractGoalData(response, payload);
         }
 
+        async function handleDeleteGoal(goalId) {
+            const response = await rawRequest('/api/expense/goal/delete', {
+                method: 'POST',
+                body: JSON.stringify({ goal_id: goalId }),
+            });
+            return response;
+        }
+
         async function handleLifecycle(goalId, status) {
             const response = await rawRequest('/api/expense/goal/status', {
                 method: 'POST',
@@ -685,6 +696,10 @@
             $('#editGoalDeadline').value = goal.deadline || '';
             $('#editGoalPriority').value = String(goal.priority || 'medium');
             $('#editGoalMsg').textContent = '';
+            const deleteBtn = $('#deleteGoalBtn');
+            if (deleteBtn) {
+                deleteBtn.dataset.goalId = String(goal.id);
+            }
             $('#editGoalModal').classList.add('is-open');
         }
 
@@ -792,6 +807,7 @@
 
             $('#createGoalForm').addEventListener('submit', async (e) => {
                 e.preventDefault();
+                const form = e.currentTarget;
                 const fd = new FormData(e.currentTarget);
                 const payload = {
                     name: String(fd.get('name') || '').trim(),
@@ -806,7 +822,9 @@
                 try {
                     const created = await handleCreateGoal(payload);
                     msg.textContent = 'Goal created.';
-                    e.currentTarget.reset();
+                    if (form && typeof form.reset === 'function') {
+                        form.reset();
+                    }
                     if (state.view === 'detail') {
                         state.detailGoalId = created.id;
                     }
@@ -841,6 +859,37 @@
                     await refreshGoalViews();
                 } catch (error) {
                     msg.textContent = error.message || 'Unable to update goal.';
+                }
+            });
+
+            $('#deleteGoalBtn')?.addEventListener('click', async (event) => {
+                const button = event.currentTarget;
+                const goalId = button?.dataset?.goalId || $('#editGoalId')?.value;
+                if (!goalId) {
+                    $('#editGoalMsg').textContent = 'Goal ID is missing.';
+                    return;
+                }
+
+                const confirmDelete = window.confirm('Delete this goal? This will archive it from your portfolio.');
+                if (!confirmDelete) {
+                    return;
+                }
+
+                const msg = $('#editGoalMsg');
+                msg.textContent = 'Deleting goal...';
+                button.disabled = true;
+                try {
+                    await handleDeleteGoal(goalId);
+                    msg.textContent = 'Goal deleted.';
+                    if (String(state.detailGoalId) === String(goalId)) {
+                        state.detailGoalId = null;
+                    }
+                    closeEdit();
+                    await refreshGoalViews();
+                } catch (error) {
+                    msg.textContent = error.message || 'Unable to delete goal.';
+                } finally {
+                    button.disabled = false;
                 }
             });
         }
