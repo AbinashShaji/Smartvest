@@ -1760,7 +1760,7 @@ nav.glass-nav,
 
 .market-signal-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    align-items: start;
+    align-items: stretch;
 }
 
 .market-insight-card {
@@ -1776,9 +1776,11 @@ nav.glass-nav,
 }
 
 .market-signal-card {
-    display: block;
-    height: 340px;
-    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 408px;
+    height: auto;
     overflow: hidden;
 }
 
@@ -1900,6 +1902,7 @@ nav.glass-nav,
     gap: 8px;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr);
+    flex: 1;
     min-height: 0;
     position: relative;
     width: 100%;
@@ -1947,7 +1950,12 @@ nav.glass-nav,
     min-height: 0;
 }
 
+.market-status-visual {
+    display: flex;
+}
+
 .market-status-visual--vector {
+    display: flex;
     align-items: center;
     border: 1px solid var(--status-border);
     border-radius: 24px;
@@ -1959,8 +1967,8 @@ nav.glass-nav,
         0 14px 30px var(--status-shadow);
     justify-content: center;
     overflow: hidden;
-    min-height: 212px;
-    padding: 12px 14px 16px;
+    min-height: 242px;
+    padding: 14px 16px 18px;
     position: relative;
 }
 
@@ -1976,7 +1984,7 @@ nav.glass-nav,
 
 .market-status-illustration {
     display: block;
-    max-height: 198px;
+    max-height: 216px;
     max-width: 100%;
     object-fit: contain;
     opacity: 0.96;
@@ -2172,8 +2180,17 @@ nav.glass-nav,
 .market-comparison-chips {
     display: flex;
     flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: center;
     gap: 10px;
     margin-top: auto;
+    padding-top: 4px;
+    width: 100%;
+    align-self: flex-start;
+}
+
+.market-comparison-chips .trend-chip {
+    margin: 0;
 }
 
 .market-trend-arrow {

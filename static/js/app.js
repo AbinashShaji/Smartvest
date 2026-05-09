@@ -18,13 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
 function initScrollEffects() {
     const nav = document.querySelector('.nav-container, nav.glass-nav');
     if (nav) {
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 50) {
-                nav.style.background = 'rgba(0, 0, 0, 0.8)';
-            } else {
-                nav.style.background = 'rgba(0, 0, 0, 0.5)';
-            }
-        });
+        const updateNavBackground = () => {
+            nav.dataset.scrolled = window.scrollY > 50 ? 'true' : 'false';
+        };
+
+        updateNavBackground();
+
+        window.addEventListener('scroll', updateNavBackground, { passive: true });
     }
 }
 
