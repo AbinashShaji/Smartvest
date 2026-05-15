@@ -14,6 +14,7 @@ import pandas as pd
 from werkzeug.utils import secure_filename
 
 import config
+from utils.cache import bump_admin_cache_version, bump_market_cache_version
 from utils.db import get_db_connection
 
 
@@ -228,6 +229,8 @@ def save_uploaded_market_dataset(file_storage):
     conn.close()
 
     _cleanup_old_datasets()
+    bump_market_cache_version()
+    bump_admin_cache_version()
     active = get_active_dataset()
     if active and active.get("id") == new_id:
         return active

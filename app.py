@@ -16,11 +16,11 @@ logging.basicConfig(level=logging.INFO)
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, session
-from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.exceptions import HTTPException, RequestEntityTooLarge
 
 import config
 from modules.admin import admin_bp
-from modules.analysis import analysis_bp, build_market_metrics
+from modules.analysis import analysis_bp, build_market_metrics, _cached_market_metrics
 from modules.auth import auth_bp
 from modules.expense import expense_bp
 from modules.feedback import feedback_bp
@@ -28,6 +28,7 @@ from modules.income import income_bp
 from modules.investment import investment_bp
 from modules.review import review_bp
 from modules.settings import settings_bp
+from utils.cache import get_market_cache_version, init_cache
 from utils.db import create_admin, init_db
 from utils.mail import init_mail
 
@@ -61,15 +62,22 @@ def create_app():
         SESSION_COOKIE_SECURE=session_cookie_secure,
         MAX_CONTENT_LENGTH=16 * 1024 * 1024,
     )
+    logger.info("SmartVest startup environment: %s", config.ENVIRONMENT)
     logger.info("SmartVest active DB path: %s", config.DATABASE_PATH)
+    logger.info("SmartVest upload base dir: %s", config.UPLOAD_BASE_DIR)
+    logger.info("SmartVest static dir: %s", config.STATIC_DIR)
     init_mail(app)
+    init_cache(app)
 
     # Why startup happens here:
     # We avoid import-time side effects and run DB bootstrap in one controlled place.
     init_db()
-    admin_bootstrapped = create_admin()
-    if admin_bootstrapped:
-        logger.info("SmartVest admin bootstrap finished successfully.")
+    try:
+        admin_bootstrapped = create_admin()
+        if admin_bootstrapped:
+            logger.info("SmartVest admin bootstrap finished successfully.")
+    except Exception:
+        logger.exception("SmartVest admin bootstrap failed, but the app will continue to start.")
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(expense_bp)
@@ -109,6 +117,8 @@ def create_app():
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error):
+        if isinstance(error, HTTPException):
+            return error
         # Keep internals out of the response while still logging the full trace server-side.
         logger.exception("Unhandled server error: %s", error)
         if request.path.startswith("/api/"):
@@ -126,7 +136,19 @@ def create_app():
         """Expose the admin market metrics endpoint from the app bootstrap."""
         if not config.is_admin():
             return jsonify({"status": "error", "message": "Forbidden."}), 403
-        return jsonify({"status": "success", "data": build_market_metrics()})
+        active_dataset = None
+        try:
+            from utils.market_data import get_active_dataset
+
+            active_dataset = get_active_dataset()
+        except Exception:
+            active_dataset = None
+
+        dataset_id = active_dataset["id"] if active_dataset else "no-dataset"
+        return jsonify({
+            "status": "success",
+            "data": _cached_market_metrics(dataset_id, get_market_cache_version()),
+        })
 
     return app
 

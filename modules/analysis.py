@@ -5,6 +5,8 @@ Purpose : Handles the Dashboard and Analysis pages + their data APIs.
           ALL financial data now comes from the SQLite database — no more config lists.
 """
 
+from __future__ import annotations
+
 from flask import Blueprint, render_template, jsonify, redirect, url_for, request, session
 import config
 from utils.api_errors import safe_api_error
@@ -14,18 +16,44 @@ import time
 from copy import deepcopy
 from datetime import datetime, timedelta
 from typing import Any, Dict
-import pandas as pd
+from utils.cache import (
+    cache,
+    bump_analysis_global_version,
+    bump_user_analysis_version,
+    get_analysis_global_version,
+    get_market_cache_version,
+    get_user_analysis_version,
+)
 from utils.market_data import (
     read_dataset_csv,
     get_active_dataset,
     get_previous_dataset,
 )
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
 
-plt.style.use("dark_background")
+pd = None
+plt = None
+MaxNLocator = None
+
+
+def _ensure_analysis_dependencies():
+    """Load pandas/matplotlib lazily for analysis and charting paths."""
+    global pd, plt, MaxNLocator
+
+    if pd is None:
+        import pandas as _pandas
+
+        pd = _pandas
+
+    if plt is None or MaxNLocator is None:
+        import matplotlib
+
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as _plt
+        from matplotlib.ticker import MaxNLocator as _MaxNLocator
+
+        _plt.style.use("dark_background")
+        plt = _plt
+        MaxNLocator = _MaxNLocator
 
 # The analysis blueprint powers the dashboard, analysis page, and market metrics.
 analysis_bp = Blueprint('analysis', __name__)
@@ -45,8 +73,10 @@ def invalidate_analysis_cache(user_id=None):
     """
     if user_id is None:
         _ANALYSIS_CACHE.clear()
+        bump_analysis_global_version()
         return
     _ANALYSIS_CACHE.pop(user_id, None)
+    bump_user_analysis_version(user_id)
 
 STOCK_DAY_COLUMNS = [f"day{i}" for i in range(1, 11)]
 CHART_FIGURE_FACE = "#06080d"
@@ -77,6 +107,7 @@ CHART_PALETTE = [
 
 def _new_chart_figure(figsize=(10, 6)):
     """Create a web-friendly figure that matches the dashboard dark theme."""
+    _ensure_analysis_dependencies()
     fig, ax = plt.subplots(figsize=figsize, dpi=CHART_DPI, facecolor=CHART_FIGURE_FACE)
     ax.set_facecolor(CHART_AXES_FACE)
     return fig, ax
@@ -151,6 +182,7 @@ def load_stock_csv():
     Purpose : Load stock data from the latest active uploaded market dataset.
     Output  : Pandas DataFrame with the expected stock columns.
     """
+    _ensure_analysis_dependencies()
     active_dataset = get_active_dataset()
     if not active_dataset:
         return pd.DataFrame(columns=["name"] + STOCK_DAY_COLUMNS)
@@ -164,6 +196,7 @@ def analyze_stock_rows(stocks, generate_charts=True):
     Input   : DataFrame with stock prices across day1..day10.
     Output  : (analysis list, status counts dictionary)
     """
+    _ensure_analysis_dependencies()
     analyzed_stocks = []
     status_counts = {"Good": 0, "Bad": 0, "Stable": 0}
 
@@ -188,7 +221,7 @@ def analyze_stock_rows(stocks, generate_charts=True):
         if generate_charts:
             safe_name = _safe_stock_name(stock_name)
             file_name = f"{safe_name}_stock.png"
-            file_path = os.path.join("static", file_name)
+            file_path = os.path.join(str(config.STATIC_DIR), file_name)
 
             days = [f"Day {i}" for i in range(1, len(prices) + 1)]
             fig, ax = _new_chart_figure(figsize=(6, 3.5))
@@ -303,6 +336,7 @@ def _build_month_series(df: pd.DataFrame, *, start_months_ago: int, count: int) 
 
 def _save_pie_chart(file_path, labels, values, title, empty_message):
     """Write a pie chart, falling back to a placeholder when there is no data."""
+    _ensure_analysis_dependencies()
     if not labels or not values or sum(values) <= 0:
         _save_empty_chart(file_path, title, empty_message)
         return
@@ -360,6 +394,7 @@ def _save_pie_chart(file_path, labels, values, title, empty_message):
 
 def _save_bar_chart(file_path, labels, values, title, empty_message):
     """Write a bar chart, falling back to a placeholder when there is no data."""
+    _ensure_analysis_dependencies()
     if not labels or not values or sum(values) <= 0:
         _save_empty_chart(file_path, title, empty_message)
         return
@@ -391,6 +426,7 @@ def _save_bar_chart(file_path, labels, values, title, empty_message):
 
 def _save_line_chart(file_path, trend_data, title, empty_message):
     """Write a line chart or a placeholder when no trend data exists."""
+    _ensure_analysis_dependencies()
     if not trend_data or not any(_coerce_float(item.get("expense")) > 0 for item in trend_data):
         _save_empty_chart(file_path, title, empty_message)
         return
@@ -414,7 +450,7 @@ def _save_line_chart(file_path, trend_data, title, empty_message):
     _finish_chart(fig, file_path)
 
 
-GENERATED_CHART_DIR = os.path.join("static", "generated")
+GENERATED_CHART_DIR = os.path.join(str(config.STATIC_DIR), "generated")
 GENERATED_CHART_URL_PREFIX = "/static/generated"
 
 
@@ -759,8 +795,21 @@ def detect_spike_categories(category_change: list) -> list:
     return spikes
 
 
+@cache.memoize(timeout=_ANALYSIS_CACHE_TTL_SECONDS)
+def _cached_dashboard_analysis(user_id, ef_manual_months, ef_manual_target, analysis_version, user_version):
+    """Memoized wrapper around the existing dashboard analysis computation."""
+    return get_analysis_data(user_id)
+
+
+@cache.memoize(timeout=_MARKET_CACHE_TTL_SECONDS)
+def _cached_market_metrics(dataset_id, market_version):
+    """Memoized wrapper around the market metrics computation."""
+    return build_market_metrics()
+
+
 def get_analysis_data(user_id=None):
     """Build the single source of truth for the analysis page."""
+    _ensure_analysis_dependencies()
     if user_id is None:
         current_user = config.get_current_user() or {}
         user_id = current_user.get("user_id")
@@ -1237,6 +1286,7 @@ def build_market_metrics():
     Purpose : Analyze active uploaded market dataset and build admin metrics.
     Output  : Dictionary with counts, market status, top movers, and chart paths.
     """
+    _ensure_analysis_dependencies()
     active_dataset = get_active_dataset()
     cache_key = str(active_dataset["id"]) if active_dataset else "no-dataset"
     now_ts = time.time()
@@ -1494,6 +1544,7 @@ def get_user_financial_snapshot(user_id):
     FIX (Phase 1): Now uses CURRENT-MONTH expenses only, not total history.
     This prevents inflated "total_expenses" from corrupting savings/risk calculations.
     """
+    _ensure_analysis_dependencies()
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -1601,7 +1652,13 @@ def api_dashboard_data():
 
     try:
         user_id = config.get_current_user()["user_id"]
-        analysis_data = get_analysis_data(user_id)
+        analysis_data = _cached_dashboard_analysis(
+            user_id,
+            session.get("ef_manual_months"),
+            session.get("ef_manual_target"),
+            get_analysis_global_version(),
+            get_user_analysis_version(user_id),
+        )
         return jsonify({"status": "success", "data": analysis_data})
     except Exception as e:
         return safe_api_error(e, status_code=400)
@@ -1616,7 +1673,13 @@ def api_expense_analysis():
 
     try:
         user_id = config.get_current_user()["user_id"]
-        analysis_data = get_analysis_data(user_id)
+        analysis_data = _cached_dashboard_analysis(
+            user_id,
+            session.get("ef_manual_months"),
+            session.get("ef_manual_target"),
+            get_analysis_global_version(),
+            get_user_analysis_version(user_id),
+        )
         current = analysis_data["current"]
 
         if current["savings_rate"] < 0:
@@ -1648,7 +1711,16 @@ def api_expenses_dataframe():
 
     try:
         user_id = config.get_current_user()["user_id"]
-        return jsonify({"status": "success", "data": get_analysis_data(user_id)})
+        return jsonify({
+            "status": "success",
+            "data": _cached_dashboard_analysis(
+                user_id,
+                session.get("ef_manual_months"),
+                session.get("ef_manual_target"),
+                get_analysis_global_version(),
+                get_user_analysis_version(user_id),
+            ),
+        })
     except Exception as e:
         return safe_api_error(e, status_code=400)
 

@@ -12,6 +12,11 @@ import os
 from flask import Blueprint, jsonify, redirect, render_template, request, url_for
 
 import config
+from utils.cache import (
+    bump_admin_cache_version,
+    cache,
+    get_admin_cache_version,
+)
 from utils.api_errors import safe_api_error
 from utils.db import get_db_connection
 from utils.market_data import (
@@ -166,6 +171,279 @@ def _activity_counts(cursor):
     return total_users, active_users, max(total_users - active_users, 0)
 
 
+@cache.memoize(timeout=30)
+def _cached_admin_activity_stats(cache_version):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    total_users, active_users, inactive_users = _activity_counts(cursor)
+    feedback_count = _count(cursor, "SELECT COUNT(*) FROM feedback")
+    review_count = _count(cursor, "SELECT COUNT(*) FROM reviews")
+    new_users_week = _count(cursor, """
+        SELECT COUNT(*)
+        FROM users
+        WHERE role != 'admin' AND created_at >= date('now', '-6 day')
+    """)
+    conn.close()
+    return {
+        "status": "success",
+        "data": {
+            "total_users": total_users,
+            "active_users": active_users,
+            "inactive_users": inactive_users,
+            "new_users_week": new_users_week,
+            "feedback_count": feedback_count,
+            "review_count": review_count,
+            "users": total_users,
+            "reviews_count": review_count,
+        },
+    }
+
+
+@cache.memoize(timeout=30)
+def _cached_admin_engagement_metrics(cache_version):
+    labels = _date_labels()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    total_users, active_users, inactive_users = _activity_counts(cursor)
+
+    current_week = _count(cursor, f"""
+        SELECT COUNT(*) FROM ({_activity_union_sql()})
+        WHERE date >= date('now', '-6 day')
+    """)
+    previous_week = _count(cursor, f"""
+        SELECT COUNT(*) FROM ({_activity_union_sql()})
+        WHERE date BETWEEN date('now', '-13 day') AND date('now', '-7 day')
+    """)
+    cursor.execute(f"""
+        SELECT date, COUNT(*) AS total
+        FROM ({_activity_union_sql()})
+        WHERE date >= ?
+        GROUP BY date
+    """, (labels[0],))
+    trend_counts = {row["date"]: row["total"] for row in cursor.fetchall()}
+
+    cursor.execute("""
+        SELECT module, total FROM (
+            SELECT 'Expenses' AS module, COUNT(*) AS total FROM expenses
+            UNION ALL SELECT 'Income', COUNT(*) FROM income
+            UNION ALL SELECT 'Goals', COUNT(*) FROM goals
+            UNION ALL SELECT 'Feedback', COUNT(*) FROM feedback
+            UNION ALL SELECT 'Reviews', COUNT(*) FROM reviews
+        )
+        ORDER BY total DESC
+        LIMIT 1
+    """)
+    top_module = cursor.fetchone()
+    conn.close()
+
+    engagement_percent = round((active_users / total_users) * 100, 1) if total_users else 0
+    top_module_name = top_module["module"] if top_module and top_module["total"] else "No activity yet"
+    activity_direction = "increased" if current_week >= previous_week else "decreased"
+
+    return {
+        "status": "success",
+        "data": {
+            "active_users": active_users,
+            "inactive_users": inactive_users,
+            "engagement_percent": engagement_percent,
+            "weekly_trend": {
+                "labels": labels,
+                "values": [trend_counts.get(label, 0) for label in labels],
+            },
+            "active_split": {
+                "labels": ["Active", "Inactive"],
+                "values": [active_users, inactive_users],
+            },
+            "most_active_module": top_module_name,
+            "insights": [
+                f"Activity {activity_direction} compared with the previous week.",
+                "Inactive users are rising." if inactive_users > active_users else "Active users are leading engagement.",
+                f"Most active module: {top_module_name}.",
+            ],
+        },
+    }
+
+
+@cache.memoize(timeout=30)
+def _cached_admin_reminders(cache_version):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    pending_reviews = _count(cursor, "SELECT COUNT(*) FROM reviews WHERE UPPER(COALESCE(status, 'PENDING')) = 'PENDING'")
+    new_feedback = _count(cursor, "SELECT COUNT(*) FROM feedback WHERE date >= date('now', '-6 day')")
+    conn.close()
+    return {
+        "status": "success",
+        "data": {
+            "pending_reviews": pending_reviews,
+            "new_feedback": new_feedback,
+            "unresolved_admin_actions": pending_reviews + new_feedback,
+        },
+    }
+
+
+@cache.memoize(timeout=30)
+def _cached_admin_recent_activity(cache_version):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT id, username, email, created_at
+        FROM users
+        WHERE role != 'admin'
+        ORDER BY COALESCE(created_at, '') DESC, id DESC
+        LIMIT 5
+    """)
+    signups = [dict(row) for row in cursor.fetchall()]
+
+    cursor.execute("""
+        SELECT reviews.id, users.username, reviews.rating, reviews.comment, reviews.status, reviews.date
+        FROM reviews
+        LEFT JOIN users ON reviews.user_id = users.id
+        ORDER BY reviews.id DESC
+        LIMIT 5
+    """)
+    reviews = [dict(row) for row in cursor.fetchall()]
+
+    cursor.execute("""
+        SELECT feedback.id, users.username, feedback.subject, feedback.message, feedback.date
+        FROM feedback
+        LEFT JOIN users ON feedback.user_id = users.id
+        ORDER BY feedback.id DESC
+        LIMIT 5
+    """)
+    feedback = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+
+    return {
+        "status": "success",
+        "data": {
+            "signups": signups,
+            "reviews": reviews,
+            "feedback": feedback,
+        },
+    }
+
+
+@cache.memoize(timeout=45)
+def _cached_admin_users(cache_version):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, email, role FROM users WHERE role != 'admin'")
+    all_users = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"status": "success", "data": all_users}
+
+
+@cache.memoize(timeout=30)
+def _cached_admin_feedback(cache_version):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        {_feedback_base_select()}
+        ORDER BY feedback.id DESC
+    """)
+    all_feedback = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"status": "success", "data": all_feedback}
+
+
+@cache.memoize(timeout=30)
+def _cached_admin_feedback_incoming(cache_version):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        {_feedback_base_select()}
+        WHERE LOWER(COALESCE(feedback.status, 'pending')) = 'pending'
+        ORDER BY feedback.id DESC
+    """)
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"status": "success", "data": rows}
+
+
+@cache.memoize(timeout=30)
+def _cached_admin_feedback_accepted(cache_version):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        {_feedback_base_select()}
+        WHERE LOWER(COALESCE(feedback.status, 'pending')) = 'accepted'
+        ORDER BY COALESCE(feedback.accepted_at, feedback.date) DESC, feedback.id DESC
+    """)
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"status": "success", "data": rows}
+
+
+@cache.memoize(timeout=30)
+def _cached_admin_reviews(cache_version):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        {_review_base_select()}
+        ORDER BY reviews.id DESC
+    """)
+    all_reviews = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"status": "success", "data": all_reviews}
+
+
+@cache.memoize(timeout=30)
+def _cached_admin_reviews_incoming(cache_version):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        {_review_base_select()}
+        WHERE LOWER(COALESCE(reviews.status, 'pending')) = 'pending'
+        ORDER BY reviews.id DESC
+    """)
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"status": "success", "data": rows}
+
+
+@cache.memoize(timeout=30)
+def _cached_admin_reviews_accepted(cache_version):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"""
+        {_review_base_select()}
+        WHERE LOWER(COALESCE(reviews.status, 'pending')) = 'accepted'
+        ORDER BY COALESCE(reviews.approved_at, reviews.date) DESC, reviews.id DESC
+    """)
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"status": "success", "data": rows}
+
+
+@cache.memoize(timeout=60)
+def _cached_public_reviews(cache_version):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT users.username, reviews.rating, reviews.comment, reviews.date
+        FROM reviews
+        LEFT JOIN users ON reviews.user_id = users.id
+        WHERE reviews.show_public = 1 AND LOWER(COALESCE(reviews.status, 'pending')) = 'accepted'
+        ORDER BY COALESCE(reviews.approved_at, reviews.date) DESC, reviews.id DESC
+        LIMIT 6
+    """)
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return {"status": "success", "data": rows}
+
+
+@cache.memoize(timeout=60)
+def _cached_market_dataset_list(cache_version):
+    return {
+        "status": "success",
+        "data": {
+            "datasets": get_market_dataset_rows(limit=RETENTION_LIMIT),
+            "active": get_active_dataset(),
+        },
+    }
+
+
 # =============================================================================
 # DASHBOARD API ROUTES
 # =============================================================================
@@ -177,31 +455,7 @@ def api_admin_activity_stats():
         return jsonify({"status": "error", "message": "Unauthorized access."}), 403
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        total_users, active_users, inactive_users = _activity_counts(cursor)
-        feedback_count = _count(cursor, "SELECT COUNT(*) FROM feedback")
-        review_count = _count(cursor, "SELECT COUNT(*) FROM reviews")
-        new_users_week = _count(cursor, """
-            SELECT COUNT(*)
-            FROM users
-            WHERE role != 'admin' AND created_at >= date('now', '-6 day')
-        """)
-        conn.close()
-
-        return jsonify({
-            "status": "success",
-            "data": {
-                "total_users": total_users,
-                "active_users": active_users,
-                "inactive_users": inactive_users,
-                "new_users_week": new_users_week,
-                "feedback_count": feedback_count,
-                "review_count": review_count,
-                "users": total_users,
-                "reviews_count": review_count,
-            },
-        })
+        return jsonify(_cached_admin_activity_stats(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -213,67 +467,7 @@ def api_admin_engagement_metrics():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        labels = _date_labels()
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        total_users, active_users, inactive_users = _activity_counts(cursor)
-
-        current_week = _count(cursor, f"""
-            SELECT COUNT(*) FROM ({_activity_union_sql()})
-            WHERE date >= date('now', '-6 day')
-        """)
-        previous_week = _count(cursor, f"""
-            SELECT COUNT(*) FROM ({_activity_union_sql()})
-            WHERE date BETWEEN date('now', '-13 day') AND date('now', '-7 day')
-        """)
-        cursor.execute(f"""
-            SELECT date, COUNT(*) AS total
-            FROM ({_activity_union_sql()})
-            WHERE date >= ?
-            GROUP BY date
-        """, (labels[0],))
-        trend_counts = {row["date"]: row["total"] for row in cursor.fetchall()}
-
-        cursor.execute("""
-            SELECT module, total FROM (
-                SELECT 'Expenses' AS module, COUNT(*) AS total FROM expenses
-                UNION ALL SELECT 'Income', COUNT(*) FROM income
-                UNION ALL SELECT 'Goals', COUNT(*) FROM goals
-                UNION ALL SELECT 'Feedback', COUNT(*) FROM feedback
-                UNION ALL SELECT 'Reviews', COUNT(*) FROM reviews
-            )
-            ORDER BY total DESC
-            LIMIT 1
-        """)
-        top_module = cursor.fetchone()
-        conn.close()
-
-        engagement_percent = round((active_users / total_users) * 100, 1) if total_users else 0
-        top_module_name = top_module["module"] if top_module and top_module["total"] else "No activity yet"
-        activity_direction = "increased" if current_week >= previous_week else "decreased"
-
-        return jsonify({
-            "status": "success",
-            "data": {
-                "active_users": active_users,
-                "inactive_users": inactive_users,
-                "engagement_percent": engagement_percent,
-                "weekly_trend": {
-                    "labels": labels,
-                    "values": [trend_counts.get(label, 0) for label in labels],
-                },
-                "active_split": {
-                    "labels": ["Active", "Inactive"],
-                    "values": [active_users, inactive_users],
-                },
-                "most_active_module": top_module_name,
-                "insights": [
-                    f"Activity {activity_direction} compared with the previous week.",
-                    "Inactive users are rising." if inactive_users > active_users else "Active users are leading engagement.",
-                    f"Most active module: {top_module_name}.",
-                ],
-            },
-        })
+        return jsonify(_cached_admin_engagement_metrics(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -285,20 +479,7 @@ def api_admin_reminders():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        pending_reviews = _count(cursor, "SELECT COUNT(*) FROM reviews WHERE UPPER(COALESCE(status, 'PENDING')) = 'PENDING'")
-        new_feedback = _count(cursor, "SELECT COUNT(*) FROM feedback WHERE date >= date('now', '-6 day')")
-        conn.close()
-
-        return jsonify({
-            "status": "success",
-            "data": {
-                "pending_reviews": pending_reviews,
-                "new_feedback": new_feedback,
-                "unresolved_admin_actions": pending_reviews + new_feedback,
-            },
-        })
+        return jsonify(_cached_admin_reminders(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -310,45 +491,7 @@ def api_admin_recent_activity():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT id, username, email, created_at
-            FROM users
-            WHERE role != 'admin'
-            ORDER BY COALESCE(created_at, '') DESC, id DESC
-            LIMIT 5
-        """)
-        signups = [dict(row) for row in cursor.fetchall()]
-
-        cursor.execute("""
-            SELECT reviews.id, users.username, reviews.rating, reviews.comment, reviews.status, reviews.date
-            FROM reviews
-            LEFT JOIN users ON reviews.user_id = users.id
-            ORDER BY reviews.id DESC
-            LIMIT 5
-        """)
-        reviews = [dict(row) for row in cursor.fetchall()]
-
-        cursor.execute("""
-            SELECT feedback.id, users.username, feedback.subject, feedback.message, feedback.date
-            FROM feedback
-            LEFT JOIN users ON feedback.user_id = users.id
-            ORDER BY feedback.id DESC
-            LIMIT 5
-        """)
-        feedback = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-
-        return jsonify({
-            "status": "success",
-            "data": {
-                "signups": signups,
-                "reviews": reviews,
-                "feedback": feedback,
-            },
-        })
+        return jsonify(_cached_admin_recent_activity(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -364,12 +507,7 @@ def api_admin_users():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, username, email, role FROM users WHERE role != 'admin'")
-        all_users = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return jsonify({"status": "success", "data": all_users})
+        return jsonify(_cached_admin_users(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -398,6 +536,7 @@ def api_admin_delete_user():
         cursor.execute("DELETE FROM users WHERE id = ?", (int(user_id),))
         conn.commit()
         conn.close()
+        bump_admin_cache_version()
         return jsonify({"status": "success", "data": {"message": "User deleted successfully."}})
     except Exception as e:
         return safe_api_error(e, status_code=400)
@@ -410,15 +549,7 @@ def api_admin_feedback():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"""
-            {_feedback_base_select()}
-            ORDER BY feedback.id DESC
-        """)
-        all_feedback = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return jsonify({"status": "success", "data": all_feedback})
+        return jsonify(_cached_admin_feedback(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -430,16 +561,7 @@ def api_admin_feedback_incoming():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"""
-            {_feedback_base_select()}
-            WHERE LOWER(COALESCE(feedback.status, 'pending')) = 'pending'
-            ORDER BY feedback.id DESC
-        """)
-        rows = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return jsonify({"status": "success", "data": rows})
+        return jsonify(_cached_admin_feedback_incoming(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -451,16 +573,7 @@ def api_admin_feedback_accepted():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"""
-            {_feedback_base_select()}
-            WHERE LOWER(COALESCE(feedback.status, 'pending')) = 'accepted'
-            ORDER BY COALESCE(feedback.accepted_at, feedback.date) DESC, feedback.id DESC
-        """)
-        rows = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return jsonify({"status": "success", "data": rows})
+        return jsonify(_cached_admin_feedback_accepted(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -493,6 +606,7 @@ def api_admin_feedback_accept():
         """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), feedback_id))
         conn.commit()
         conn.close()
+        bump_admin_cache_version()
         return jsonify({"status": "success", "data": {"message": "Feedback accepted."}})
     except Exception as e:
         return safe_api_error(e, status_code=400)
@@ -520,6 +634,7 @@ def api_admin_feedback_delete():
         cursor.execute("DELETE FROM feedback WHERE id = ?", (feedback_id,))
         conn.commit()
         conn.close()
+        bump_admin_cache_version()
         return jsonify({"status": "success", "data": {"message": "Feedback deleted."}})
     except Exception as e:
         return safe_api_error(e, status_code=400)
@@ -563,6 +678,7 @@ def _set_feedback_resolved_value(value):
         cursor.execute("UPDATE feedback SET resolved = ? WHERE id = ?", (value, feedback_id))
         conn.commit()
         conn.close()
+        bump_admin_cache_version()
         return jsonify({"status": "success", "data": {"message": "Feedback resolution updated."}})
     except Exception as e:
         return safe_api_error(e, status_code=400)
@@ -575,14 +691,7 @@ def api_admin_market_dataset_list():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        rows = get_market_dataset_rows(limit=RETENTION_LIMIT)
-        return jsonify({
-            "status": "success",
-            "data": {
-                "datasets": rows,
-                "active": get_active_dataset(),
-            },
-        })
+        return jsonify(_cached_market_dataset_list(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -615,6 +724,7 @@ def api_admin_market_dataset_upload():
             return jsonify({"status": "error", "message": "CSV file is too large."}), 413
 
         saved = save_uploaded_market_dataset(upload_file)
+        bump_admin_cache_version()
         preview = get_dataset_preview(saved["dataset_path"], limit=8)
         return jsonify({
             "status": "success",
@@ -654,15 +764,7 @@ def api_admin_reviews():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"""
-            {_review_base_select()}
-            ORDER BY reviews.id DESC
-        """)
-        all_reviews = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return jsonify({"status": "success", "data": all_reviews})
+        return jsonify(_cached_admin_reviews(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -674,16 +776,7 @@ def api_admin_reviews_incoming():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"""
-            {_review_base_select()}
-            WHERE LOWER(COALESCE(reviews.status, 'pending')) = 'pending'
-            ORDER BY reviews.id DESC
-        """)
-        rows = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return jsonify({"status": "success", "data": rows})
+        return jsonify(_cached_admin_reviews_incoming(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -695,16 +788,7 @@ def api_admin_reviews_accepted():
         return jsonify({"status": "error", "message": "Forbidden."}), 403
 
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(f"""
-            {_review_base_select()}
-            WHERE LOWER(COALESCE(reviews.status, 'pending')) = 'accepted'
-            ORDER BY COALESCE(reviews.approved_at, reviews.date) DESC, reviews.id DESC
-        """)
-        rows = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return jsonify({"status": "success", "data": rows})
+        return jsonify(_cached_admin_reviews_accepted(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -736,6 +820,7 @@ def api_admin_review_accept():
         """, (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), review_id))
         conn.commit()
         conn.close()
+        bump_admin_cache_version()
         return jsonify({"status": "success", "data": {"message": "Review accepted."}})
     except Exception as e:
         return safe_api_error(e, status_code=400)
@@ -782,6 +867,7 @@ def api_admin_review_public_toggle():
         cursor.execute("UPDATE reviews SET show_public = ? WHERE id = ?", (show_public, review_id))
         conn.commit()
         conn.close()
+        bump_admin_cache_version()
         return jsonify({"status": "success", "data": {"message": "Public visibility updated."}})
     except Exception as e:
         return safe_api_error(e, status_code=400)
@@ -791,19 +877,7 @@ def api_admin_review_public_toggle():
 def api_public_reviews():
     """Return up to 6 accepted reviews selected for the public page."""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT users.username, reviews.rating, reviews.comment, reviews.date
-            FROM reviews
-            LEFT JOIN users ON reviews.user_id = users.id
-            WHERE reviews.show_public = 1 AND LOWER(COALESCE(reviews.status, 'pending')) = 'accepted'
-            ORDER BY COALESCE(reviews.approved_at, reviews.date) DESC, reviews.id DESC
-            LIMIT 6
-        """)
-        rows = [dict(row) for row in cursor.fetchall()]
-        conn.close()
-        return jsonify({"status": "success", "data": rows})
+        return jsonify(_cached_public_reviews(get_admin_cache_version()))
     except Exception as e:
         return safe_api_error(e, status_code=400)
 
@@ -830,6 +904,7 @@ def api_admin_delete_review():
         cursor.execute("DELETE FROM reviews WHERE id = ?", (int(review_id),))
         conn.commit()
         conn.close()
+        bump_admin_cache_version()
         return jsonify({"status": "success", "data": {"message": "Review deleted successfully."}})
     except Exception as e:
         return safe_api_error(e, status_code=400)

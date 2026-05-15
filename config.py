@@ -18,8 +18,11 @@ except ImportError:
 
 BASE_DIR = Path(__file__).resolve().parent
 INSTANCE_DIR = BASE_DIR / "instance"
-os.makedirs("instance", exist_ok=True)
+STATIC_DIR = BASE_DIR / "static"
+STATIC_EXPORTS_DIR = STATIC_DIR / "exports"
 INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
+STATIC_DIR.mkdir(parents=True, exist_ok=True)
+STATIC_EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger("smartvest")
 
@@ -27,6 +30,24 @@ logger = logging.getLogger("smartvest")
 def _is_render_production() -> bool:
     """Detect Render production without forcing local development into prod paths."""
     return os.getenv("RENDER", "").lower() == "true" or os.getenv("FLASK_ENV", "").lower() == "production"
+
+
+def _resolve_path(value: str | None, *, default: Path, treat_as_dir: bool) -> Path:
+    """Resolve environment paths safely and keep them absolute for WSGI hosts."""
+    raw_value = (value or "").strip()
+    if not raw_value:
+        return default
+
+    candidate = Path(raw_value).expanduser()
+    if not candidate.is_absolute():
+        candidate = BASE_DIR / candidate
+
+    if treat_as_dir:
+        candidate.mkdir(parents=True, exist_ok=True)
+        return candidate
+
+    candidate.parent.mkdir(parents=True, exist_ok=True)
+    return candidate
 
 # Why this strict secret policy exists:
 # Flask signs session cookies with SECRET_KEY, so a hardcoded fallback would
@@ -38,12 +59,21 @@ ENVIRONMENT = "production" if IS_PRODUCTION else os.getenv("FLASK_ENV", "develop
 
 
 def _resolve_database_path() -> str:
-    """Prefer Render's mounted disk when available, otherwise use the local instance DB."""
+    """Prefer explicit DB path overrides, then Render disk, then the local instance DB."""
     fallback_path = INSTANCE_DIR / "smartvest.db"
+    explicit_path = (os.getenv("SMARTVEST_DB_PATH") or "").strip()
     render_disk_path = (os.getenv("RENDER_DISK_PATH") or "").strip()
 
+    if explicit_path:
+        candidate_path = _resolve_path(explicit_path, default=fallback_path, treat_as_dir=False)
+        logger.info("SmartVest database path resolved from SMARTVEST_DB_PATH: %s", candidate_path)
+        return str(candidate_path)
+
     if render_disk_path:
-        candidate_path = Path(render_disk_path) / "smartvest.db"
+        candidate_path = Path(render_disk_path).expanduser()
+        if not candidate_path.is_absolute():
+            candidate_path = BASE_DIR / candidate_path
+        candidate_path = candidate_path / "smartvest.db"
         try:
             candidate_path.parent.mkdir(parents=True, exist_ok=True)
             logger.info("SmartVest database path resolved to Render disk: %s", candidate_path)
@@ -63,12 +93,21 @@ def _resolve_database_path() -> str:
 
 
 def _resolve_upload_base_dir() -> Path:
-    """Use the same Render disk for uploads when available, otherwise keep local uploads in the repo."""
+    """Prefer explicit upload directory overrides, then Render disk, then local uploads."""
     fallback_path = BASE_DIR / "uploads"
+    explicit_path = (os.getenv("SMARTVEST_UPLOAD_DIR") or "").strip()
     render_disk_path = (os.getenv("RENDER_DISK_PATH") or "").strip()
 
+    if explicit_path:
+        candidate_path = _resolve_path(explicit_path, default=fallback_path, treat_as_dir=True)
+        logger.info("SmartVest upload directory resolved from SMARTVEST_UPLOAD_DIR: %s", candidate_path)
+        return candidate_path
+
     if render_disk_path:
-        candidate_path = Path(render_disk_path) / "uploads"
+        candidate_path = Path(render_disk_path).expanduser()
+        if not candidate_path.is_absolute():
+            candidate_path = BASE_DIR / candidate_path
+        candidate_path = candidate_path / "uploads"
         try:
             candidate_path.mkdir(parents=True, exist_ok=True)
             logger.info("SmartVest upload directory resolved to Render disk: %s", candidate_path)
@@ -158,10 +197,12 @@ def is_admin():
         from utils.db import get_db_connection
 
         conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, role FROM users WHERE id = ?", (user.get("user_id"),))
-        row = cursor.fetchone()
-        conn.close()
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, role FROM users WHERE id = ?", (user.get("user_id"),))
+            row = cursor.fetchone()
+        finally:
+            conn.close()
 
         if row is None:
             session.pop("user", None)

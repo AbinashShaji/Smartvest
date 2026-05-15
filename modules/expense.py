@@ -695,11 +695,11 @@ def api_export_data():
 
         df = pd.DataFrame(data)
 
-        os.makedirs("static/exports", exist_ok=True)
+        os.makedirs(str(config.STATIC_EXPORTS_DIR), exist_ok=True)
         # Why this unique filename exists:
         # Shared static exports can be overwritten by another user request.
         file_name = f"expenses_export_u{user_id}_{uuid.uuid4().hex[:8]}.csv"
-        file_path = os.path.join("static", "exports", file_name)
+        file_path = os.path.join(str(config.STATIC_EXPORTS_DIR), file_name)
         df.to_csv(file_path, index=False)
 
         return jsonify({"file": f"/static/exports/{file_name}"})

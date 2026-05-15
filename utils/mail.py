@@ -13,7 +13,7 @@ from flask_mail import Mail, Message
 
 
 mail = Mail()
-CONTACT_RECIPIENT = "fakermallu@gmail.com"
+CONTACT_RECIPIENT = os.getenv("SMARTVEST_CONTACT_RECIPIENT", "fakermallu@gmail.com")
 logger = logging.getLogger("smartvest.mail")
 
 
@@ -44,12 +44,12 @@ def init_mail(app):
     """
     app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER", "smtp.gmail.com")
     app.config["MAIL_PORT"] = _parse_int_env("MAIL_PORT", 587)
-    app.config["MAIL_USE_TLS"] = os.getenv("MAIL_USE_TLS", "True") == "True"
+    app.config["MAIL_USE_TLS"] = _parse_bool_env("MAIL_USE_TLS", True)
     app.config["MAIL_USE_SSL"] = _parse_bool_env("MAIL_USE_SSL", False)
     app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME", "")
     app.config["MAIL_PASSWORD"] = re.sub(r"\s+", "", os.getenv("MAIL_PASSWORD", ""))
     app.config["MAIL_DEFAULT_SENDER"] = os.getenv("MAIL_USERNAME")
-    app.config["MAIL_TIMEOUT"] = 10
+    app.config["MAIL_TIMEOUT"] = _parse_int_env("MAIL_TIMEOUT", 15)
     app.config["MAIL_MAX_EMAILS"] = _parse_int_env("MAIL_MAX_EMAILS", 1)
     app.config["MAIL_SUPPRESS_SEND"] = False
 
@@ -128,7 +128,6 @@ def send_contact_email(name, email, message):
     try:
         mail.send(mail_message)
     except Exception as exc:
-        print("MAIL ERROR:", str(exc))
         logger.exception("Failed to send SmartVest contact email via SMTP.")
         return False
 
