@@ -46,6 +46,68 @@
 
 {% block scripts %}
 <script>
+    function createCell(text, options = {}) {
+        const cell = document.createElement('td');
+        cell.style.padding = options.padding || '16px';
+        if (options.alignRight) cell.style.textAlign = 'right';
+        if (options.color) cell.style.color = options.color;
+        if (options.className) cell.className = options.className;
+        if (options.badge) {
+            const badge = document.createElement('span');
+            badge.className = 'glass-card';
+            badge.style.padding = '4px 10px';
+            badge.style.fontSize = '0.75rem';
+            badge.textContent = text;
+            cell.appendChild(badge);
+            return cell;
+        }
+        cell.textContent = text;
+        return cell;
+    }
+
+    function createUserRow(user) {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid rgba(255,255,255,0.02)';
+
+        row.appendChild(createCell(user.username || ''));
+        row.appendChild(createCell(user.email || '', { color: 'var(--fg-secondary)' }));
+        row.appendChild(createCell(user.role || '', { badge: true }));
+
+        const actionCell = createCell('', { alignRight: true });
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.style.background = 'transparent';
+        deleteButton.style.border = 'none';
+        deleteButton.style.color = '#f87171';
+        deleteButton.style.cursor = 'pointer';
+        deleteButton.style.fontSize = '0.85rem';
+        deleteButton.style.fontWeight = '600';
+        deleteButton.textContent = 'Delete';
+        deleteButton.addEventListener('click', () => deleteUser(String(user.id)));
+        actionCell.appendChild(deleteButton);
+        row.appendChild(actionCell);
+
+        return row;
+    }
+
+    function renderUserMessage(message, color = 'var(--fg-secondary)') {
+        const list = document.getElementById('adminUserList');
+        if (!list) return;
+
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid rgba(255,255,255,0.02)';
+
+        const cell = document.createElement('td');
+        cell.colSpan = 4;
+        cell.style.padding = '40px';
+        cell.style.textAlign = 'center';
+        cell.style.color = color;
+        cell.textContent = message;
+        row.appendChild(cell);
+
+        list.replaceChildren(row);
+    }
+
     async function loadUsers() {
         try {
             const users = await API.getAdminUsers();
@@ -53,32 +115,16 @@
             if (!list) return;
 
             if (users && users.length > 0) {
-                list.innerHTML = users.map(user => `
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                        <td style="padding: 16px;">${user.username}</td>
-                        <td style="padding: 16px; color: var(--fg-secondary);">${user.email}</td>
-                        <td style="padding: 16px;"><span class="glass-card" style="padding: 4px 10px; font-size: 0.75rem;">${user.role}</span></td>
-                        <td style="padding: 16px; text-align: right;">
-                            <button onclick="deleteUser('${user.id}')" style="background: transparent; border: none; color: #f87171; cursor: pointer; font-size: 0.85rem; font-weight: 600;">Delete</button>
-                        </td>
-                    </tr>
-                `).join('');
+                const fragment = document.createDocumentFragment();
+                users.forEach((user) => {
+                    fragment.appendChild(createUserRow(user));
+                });
+                list.replaceChildren(fragment);
             } else {
-                list.innerHTML = `
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                        <td colspan="4" style="padding: 40px; text-align: center; color: var(--fg-secondary);">No users found in the database.</td>
-                    </tr>
-                `;
+                renderUserMessage('No users found in the database.');
             }
         } catch (error) {
-            const list = document.getElementById('adminUserList');
-            if (list) {
-                list.innerHTML = `
-                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.02);">
-                        <td colspan="4" style="padding: 40px; text-align: center; color: #f87171;">Unable to load users.</td>
-                    </tr>
-                `;
-            }
+            renderUserMessage('Unable to load users.', '#f87171');
         }
     }
 
