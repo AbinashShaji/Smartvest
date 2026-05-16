@@ -4,33 +4,62 @@
 
 {% block content %}
 <section class="auth-centered" style="padding: 120px 20px;">
-    <div class="glass-card" style="width: 100%; max-width: 450px; padding: 60px; text-align: center;">
-        <h2 style="font-size: 2.5rem; margin-bottom: 12px; font-weight: 800; letter-spacing: -1.5px;">Join the Era</h2>
-        <p style="color: var(--fg-secondary); font-size: 0.95rem; margin-bottom: 48px;">Request your access to the intelligence layer.</p>
+    <div class="glass-card" style="width: 100%; max-width: 480px; padding: 58px; text-align: center;">
+        <h2 style="font-size: 2.4rem; margin-bottom: 12px; font-weight: 800; letter-spacing: -1.5px;">Join the Era</h2>
+        <p style="color: var(--fg-secondary); font-size: 0.95rem; margin-bottom: 32px;">Request your access to the intelligence layer.</p>
 
-        <form id="signupForm" style="text-align: left; display: flex; flex-direction: column; gap: 24px;">
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <label style="font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--fg-secondary);">NAME</label>
-                <input type="text" name="username" required placeholder="John Doe" class="premium-input-field">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px;">
+                    {% for category, message in messages %}
+                        <div class="signup-flash signup-flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form id="signupForm" method="post" action="/signup" novalidate style="text-align: left; display: flex; flex-direction: column; gap: 18px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label for="signupUsername" style="font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--fg-secondary);">NAME</label>
+                <input id="signupUsername" type="text" name="username" required maxlength="120" autocomplete="name" placeholder="John Doe" value="{{ (form_values.get('username', '') if form_values else '')|e }}" class="premium-input-field">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label for="signupEmail" style="font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--fg-secondary);">EMAIL</label>
+                <input id="signupEmail" type="email" name="email" required maxlength="254" autocomplete="email" placeholder="name@company.com" value="{{ (form_values.get('email', '') if form_values else '')|e }}" class="premium-input-field">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label for="signupPassword" style="font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--fg-secondary);">PASSWORD</label>
+                <input id="signupPassword" type="password" name="password" required maxlength="128" autocomplete="new-password" placeholder="Enter password" class="premium-input-field">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label for="signupConfirmPassword" style="font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--fg-secondary);">CONFIRM PASSWORD</label>
+                <input id="signupConfirmPassword" type="password" name="confirm_password" required maxlength="128" autocomplete="new-password" placeholder="Confirm password" class="premium-input-field">
+                <p id="confirmPasswordError" class="signup-inline-error" aria-live="polite"></p>
             </div>
 
             <div style="display: flex; flex-direction: column; gap: 10px;">
-                <label style="font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--fg-secondary);">EMAIL</label>
-                <input type="email" name="email" required placeholder="name@company.com" class="premium-input-field">
-            </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <label style="font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; color: var(--fg-secondary);">PASSWORD</label>
-                <input type="password" name="password" required placeholder="••••••••" class="premium-input-field">
+                <label class="signup-consent">
+                    <input id="acceptTerms" type="checkbox" name="accept_terms" value="yes">
+                    <span>
+                        I agree to the
+                        <a href="{{ url_for('auth.terms_of_service') }}" target="_blank" rel="noopener noreferrer">Terms of Service</a>
+                        and
+                        <a href="{{ url_for('auth.privacy_policy') }}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+                    </span>
+                </label>
             </div>
 
-            <button type="submit" class="btn-premium btn-glow" style="width: 100%; height: 55px; margin-top: 20px; font-size: 0.9rem; letter-spacing: 1px;">
-                REQUEST ACCOUNT
+            <button id="signupSubmit" type="submit" class="btn-premium btn-glow" style="width: 100%; height: 55px; margin-top: 6px; font-size: 0.9rem; letter-spacing: 1px;">
+                CREATE ACCOUNT
             </button>
-            <p id="signupStatus" style="text-align: center; font-size: 0.85rem; height: 1.2rem; margin-top: 10px;"></p>
+            <p id="signupStatus" style="text-align: center; font-size: 0.85rem; min-height: 1.2rem; margin-top: 6px; color: var(--fg-secondary);"></p>
+            <p class="signup-trust-note">Your financial data is securely encrypted.</p>
         </form>
 
-        <p style="margin-top: 40px; color: var(--fg-secondary); font-size: 0.9rem;">
+        <p style="margin-top: 34px; color: var(--fg-secondary); font-size: 0.9rem;">
             Already in? <a href="/login" style="color: #fff; text-decoration: none; font-weight: 700;">System Access</a>
         </p>
     </div>
@@ -44,42 +73,176 @@
         padding: 14px 18px;
         color: #fff;
         outline: none;
-        transition: 0.3s;
+        transition: 0.25s ease;
         width: 100%;
         font-family: inherit;
     }
+    .premium-input-field::placeholder {
+        color: rgba(255,255,255,0.34);
+    }
     .premium-input-field:focus {
-        border-color: #fff;
+        border-color: rgba(255,255,255,0.65);
         background: rgba(255,255,255,0.05);
+        box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+    }
+    .premium-input-field.is-invalid {
+        border-color: rgba(248, 113, 113, 0.75);
+        box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.07);
+    }
+    .signup-consent {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        font-size: 0.88rem;
+        line-height: 1.45;
+        color: rgba(255, 255, 255, 0.72);
+        user-select: none;
+        cursor: pointer;
+    }
+    .signup-consent input[type="checkbox"] {
+        margin-top: 3px;
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+        accent-color: #ffffff;
+        cursor: pointer;
+        opacity: 0.9;
+    }
+    .signup-consent a {
+        color: #fff;
+        text-decoration: none;
+        border-bottom: 1px solid rgba(255,255,255,0.28);
+        transition: border-color 0.2s ease, opacity 0.2s ease;
+    }
+    .signup-consent a:hover {
+        opacity: 0.85;
+        border-bottom-color: rgba(255,255,255,0.6);
+    }
+    .signup-inline-error {
+        min-height: 1rem;
+        margin: 0;
+        font-size: 0.8rem;
+        color: #f87171;
+    }
+    .signup-trust-note {
+        margin: 0;
+        text-align: center;
+        font-size: 0.8rem;
+        color: rgba(255,255,255,0.52);
+    }
+    .signup-flash {
+        padding: 12px 14px;
+        border-radius: 12px;
+        font-size: 0.88rem;
+        line-height: 1.4;
+        border: 1px solid rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.04);
+        color: #fff;
+        text-align: left;
+    }
+    .signup-flash-success {
+        border-color: rgba(74, 222, 128, 0.28);
+        background: rgba(74, 222, 128, 0.08);
+        color: #bbf7d0;
+    }
+    .signup-flash-error {
+        border-color: rgba(248, 113, 113, 0.28);
+        background: rgba(248, 113, 113, 0.08);
+        color: #fecaca;
+    }
+    #signupSubmit:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
     }
 </style>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    const signupForm = document.getElementById('signupForm');
+    const passwordInput = document.getElementById('signupPassword');
+    const confirmPasswordInput = document.getElementById('signupConfirmPassword');
+    const acceptTermsInput = document.getElementById('acceptTerms');
+    const signupSubmit = document.getElementById('signupSubmit');
+    const signupStatus = document.getElementById('signupStatus');
+    const confirmPasswordError = document.getElementById('confirmPasswordError');
+    const usernameInput = document.getElementById('signupUsername');
+    const emailInput = document.getElementById('signupEmail');
+
+    function syncSubmitState() {
+        signupSubmit.disabled = !acceptTermsInput.checked;
+    }
+
+    function setConfirmPasswordState() {
+        const confirmValue = confirmPasswordInput.value;
+        const passwordValue = passwordInput.value;
+        const mismatch = confirmValue && passwordValue && confirmValue !== passwordValue;
+
+        confirmPasswordInput.classList.toggle('is-invalid', mismatch);
+        confirmPasswordInput.setCustomValidity(mismatch ? 'Passwords do not match.' : '');
+        confirmPasswordError.textContent = mismatch ? 'Passwords do not match.' : '';
+
+        return !mismatch;
+    }
+
+    function setStatus(message, color) {
+        signupStatus.textContent = message || '';
+        signupStatus.style.color = color || 'var(--fg-secondary)';
+    }
+
+    acceptTermsInput.addEventListener('change', syncSubmitState);
+    passwordInput.addEventListener('input', setConfirmPasswordState);
+    confirmPasswordInput.addEventListener('input', setConfirmPasswordState);
+
+    syncSubmitState();
+    setConfirmPasswordState();
+
+    signupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+
         const form = e.target;
-        const status = document.getElementById('signupStatus');
+        const hasConsent = acceptTermsInput.checked;
+        const passwordsMatch = setConfirmPasswordState();
+
+        if (!hasConsent) {
+            setStatus('Please agree to the Terms of Service and Privacy Policy.', '#f87171');
+            syncSubmitState();
+            return;
+        }
+
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        if (!passwordsMatch) {
+            setStatus('Passwords do not match.', '#f87171');
+            confirmPasswordInput.focus();
+            return;
+        }
+
         const data = {
-            username: form.username.value,
-            email: form.email.value,
-            password: form.password.value
+            username: usernameInput.value,
+            email: emailInput.value,
+            password: passwordInput.value,
+            confirm_password: confirmPasswordInput.value,
+            accept_terms: acceptTermsInput.checked
         };
 
-        status.innerText = 'Creating profile...';
-        status.style.color = 'rgba(255,255,255,0.5)';
+        setStatus('Creating account...', 'rgba(255,255,255,0.58)');
+        signupSubmit.disabled = true;
 
         try {
             const result = await API.signup(data);
             if (result) {
-                status.innerText = 'Profile Created.';
-                status.style.color = '#4ade80';
+                setStatus('Account created successfully.', '#4ade80');
                 setTimeout(() => window.location.href = '/dashboard', 800);
             }
         } catch (error) {
-            status.innerText = 'Error: ' + error.message;
-            status.style.color = '#f87171';
+            setStatus(error.message || 'Error creating account.', '#f87171');
+            syncSubmitState();
         }
     });
 </script>

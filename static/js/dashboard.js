@@ -65,11 +65,29 @@
         }
     }
 
+    function applyDashboardData(dashboardData = {}, expenses = null) {
+        const current = dashboardData.current || {};
+        if (typeof current.income !== 'undefined') {
+            state.income = safeNumber(current.income);
+            state.incomeEmpty = state.income <= 0;
+            renderIncomeKpi(state.incomeEmpty);
+        }
+
+        renderKPIs(dashboardData);
+        renderInsight(dashboardData);
+        renderChart(dashboardData);
+
+        if (Array.isArray(expenses)) {
+            state.expenses = expenses;
+        }
+        renderRecentActivity(state.expenses);
+    }
+
     async function loadIncome() {
         const data = await fetchJSON('/api/income/get');
         state.income = safeNumber(data?.income);
         state.incomeEmpty = !!data?.is_empty || state.income <= 0;
-        renderIncomeKpi();
+        renderIncomeKpi(state.incomeEmpty);
     }
 
     function renderKPIs(dashboardData = {}) {
@@ -215,12 +233,17 @@
         }
 
         try {
-            await fetchJSON('/api/income/set', {
-                method: 'POST',
-                body: JSON.stringify({ amount: value }),
-            });
+            const result = await API.updateIncome({ income: value });
             closeIncomeModal();
-            await loadDashboard();
+            if (result?.analysis) {
+                applyDashboardData(result.analysis);
+            } else {
+                await loadDashboard();
+            }
+            if (error) {
+                error.hidden = true;
+                error.innerText = '';
+            }
         } catch (err) {
             if (error) {
                 error.innerText = err.message || 'Unable to save income.';
@@ -241,30 +264,20 @@
                 ? expensesResult.value
                 : [];
 
-            state.expenses = expenses;
-            state.income = safeNumber(data?.current?.income ?? 0);
-            state.incomeEmpty = state.income <= 0;
-            renderIncomeKpi(state.incomeEmpty);
-
-            renderKPIs(data);
-            renderInsight(data);
-            renderChart(data);
-            renderRecentActivity(state.expenses);
+            applyDashboardData(data, expenses);
         } catch (error) {
             state.expenses = [];
             state.income = 0;
             state.incomeEmpty = true;
-            renderIncomeKpi(true);
-            renderKPIs({
+            applyDashboardData({
                 current: {
                     expense: 0,
                     savings: 0,
                     savings_rate: 0,
+                    alert: {},
                 },
-            });
-            renderInsight({ current: { alert: {} } });
-            renderChart({ charts: { trend_chart: '/static/trend.png' } });
-            renderRecentActivity([]);
+                charts: { trend_chart: '/static/trend.png' },
+            }, []);
         }
     }
 

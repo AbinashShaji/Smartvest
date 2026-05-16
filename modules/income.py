@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request
 import config
 from utils.api_errors import safe_api_error
 from utils.db import get_db_connection
+from modules.analysis import get_analysis_data, invalidate_analysis_cache
 from datetime import datetime
 
 income_bp = Blueprint("income", __name__)
@@ -51,6 +52,7 @@ def set_income(amount):
     )
     conn.commit()
     conn.close()
+    invalidate_analysis_cache(user_id)
 
     return {"income": amount_value}
 
@@ -97,10 +99,22 @@ def api_set_income():
 
     data = request.get_json(silent=True) or {}
     try:
-        result = set_income(data.get("amount"))
-        return jsonify({"status": "success", "data": result})
+        amount = data.get("income")
+        if amount in (None, ""):
+            amount = data.get("amount")
+
+        result = set_income(amount)
+        user_id = config.get_current_user()["user_id"]
+        analysis = get_analysis_data(user_id)
+        return jsonify({
+            "status": "success",
+            "data": {
+                **result,
+                "analysis": analysis,
+            }
+        })
     except (ValueError, PermissionError) as exc:
-        return jsonify({"status": "error", "success": False, "message": "Invalid income request."}), 400
+        return jsonify({"status": "error", "message": str(exc)}), 400
     except Exception as exc:
         return safe_api_error(exc, status_code=400)
 

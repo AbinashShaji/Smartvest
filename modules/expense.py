@@ -313,6 +313,8 @@ def api_set_income():
     try:
         data = request.get_json(silent=True) or {}
         amount = data.get("income")
+        if amount in (None, ""):
+            amount = data.get("amount")
 
         if amount in (None, ""):
             return jsonify({"status": "error", "message": "Income amount is required."}), 400
@@ -341,8 +343,15 @@ def api_set_income():
         conn.commit()
         conn.close()
         invalidate_analysis_cache(user_id)
+        analysis = get_analysis_data(user_id)
 
-        return jsonify({"status": "success", "data": {"income": amount_value}})
+        return jsonify({
+            "status": "success",
+            "data": {
+                "income": amount_value,
+                "analysis": analysis,
+            }
+        })
     except Exception as e:
         return safe_api_error(e, status_code=400)
 

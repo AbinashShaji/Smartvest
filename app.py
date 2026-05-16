@@ -46,7 +46,12 @@ def _ensure_secret_key():
 
 def _csrf_exempt(path: str) -> bool:
     """Allow only login and signup to skip CSRF on first contact."""
-    return path.startswith("/api/auth/login") or path.startswith("/api/auth/signup")
+    return (
+        path.startswith("/api/auth/login")
+        or path.startswith("/api/auth/signup")
+        or path == "/login"
+        or path == "/signup"
+    )
 
 
 def create_app():

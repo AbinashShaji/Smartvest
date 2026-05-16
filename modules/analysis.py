@@ -75,7 +75,9 @@ def invalidate_analysis_cache(user_id=None):
         _ANALYSIS_CACHE.clear()
         bump_analysis_global_version()
         return
-    _ANALYSIS_CACHE.pop(user_id, None)
+    for key in list(_ANALYSIS_CACHE.keys()):
+        if isinstance(key, tuple) and key and key[0] == user_id:
+            _ANALYSIS_CACHE.pop(key, None)
     bump_user_analysis_version(user_id)
 
 STOCK_DAY_COLUMNS = [f"day{i}" for i in range(1, 11)]
@@ -817,8 +819,10 @@ def get_analysis_data(user_id=None):
     if user_id is None:
         raise ValueError("Login required")
 
+    user_version = get_user_analysis_version(user_id)
     cache_key = (
         user_id,
+        user_version,
         session.get("ef_manual_months"),
         session.get("ef_manual_target"),
     )

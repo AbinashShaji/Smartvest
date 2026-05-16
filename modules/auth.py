@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
+import re
+
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 import config
@@ -97,14 +99,36 @@ def login():
         return redirect(url_for('analysis.dashboard'))
     return render_template("public/login.html")
 
-@auth_bp.route("/signup")
+@auth_bp.route("/signup", methods=["GET", "POST"])
 def signup():
     """Purpose: Renders registration gate."""
     if config.is_logged_in():
         if config.is_admin():
             return redirect(url_for('admin.admin_dashboard'))
         return redirect(url_for('analysis.dashboard'))
-    return render_template("public/signup.html")
+
+    if request.method == "POST":
+        success, payload, status_code = _handle_signup_submission(request.form.to_dict(flat=True))
+        if success:
+            flash("Account created successfully.", "success")
+            return redirect(url_for("analysis.dashboard"))
+
+        flash(payload["message"], "error")
+        return render_template("public/signup.html", form_values=request.form), status_code
+
+    return render_template("public/signup.html", form_values={})
+
+
+@auth_bp.route("/terms")
+def terms_of_service():
+    """Purpose: Renders the Terms of Service page."""
+    return render_template("public/terms.html")
+
+
+@auth_bp.route("/privacy")
+def privacy_policy():
+    """Purpose: Renders the Privacy Policy page."""
+    return render_template("public/privacy.html")
 
 
 # --- AUTHENTICATION API (SECURE) ---
@@ -144,33 +168,75 @@ def _build_session_user(user_row):
         "role": user_row["role"],
     }
 
-@auth_bp.route("/api/auth/signup", methods=["POST"])
-def api_signup():
-    """Create a new user account and start a signed-in session."""
-    """
-    Purpose: Creates a new user account and starts a logged-in session.
-    Input: JSON body with username, email, and password.
-    Output: Created user object or error message.
-    """
+def _clean_text(value, *, collapse_spaces=False):
+    """Return a trimmed, control-character-free text value."""
+    text = "" if value is None else str(value)
+    text = re.sub(r"[\x00-\x1f\x7f]", "", text).strip()
+    if collapse_spaces:
+        text = re.sub(r"\s+", " ", text)
+    return text
+
+def _parse_bool(value):
+    """Interpret common truthy checkbox values safely."""
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+def _validate_signup_payload(data):
+    """Validate and normalize signup input from either JSON or form data."""
+    username = _clean_text(data.get("username"), collapse_spaces=True)
+    email = _clean_text(data.get("email")).lower()
+    password = "" if data.get("password") is None else str(data.get("password"))
+    confirm_password = "" if data.get("confirm_password") is None else str(data.get("confirm_password"))
+    accept_terms = _parse_bool(data.get("accept_terms"))
+
+    if not username or not email or not password or not confirm_password:
+        return None, {
+            "status": "error",
+            "message": "Username, email, password, and confirm password are required."
+        }, 400
+
+    if len(username) > 120 or len(email) > 254 or len(password) > 128 or len(confirm_password) > 128:
+        return None, {
+            "status": "error",
+            "message": "One or more fields are too long."
+        }, 400
+
+    if "@" not in email or "." not in email.split("@")[-1]:
+        return None, {
+            "status": "error",
+            "message": "Please enter a valid email address."
+        }, 400
+
+    if password != confirm_password:
+        return None, {
+            "status": "error",
+            "message": "Passwords do not match."
+        }, 400
+
+    if not accept_terms:
+        return None, {
+            "status": "error",
+            "message": "You must agree to the Terms of Service and Privacy Policy."
+        }, 400
+
+    return {
+        "username": username,
+        "email": email,
+        "password": password,
+        "accept_terms": accept_terms,
+    }, None, None
+
+def _create_signup_user(validated_data):
+    """Create a new user account after validation has already passed."""
+    username = validated_data["username"]
+    email = validated_data["email"]
+    password = validated_data["password"]
+
+    conn = get_db_connection()
     try:
-        data = request.get_json(silent=True) or {}
-        username = (data.get("username") or "").strip()
-        email = (data.get("email") or "").strip().lower()
-        password = data.get("password") or ""
-
-        if not username or not email or not password:
-            return jsonify({
-                "status": "error",
-                "message": "Username, email, and password are required."
-            }), 400
-
-        if len(username) > 120 or len(email) > 254 or len(password) > 128:
-            return jsonify({
-                "status": "error",
-                "message": "One or more fields are too long."
-            }), 400
-
-        conn = get_db_connection()
         cursor = conn.cursor()
 
         cursor.execute(
@@ -179,11 +245,10 @@ def api_signup():
         )
         existing_user = cursor.fetchone()
         if existing_user is not None:
-            conn.close()
-            return jsonify({
+            return None, {
                 "status": "error",
                 "message": "A user with that username or email already exists."
-            }), 409
+            }, 409
 
         hashed_password = generate_password_hash(password)
         cursor.execute(
@@ -198,17 +263,46 @@ def api_signup():
         user_id = cursor.lastrowid
         cursor.execute("SELECT id, username, email, role FROM users WHERE id = ?", (user_id,))
         new_user = cursor.fetchone()
+        if new_user is None:
+            return None, {
+                "status": "error",
+                "message": "Account created, but the user profile could not be loaded."
+            }, 500
+        return new_user, None, None
+    finally:
         conn.close()
 
-        session.clear()
-        session["user"] = _build_session_user(new_user)
-        session.permanent = True
-        session.modified = True
+def _handle_signup_submission(data):
+    """Shared signup workflow for HTML form posts and API requests."""
+    validated_data, error_payload, status_code = _validate_signup_payload(data)
+    if error_payload is not None:
+        return False, error_payload, status_code
 
-        return jsonify({
-            "status": "success",
-            "data": session["user"]
-        }), 201
+    new_user, error_payload, status_code = _create_signup_user(validated_data)
+    if error_payload is not None:
+        return False, error_payload, status_code
+
+    session.clear()
+    session["user"] = _build_session_user(new_user)
+    session.permanent = True
+    session.modified = True
+    return True, {"status": "success", "data": session["user"]}, 201
+
+@auth_bp.route("/api/auth/signup", methods=["POST"])
+def api_signup():
+    """Create a new user account and start a signed-in session."""
+    """
+    Purpose: Creates a new user account and starts a logged-in session.
+    Input: JSON body with username, email, and password.
+    Output: Created user object or error message.
+    """
+    try:
+        data = request.get_json(silent=True) or {}
+        success, payload, status_code = _handle_signup_submission(data)
+        if not success:
+            return jsonify(payload), status_code
+
+        return jsonify(payload), status_code
     except Exception as e:
         return safe_api_error(e, status_code=500)
 
