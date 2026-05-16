@@ -10,6 +10,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     initScrollEffects();
     initFormInteractions();
+    initAnchorScrolling();
 });
 
 /**
@@ -43,6 +44,36 @@ function initFormInteractions() {
             }
         });
     });
+}
+
+function initAnchorScrolling() {
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    document.addEventListener('click', (event) => {
+        const anchor = event.target.closest('a[href^="#"]');
+        if (!anchor) {
+            return;
+        }
+
+        const href = anchor.getAttribute('href');
+        if (!href || href === '#') {
+            return;
+        }
+
+        const target = document.querySelector(href);
+        if (!target) {
+            return;
+        }
+
+        event.preventDefault();
+        target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+
+        if (typeof target.focus === 'function') {
+            target.setAttribute('tabindex', '-1');
+            target.focus({ preventScroll: true });
+            window.setTimeout(() => target.removeAttribute('tabindex'), 0);
+        }
+    }, { passive: false });
 }
 
 /**
