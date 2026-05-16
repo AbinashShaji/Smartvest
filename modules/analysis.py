@@ -23,6 +23,8 @@ from utils.cache import (
     get_analysis_global_version,
     get_market_cache_version,
     get_user_analysis_version,
+    make_versioned_local_cache_key,
+    purge_local_cache_entries,
 )
 from utils.market_data import (
     read_dataset_csv,
@@ -62,6 +64,18 @@ _ANALYSIS_CACHE: Dict[Any, Dict[str, Any]] = {}
 _ANALYSIS_CACHE_TTL_SECONDS = 20
 _MARKET_METRICS_CACHE: Dict[str, Any] = {"key": None, "expires_at": 0.0, "data": None}
 _MARKET_CACHE_TTL_SECONDS = 60
+_ANALYSIS_CACHE_MAX_ENTRIES = 256
+
+
+def _prune_analysis_cache(now_ts=None):
+    """Remove expired analysis cache entries to keep the local cache bounded."""
+    if now_ts is None:
+        now_ts = datetime.now().timestamp()
+    purge_local_cache_entries(
+        _ANALYSIS_CACHE,
+        namespace="analysis",
+        predicate=lambda key: _ANALYSIS_CACHE.get(key, {}).get("expires_at", 0.0) <= now_ts,
+    )
 
 
 def invalidate_analysis_cache(user_id=None):
@@ -75,9 +89,11 @@ def invalidate_analysis_cache(user_id=None):
         _ANALYSIS_CACHE.clear()
         bump_analysis_global_version()
         return
-    for key in list(_ANALYSIS_CACHE.keys()):
-        if isinstance(key, tuple) and key and key[0] == user_id:
-            _ANALYSIS_CACHE.pop(key, None)
+    purge_local_cache_entries(
+        _ANALYSIS_CACHE,
+        namespace="analysis",
+        predicate=lambda key: len(key) > 1 and key[1] == user_id,
+    )
     bump_user_analysis_version(user_id)
 
 STOCK_DAY_COLUMNS = [f"day{i}" for i in range(1, 11)]
@@ -820,7 +836,9 @@ def get_analysis_data(user_id=None):
         raise ValueError("Login required")
 
     user_version = get_user_analysis_version(user_id)
-    cache_key = (
+    _prune_analysis_cache()
+    cache_key = make_versioned_local_cache_key(
+        "analysis",
         user_id,
         user_version,
         session.get("ef_manual_months"),
@@ -1281,6 +1299,8 @@ def get_analysis_data(user_id=None):
         "expires_at": now_ts + _ANALYSIS_CACHE_TTL_SECONDS,
         "data": deepcopy(result),
     }
+    if len(_ANALYSIS_CACHE) > _ANALYSIS_CACHE_MAX_ENTRIES:
+        _prune_analysis_cache(now_ts)
     return result
 
 

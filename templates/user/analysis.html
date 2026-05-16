@@ -501,7 +501,7 @@
 
 {% block content %}
 <div class="analysis-page">
-    <section class="glass-card analysis-hero">
+    <section class="glass-card analysis-hero sv-motion-surface">
         <div>
             <span class="section-eyebrow">Financial assistant</span>
             <h1>Analysis</h1>
@@ -523,7 +523,7 @@
         </div>
 
         <div class="analysis-subpanel active" data-scope="current" data-sub-panel="overview">
-            <article class="glass-card analysis-card">
+            <article class="glass-card analysis-card sv-motion-surface">
                 <div class="analysis-card-header">
                     <div>
                         <h3>Financial Summary</h3>
@@ -533,22 +533,22 @@
                 </div>
 
                 <div class="analysis-summary-grid">
-                    <div class="analysis-summary-card">
+                    <div class="analysis-summary-card sv-motion-surface">
                         <span class="analysis-summary-label">Income</span>
                         <p class="analysis-summary-value" id="currentIncome">0.00</p>
                         <p class="analysis-summary-note">Monthly income used for the current month view.</p>
                     </div>
-                    <div class="analysis-summary-card">
+                    <div class="analysis-summary-card sv-motion-surface">
                         <span class="analysis-summary-label">Expense</span>
                         <p class="analysis-summary-value" id="currentExpense">0.00</p>
                         <p class="analysis-summary-note">All expense rows in the current month.</p>
                     </div>
-                    <div class="analysis-summary-card">
+                    <div class="analysis-summary-card sv-motion-surface">
                         <span class="analysis-summary-label">Savings</span>
                         <p class="analysis-summary-value" id="currentSavings">0.00</p>
                         <p class="analysis-summary-note">Income minus current month expenses.</p>
                     </div>
-                    <div class="analysis-summary-card">
+                    <div class="analysis-summary-card sv-motion-surface">
                         <span class="analysis-summary-label">Savings Rate</span>
                         <p class="analysis-summary-value" id="currentSavingsRate">0%</p>
                         <p class="analysis-summary-note">Saved share of monthly income.</p>
@@ -556,7 +556,7 @@
                 </div>
             </article>
 
-            <article class="glass-card analysis-card">
+            <article class="glass-card analysis-card sv-motion-surface">
                 <div class="analysis-card-header">
                     <div>
                         <h3>Category Snapshot</h3>
@@ -567,7 +567,7 @@
                 <div class="analysis-snapshot-grid">
                     <article class="analysis-snapshot-card">
                         <h4>Category Pie</h4>
-                        <div class="analysis-chart-frame analysis-chart-frame--compact">
+                        <div class="analysis-chart-frame analysis-chart-frame--compact sv-chart-shell">
                             <img id="currentOverviewChart" alt="Current month category chart" hidden>
                             <!-- <div id="currentOverviewEmpty" class="analysis-empty" hidden>No category data available yet.</div> -->
                         </div>
@@ -575,7 +575,7 @@
 
                     <article class="analysis-snapshot-card">
                         <h4>Category Bar</h4>
-                        <div class="analysis-chart-frame analysis-chart-frame--compact">
+                        <div class="analysis-chart-frame analysis-chart-frame--compact sv-chart-shell">
                             <img id="currentOverviewBarChart" alt="Category expense bar chart" hidden>
                             <!-- <div id="currentOverviewBarEmpty" class="analysis-empty" hidden>No category bar data available yet.</div> -->
                         </div>
@@ -583,7 +583,7 @@
 
                     <article class="analysis-snapshot-card">
                         <h4>Spending Trend</h4>
-                        <div class="analysis-chart-frame analysis-chart-frame--compact">
+                        <div class="analysis-chart-frame analysis-chart-frame--compact sv-chart-shell">
                             <img id="currentOverviewTrendChart" alt="Current spending trend chart" hidden>
                             <!-- <div id="currentOverviewTrendEmpty" class="analysis-empty" hidden>No spending trend available yet.</div> -->
                         </div>
@@ -597,7 +597,7 @@
                 </div>
             </article>
 
-            <article class="glass-card analysis-card">
+            <article class="glass-card analysis-card sv-motion-surface">
                 <div class="analysis-card-header">
                     <div>
                         <h3>Insight</h3>
@@ -607,7 +607,7 @@
                 <p class="analysis-insight" id="currentOverviewInsight">Loading insight...</p>
             </article>
 
-            <article class="glass-card analysis-card">
+            <article class="glass-card analysis-card sv-motion-surface">
                 <div class="analysis-card-header">
                     <div>
                         <h3>Action Tip</h3>
@@ -619,7 +619,7 @@
         </div>
 
         <div class="analysis-subpanel" data-scope="current" data-sub-panel="detailed">
-            <article class="glass-card analysis-card">
+            <article class="glass-card analysis-card sv-motion-surface">
                 <div class="analysis-card-header">
                     <div>
                         <h3>Category Breakdown</h3>
@@ -631,27 +631,27 @@
             </article>
 
             <div class="analysis-chart-grid">
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Category Pie</h3>
                             <p class="muted-copy">Monthly category distribution.</p>
                         </div>
                     </div>
-                    <div class="analysis-chart-frame">
+                    <div class="analysis-chart-frame sv-chart-shell">
                         <img id="currentDetailedPieChart" alt="Current category pie chart" hidden>
                         <!-- <div id="currentDetailedPieEmpty" class="analysis-empty" hidden>No category chart available.</div> -->
                     </div>
                 </article>
 
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Short Trend</h3>
                             <p class="muted-copy">Last six months of spending.</p>
                         </div>
                     </div>
-                    <div class="analysis-chart-frame">
+                    <div class="analysis-chart-frame sv-chart-shell">
                         <img id="currentDetailedTrendChart" alt="Current trend chart" hidden>
                         <!-- <div id="currentDetailedTrendEmpty" class="analysis-empty" hidden>No trend data available.</div> -->
                     </div>
@@ -659,7 +659,7 @@
             </div>
 
             <div class="analysis-chart-grid">
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Category Change</h3>
@@ -669,7 +669,7 @@
                     <div id="currentCategoryChange" class="analysis-list"></div>
                 </article>
 
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Spending Pattern</h3>
@@ -681,7 +681,7 @@
             </div>
 
             <div class="analysis-chart-grid">
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Cost Cutting Opportunities</h3>
@@ -691,7 +691,7 @@
                     <div id="currentCostCutting" class="analysis-list"></div>
                 </article>
 
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Savings Efficiency</h3>
@@ -714,7 +714,7 @@
         </div>
 
         <div class="analysis-subpanel active" data-scope="yearly" data-sub-panel="overview">
-            <article class="glass-card analysis-card">
+            <article class="glass-card analysis-card sv-motion-surface">
                 <div class="analysis-card-header">
                     <div>
                         <h3>Total Summary</h3>
@@ -724,22 +724,22 @@
                 </div>
 
                 <div class="analysis-summary-grid">
-                    <div class="analysis-summary-card">
+                    <div class="analysis-summary-card sv-motion-surface">
                         <span class="analysis-summary-label">Total Income</span>
                         <p class="analysis-summary-value" id="yearlyIncome">0.00</p>
                         <p class="analysis-summary-note">Monthly income multiplied by active months.</p>
                     </div>
-                    <div class="analysis-summary-card">
+                    <div class="analysis-summary-card sv-motion-surface">
                         <span class="analysis-summary-label">Total Expense</span>
                         <p class="analysis-summary-value" id="yearlyExpense">0.00</p>
                         <p class="analysis-summary-note">Combined spending across all months.</p>
                     </div>
-                    <div class="analysis-summary-card">
+                    <div class="analysis-summary-card sv-motion-surface">
                         <span class="analysis-summary-label">Total Savings</span>
                         <p class="analysis-summary-value" id="yearlySavings">0.00</p>
                         <p class="analysis-summary-note">Income minus all recorded expenses.</p>
                     </div>
-                    <div class="analysis-summary-card">
+                    <div class="analysis-summary-card sv-motion-surface">
                         <span class="analysis-summary-label">Performance Score</span>
                         <p class="analysis-summary-value" id="yearlyScore">0</p>
                         <p class="analysis-summary-note">Backend score from 0 to 100.</p>
@@ -748,7 +748,7 @@
             </article>
 
             <div class="analysis-yearly-chart-grid">
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Trend Graph</h3>
@@ -756,13 +756,13 @@
                         </div>
                         <div class="summary-badge">Monthly Trend</div>
                     </div>
-                    <div class="analysis-chart-frame">
+                    <div class="analysis-chart-frame sv-chart-shell">
                         <img id="yearlyOverviewChart" alt="Yearly trend chart" hidden>
                         <!-- <div id="yearlyOverviewEmpty" class="analysis-empty" hidden>No yearly trend data available.</div> -->
                     </div>
                 </article>
 
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Monthly Expense Comparison</h3>
@@ -770,14 +770,14 @@
                         </div>
                         <div class="summary-badge">Expense Bars</div>
                     </div>
-                    <div class="analysis-chart-frame">
+                    <div class="analysis-chart-frame sv-chart-shell">
                         <img id="yearlyOverviewBarChart" alt="Yearly expense bar chart" hidden>
                         <!-- <div id="yearlyOverviewBarEmpty" class="analysis-empty" hidden>No yearly expense bar data available.</div> -->
                     </div>
                 </article>
             </div>
 
-            <article class="glass-card analysis-card">
+            <article class="glass-card analysis-card sv-motion-surface">
                 <div class="analysis-card-header">
                     <div>
                         <h3>Insight</h3>
@@ -790,7 +790,7 @@
 
         <div class="analysis-subpanel" data-scope="yearly" data-sub-panel="detailed">
             <div class="analysis-chart-grid">
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Monthly Breakdown</h3>
@@ -800,7 +800,7 @@
                     <div id="yearlyMonthlyBreakdown" class="analysis-list"></div>
                 </article>
 
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Trend Analysis</h3>
@@ -812,7 +812,7 @@
             </div>
 
             <div class="analysis-chart-grid">
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Best and Worst Months</h3>
@@ -822,7 +822,7 @@
                     <div id="yearlyBestWorst" class="analysis-list"></div>
                 </article>
 
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Category Dominance</h3>
@@ -835,7 +835,7 @@
             </div>
 
             <div class="analysis-chart-grid">
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Optimization Opportunities</h3>
@@ -845,7 +845,7 @@
                     <div id="yearlyOptimization" class="analysis-list"></div>
                 </article>
 
-                <article class="glass-card analysis-card">
+                <article class="glass-card analysis-card sv-motion-surface">
                     <div class="analysis-card-header">
                         <div>
                             <h3>Final Verdict</h3>

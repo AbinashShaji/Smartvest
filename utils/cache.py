@@ -7,7 +7,7 @@ SimpleCache backend, which is a safe fit for PythonAnywhere and SQLite.
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Callable, Optional
 
 from flask_caching import Cache
 
@@ -50,6 +50,30 @@ def bump_cache_version(namespace: str, identifier: Optional[object] = None) -> i
     version = get_cache_version(namespace, identifier) + 1
     cache.set(key, version, timeout=_VERSION_TIMEOUT_SECONDS)
     return version
+
+
+def make_versioned_local_cache_key(namespace: str, subject_id: object, version: int, *parts: object) -> tuple:
+    """Build a namespaced local cache key with the subject id and version first."""
+    return (namespace, subject_id, int(version), *parts)
+
+
+def purge_local_cache_entries(
+    cache_map: dict,
+    *,
+    namespace: Optional[str] = None,
+    predicate: Optional[Callable[[tuple], bool]] = None,
+) -> int:
+    """Remove stale entries from a local in-memory cache map."""
+    removed = 0
+    for key in list(cache_map.keys()):
+        if namespace is not None:
+            if not (isinstance(key, tuple) and key and key[0] == namespace):
+                continue
+        if predicate is not None and not predicate(key):
+            continue
+        cache_map.pop(key, None)
+        removed += 1
+    return removed
 
 
 def get_user_analysis_version(user_id: int) -> int:

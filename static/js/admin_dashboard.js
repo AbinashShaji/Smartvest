@@ -67,6 +67,41 @@
         }[char]));
     }
 
+    function setLoadingSurface(elements, isLoading) {
+        (elements || []).forEach((element) => {
+            if (!element) return;
+            element.classList.toggle('sv-loading-surface', !!isLoading);
+            element.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+        });
+    }
+
+    function renderListSkeleton(containerId, count = 3) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        container.innerHTML = Array.from({ length: count }, () => `
+            <article class="admin-skeleton-card" aria-hidden="true">
+                <span class="sv-skeleton sv-skeleton-line" style="width: 52%"></span>
+                <span class="sv-skeleton sv-skeleton-line" style="width: 78%"></span>
+                <span class="sv-skeleton sv-skeleton-line" style="width: 34%"></span>
+            </article>
+        `).join('');
+    }
+
+    function setAdminLoadingState(isLoading) {
+        setLoadingSurface([
+            ...document.querySelectorAll('.stat-card'),
+            ...document.querySelectorAll('.admin-panel'),
+            document.querySelector('.admin-monitor-hero'),
+        ], isLoading);
+
+        if (isLoading) {
+            renderListSkeleton('adminInsights', 3);
+            renderListSkeleton('recentSignups', 2);
+            renderListSkeleton('recentReviews', 2);
+            renderListSkeleton('recentFeedback', 2);
+        }
+    }
+
     function clearCanvas(canvas) {
         const ctx = canvas.getContext('2d');
         const scale = window.devicePixelRatio || 1;
@@ -355,6 +390,7 @@
 
     async function loadDashboard() {
         try {
+            setAdminLoadingState(true);
             const [stats, engagement, reminders, recent] = await Promise.all([
                 API.getAdminActivityStats(),
                 API.getAdminEngagementMetrics(),
@@ -370,6 +406,8 @@
             if (insights) {
                 insights.innerHTML = '<li class="insight-card insight-card--down"><span class="insight-icon">\u25BC</span><span>Unable to load dashboard data.</span></li>';
             }
+        } finally {
+            setAdminLoadingState(false);
         }
     }
 

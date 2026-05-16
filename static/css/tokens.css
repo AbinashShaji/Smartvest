@@ -34,9 +34,14 @@
     --focus-ring-danger: 0 0 0 4px rgba(248, 113, 113, 0.18);
 
     /* === Motion === */
-    --duration-fast: 0.15s;
-    --duration-base: 0.30s;
-    --duration-slow: 0.40s;
-    --easing: cubic-bezier(0.4, 0, 0.2, 1);
+    --duration-fast: 0.18s;
+    --duration-base: 0.24s;
+    --duration-slow: 0.32s;
+    --easing: cubic-bezier(0.22, 1, 0.36, 1);
+    --easing-soft: cubic-bezier(0.4, 0, 0.2, 1);
+    --motion-shift: 2px;
+    --motion-blur: 4px;
+    --motion-loading-opacity: 0.76;
+    --motion-surface-scale: 0.995;
 }
 

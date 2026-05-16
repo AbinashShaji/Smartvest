@@ -47,7 +47,8 @@
     transition:
         transform var(--duration-base) var(--easing),
         background-color var(--duration-base) var(--easing),
-        color var(--duration-base) var(--easing);
+        color var(--duration-base) var(--easing),
+        opacity var(--duration-base) var(--easing);
 }
 
 .analysis-switcher button:hover,
@@ -81,6 +82,15 @@
     display: grid;
     gap: 18px;
     padding: 22px;
+}
+
+.analysis-card.sv-loading-surface,
+.analysis-summary-card.sv-loading-surface,
+.analysis-mini-card.sv-loading-surface,
+.analysis-panel-card.sv-loading-surface {
+    opacity: var(--motion-loading-opacity, 0.76);
+    filter: blur(var(--motion-blur, 4px));
+    transform: translateY(var(--motion-shift, 2px));
 }
 
 .analysis-card-header {
@@ -143,6 +153,8 @@
 .analysis-chart-frame {
     position: relative;
     min-height: 320px;
+    overflow: hidden;
+    border-radius: 18px;
 }
 
 .analysis-chart-frame img {
@@ -151,6 +163,10 @@
     height: 320px !important;
     object-fit: contain;
     border-radius: 18px;
+    transition:
+        opacity var(--duration-base) var(--easing),
+        transform var(--duration-base) var(--easing),
+        filter var(--duration-base) var(--easing);
 }
 
 .analysis-empty {
@@ -165,6 +181,22 @@
     background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
     color: var(--fg-secondary);
     text-align: center;
+}
+
+.analysis-chart-frame.sv-chart-shell .sv-chart-overlay {
+    background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.22)),
+        linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, 0.08) 30%, transparent 42%);
+}
+
+.analysis-skeleton-grid {
+    display: grid;
+    gap: 12px;
+}
+
+.analysis-skeleton-row {
+    display: grid;
+    gap: 10px;
 }
 
 /* === Text Blocks === */

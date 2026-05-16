@@ -77,7 +77,84 @@
         el.className = `analysis-badge analysis-badge--${tone || 'neutral'}`;
     }
 
-    function renderChartImage(id, emptyId, src) {
+    function ensureChartOverlay(frame) {
+        if (!frame) {
+            return null;
+        }
+
+        frame.classList.add('sv-chart-shell');
+        let overlay = frame.querySelector('.sv-chart-overlay');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'sv-chart-overlay';
+            overlay.setAttribute('aria-hidden', 'true');
+            frame.appendChild(overlay);
+        }
+        return overlay;
+    }
+
+    function preloadImage(src) {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => resolve(src);
+            image.onerror = reject;
+            image.src = src;
+        });
+    }
+
+    function setLoadingSurface(elements, isLoading) {
+        (elements || []).forEach((element) => {
+            if (!element) return;
+            element.classList.toggle('sv-loading-surface', !!isLoading);
+            element.setAttribute('aria-busy', isLoading ? 'true' : 'false');
+        });
+    }
+
+    function renderAnalysisSkeletons() {
+        const listTargets = [
+            'currentTopCategories',
+            'currentCategoryBreakdown',
+            'currentCategoryChange',
+            'currentCostCutting',
+            'currentEfficiency',
+            'currentRisk',
+            'yearlyMonthlyBreakdown',
+            'yearlyBestWorst',
+            'yearlyCategoryDominance',
+            'yearlyConsistency',
+            'yearlyOptimization',
+        ];
+
+        listTargets.forEach((id) => {
+            const element = document.getElementById(id);
+            if (!element) {
+                return;
+            }
+
+            element.innerHTML = Array.from({ length: 3 }, () => `
+                <div class="analysis-item" aria-hidden="true">
+                    <p class="analysis-item-title"><span class="sv-skeleton sv-skeleton-line" style="width: 48%"></span></p>
+                    <p class="analysis-item-text"><span class="sv-skeleton sv-skeleton-line" style="width: 84%"></span></p>
+                </div>
+            `).join('');
+        });
+    }
+
+    function setAnalysisLoadingState(isLoading) {
+        setLoadingSurface([
+            ...document.querySelectorAll('.analysis-card'),
+            ...document.querySelectorAll('.analysis-summary-card'),
+            ...document.querySelectorAll('.analysis-mini-card'),
+            ...document.querySelectorAll('.analysis-panel-card'),
+            ...document.querySelectorAll('.analysis-chart-frame'),
+        ], isLoading);
+
+        if (isLoading) {
+            renderAnalysisSkeletons();
+        }
+    }
+
+    async function renderChartImage(id, emptyId, src) {
         // Cache-bust chart URLs so the browser loads the latest generated image.
         const image = document.getElementById(id);
         const empty = document.getElementById(emptyId);
@@ -85,23 +162,50 @@
             return;
         }
 
-        if (empty) {
-            empty.hidden = false;
+        const frame = image.closest('.analysis-chart-frame');
+        const overlay = ensureChartOverlay(frame);
+        const nextSrc = `${src || ''}?v=${Date.now()}`;
+
+        if (frame) {
+            frame.classList.add('sv-loading-surface');
+        }
+        if (overlay) {
+            overlay.hidden = false;
         }
 
-        image.onload = () => {
+        try {
+            await preloadImage(nextSrc);
+            image.style.opacity = '0.72';
+            image.style.filter = 'blur(2px)';
+            image.src = nextSrc;
+            image.hidden = false;
             if (empty) {
                 empty.hidden = true;
             }
+            window.requestAnimationFrame(() => {
+                image.style.opacity = '1';
+                image.style.filter = 'none';
+                if (frame) {
+                    frame.classList.remove('sv-loading-surface');
+                }
+                if (overlay) {
+                    overlay.hidden = true;
+                }
+            });
+        } catch {
             image.hidden = false;
-        };
-        image.onerror = () => {
-            image.hidden = true;
-            if (empty) {
-                empty.hidden = false;
+            image.style.opacity = '1';
+            image.style.filter = 'none';
+            if (frame) {
+                frame.classList.remove('sv-loading-surface');
             }
-        };
-        image.src = `${src || ''}?v=${Date.now()}`;
+            if (overlay) {
+                overlay.hidden = true;
+            }
+            if (empty) {
+                empty.hidden = !image.src;
+            }
+        }
     }
 
     function renderTopCategories(id, items) {
@@ -422,7 +526,7 @@
         el.innerHTML = items.map(renderer).join('');
     }
 
-    function renderCurrentOverview(current) {
+    async function renderCurrentOverview(current) {
         // The overview panel is the high-level summary for the current month.
         const breakdown = current.detailed?.category_breakdown || current.category_breakdown || [];
         setText('currentMonthLabel', new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }));
@@ -433,13 +537,15 @@
         setText('currentOverviewInsight', current.insight || 'No insight available yet.');
         setText('currentOverviewTip', current.tip || 'No tip available yet.');
 
-        renderChartImage('currentOverviewChart', 'currentOverviewEmpty', state.data?.charts?.current_pie || state.data?.charts?.category_chart || '/static/generated/current_pie.png');
-        renderChartImage('currentOverviewBarChart', 'currentOverviewBarEmpty', state.data?.charts?.current_category_bar || state.data?.charts?.category_bar_chart || '/static/generated/current_category_bar.png');
-        renderChartImage('currentOverviewTrendChart', 'currentOverviewTrendEmpty', state.data?.charts?.current_trend || state.data?.charts?.trend_chart || '/static/generated/current_trend.png');
+        await Promise.all([
+            renderChartImage('currentOverviewChart', 'currentOverviewEmpty', state.data?.charts?.current_pie || state.data?.charts?.category_chart || '/static/generated/current_pie.png'),
+            renderChartImage('currentOverviewBarChart', 'currentOverviewBarEmpty', state.data?.charts?.current_category_bar || state.data?.charts?.category_bar_chart || '/static/generated/current_category_bar.png'),
+            renderChartImage('currentOverviewTrendChart', 'currentOverviewTrendEmpty', state.data?.charts?.current_trend || state.data?.charts?.trend_chart || '/static/generated/current_trend.png'),
+        ]);
         renderTopCategories('currentTopCategories', breakdown);
     }
 
-    function renderCurrentDetailed(current) {
+    async function renderCurrentDetailed(current) {
         const detailed = current.detailed || {};
         const pattern = detailed.pattern_analysis || {};
         renderList(
@@ -454,8 +560,10 @@
             'No category breakdown yet.'
         );
 
-        renderChartImage('currentDetailedPieChart', 'currentDetailedPieEmpty', state.data?.charts?.current_pie || state.data?.charts?.category_chart || '/static/generated/current_pie.png');
-        renderChartImage('currentDetailedTrendChart', 'currentDetailedTrendEmpty', state.data?.charts?.current_trend || state.data?.charts?.trend_chart || '/static/generated/current_trend.png');
+        await Promise.all([
+            renderChartImage('currentDetailedPieChart', 'currentDetailedPieEmpty', state.data?.charts?.current_pie || state.data?.charts?.category_chart || '/static/generated/current_pie.png'),
+            renderChartImage('currentDetailedTrendChart', 'currentDetailedTrendEmpty', state.data?.charts?.current_trend || state.data?.charts?.trend_chart || '/static/generated/current_trend.png'),
+        ]);
 
         renderList(
             'currentCategoryChange',
@@ -517,7 +625,7 @@
         setText('currentVerdict', detailed.verdict || 'No verdict available yet.');
     }
 
-    function renderYearlyOverview(yearly) {
+    async function renderYearlyOverview(yearly) {
         // The yearly panel reuses the same API response but presents a longer time horizon.
         setText('yearlyMonthsLabel', `${safeNumber(yearly.months_count).toFixed(0)} months`);
         setText('yearlyIncome', formatMoney(yearly.total_income));
@@ -526,8 +634,10 @@
         setText('yearlyScore', `${safeNumber(yearly.detailed?.score).toFixed(0)}`);
         setText('yearlyOverviewInsight', yearly.insight || 'No yearly insight available yet.');
 
-        renderChartImage('yearlyOverviewChart', 'yearlyOverviewEmpty', state.data?.charts?.yearly_trend_chart || '/static/generated/yearly_trend.png');
-        renderChartImage('yearlyOverviewBarChart', 'yearlyOverviewBarEmpty', state.data?.charts?.yearly_expense_bar || state.data?.charts?.yearly_bar_chart || '/static/generated/yearly_expense_bar.png');
+        await Promise.all([
+            renderChartImage('yearlyOverviewChart', 'yearlyOverviewEmpty', state.data?.charts?.yearly_trend_chart || '/static/generated/yearly_trend.png'),
+            renderChartImage('yearlyOverviewBarChart', 'yearlyOverviewBarEmpty', state.data?.charts?.yearly_expense_bar || state.data?.charts?.yearly_bar_chart || '/static/generated/yearly_expense_bar.png'),
+        ]);
     }
 
     function renderYearlyDetailed(yearly) {
@@ -653,13 +763,14 @@
 
     async function loadAnalysis() {
         try {
+            setAnalysisLoadingState(true);
             const data = await API.request('/api/analysis/data');
             state.data = data || { current: {}, yearly: {}, charts: {} };
 
-            renderCurrentOverview(state.data.current || {});
-            renderCurrentDetailed(state.data.current || {});
-            renderYearlyOverview(state.data.yearly || {});
-            renderYearlyDetailed(state.data.yearly || {});
+            await renderCurrentOverview(state.data.current || {});
+            await renderCurrentDetailed(state.data.current || {});
+            await renderYearlyOverview(state.data.yearly || {});
+            await renderYearlyDetailed(state.data.yearly || {});
             activateMainTab('current');
         } catch (error) {
             state.data = {
@@ -694,11 +805,13 @@
                 charts: {},
             };
 
-            renderCurrentOverview(state.data.current);
-            renderCurrentDetailed(state.data.current);
-            renderYearlyOverview(state.data.yearly);
-            renderYearlyDetailed(state.data.yearly);
+            await renderCurrentOverview(state.data.current);
+            await renderCurrentDetailed(state.data.current);
+            await renderYearlyOverview(state.data.yearly);
+            await renderYearlyDetailed(state.data.yearly);
             activateMainTab('current');
+        } finally {
+            setAnalysisLoadingState(false);
         }
     }
 

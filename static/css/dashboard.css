@@ -19,6 +19,7 @@
      background: linear-gradient(135deg, rgba(18, 28, 52, 0.72), rgba(4, 7, 18, 0.82));
     border: 1px solid rgba(148, 163, 184, 0.16);
     box-shadow: 0 18px 44px rgba(2, 6, 23, 0.28);
+    position: relative;
 }
 
 .dashboard-topbar {
@@ -78,7 +79,8 @@
     transition:
         border-color var(--duration-base) var(--easing),
         box-shadow var(--duration-base) var(--easing),
-        transform var(--duration-base) var(--easing);
+        transform var(--duration-base) var(--easing),
+        opacity var(--duration-base) var(--easing);
 }
 
 .dashboard-search-input:focus,
@@ -132,6 +134,15 @@
     border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
+.dashboard-kpi-card.sv-loading-surface,
+.dashboard-chart-panel.sv-loading-surface,
+.dashboard-side-card.sv-loading-surface,
+.dashboard-activity-panel.sv-loading-surface {
+    opacity: var(--motion-loading-opacity, 0.76);
+    filter: blur(var(--motion-blur, 4px));
+    transform: translateY(var(--motion-shift, 2px));
+}
+
 .dashboard-kpi-header {
     display: flex;
     justify-content: space-between;
@@ -183,10 +194,21 @@
     min-height: 360px;
 }
 
+.dashboard-chart-frame.sv-chart-shell {
+    border-radius: 20px;
+}
+
+.dashboard-chart-frame.sv-chart-shell .sv-chart-overlay {
+    background:
+        linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.22)),
+        linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, 0.08) 30%, transparent 42%);
+}
+
 .dashboard-chart-frame img {
     width: 100% !important;
     height: 360px !important;
     object-fit: contain;
+    border-radius: 18px;
 }
 
 .dashboard-empty-state {
@@ -339,6 +361,27 @@
 /* === Table === */
 .dashboard-activity-table-wrap {
     overflow-x: auto;
+}
+
+.dashboard-activity-table-wrap .sv-table-skeleton {
+    display: grid;
+    gap: 10px;
+    padding: 2px 0;
+}
+
+.dashboard-activity-table-wrap .sv-table-skeleton-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 12px;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.dashboard-activity-table-wrap .sv-table-skeleton-row span {
+    display: block;
+    height: 12px;
+    border-radius: 999px;
 }
 
 .dashboard-table {

@@ -43,6 +43,124 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Motion utilities used by async dashboard and analysis updates. */
+.sv-motion-surface {
+    will-change: transform, opacity, filter;
+    transition:
+        transform var(--duration-base) var(--easing),
+        opacity var(--duration-base) var(--easing),
+        filter var(--duration-base) var(--easing),
+        box-shadow var(--duration-base) var(--easing),
+        border-color var(--duration-base) var(--easing);
+}
+
+.sv-loading-surface {
+    position: relative;
+    opacity: var(--motion-loading-opacity, 0.76);
+    filter: blur(var(--motion-blur, 4px));
+    transform: translateY(var(--motion-shift, 2px)) scale(var(--motion-surface-scale, 0.995));
+    pointer-events: none;
+}
+
+.sv-loading-surface::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, 0.08) 30%, transparent 42%);
+    background-size: 220% 100%;
+    animation: svShimmer 1.35s linear infinite;
+    pointer-events: none;
+    opacity: 0.9;
+}
+
+.sv-chart-shell {
+    position: relative;
+    overflow: hidden;
+}
+
+.sv-chart-shell .sv-chart-overlay {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(2, 6, 23, 0.08), rgba(2, 6, 23, 0.22));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--duration-base) var(--easing);
+}
+
+.sv-chart-shell.sv-loading-surface .sv-chart-overlay {
+    opacity: 1;
+}
+
+.sv-chart-shell img {
+    transition:
+        opacity var(--duration-base) var(--easing),
+        transform var(--duration-base) var(--easing),
+        filter var(--duration-base) var(--easing);
+}
+
+.sv-chart-shell.sv-loading-surface img {
+    opacity: 0.72;
+    filter: blur(2px);
+    transform: translateY(var(--motion-shift, 2px));
+}
+
+.sv-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.08));
+}
+
+.sv-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 18%, rgba(255, 255, 255, 0.12) 30%, transparent 42%);
+    background-size: 220% 100%;
+    animation: svShimmer 1.35s linear infinite;
+}
+
+.sv-skeleton-line {
+    height: 0.9rem;
+    border-radius: 999px;
+    margin: 0.35rem 0;
+}
+
+.sv-skeleton-line--lg {
+    height: 1.15rem;
+}
+
+.sv-skeleton-line--xl {
+    height: 1.75rem;
+}
+
+.sv-skeleton-block {
+    border-radius: 16px;
+    min-height: 88px;
+}
+
+.admin-skeleton-card {
+    display: grid;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+@keyframes svShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+@keyframes svSoftPulse {
+    0%, 100% { opacity: 1; transform: translateY(0); }
+    50% { opacity: 0.86; transform: translateY(var(--motion-shift, 2px)); }
+}
+
 /* Glassmorphism Utilities */
 .glass-card {
     background: var(--glass-bg);
@@ -90,6 +208,10 @@ h1, h2, h3, h4 {
     transform: translateY(-2px);
     box-shadow: var(--accent-glow);
     background: #f0f0f0;
+}
+
+.sv-kpi-updated {
+    animation: svSoftPulse 240ms var(--easing);
 }
 
 .btn-secondary {
@@ -1254,6 +1376,24 @@ nav.glass-nav,
 
 .btn-glow:hover::after {
     opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .sv-loading-surface,
+    .sv-skeleton::after,
+    .sv-loading-surface::after {
+        animation: none !important;
+        filter: none !important;
+    }
 }
 
 .export-card {
